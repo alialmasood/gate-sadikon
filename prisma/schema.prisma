@@ -1,0 +1,117 @@
+// بوابة الصادقون — PostgreSQL 16
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String?
+  phone           String?
+  address         String?
+  avatarUrl       String?
+  ministry        String?
+  department      String?
+  assignmentDate  DateTime?
+  serialNumber    String?   @unique
+  role            Role      @default(USER)
+  enabled   Boolean  @default(true)
+  officeId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  office       Office?  @relation(fields: [officeId], references: [id], onDelete: SetNull)
+  managedOffices Office[] @relation("OfficeManager")
+}
+
+model Office {
+  id               String    @id @default(cuid())
+  name             String
+  type             String?
+  location         String?
+  status           String    @default("ACTIVE")
+  managerId        String?
+  managerName      String?
+  managerPhone     String?
+  managerAvatarUrl String?
+  assignmentDate   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  manager          User?     @relation("OfficeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  users            User[]
+  transactions     Transaction[]
+}
+
+model Delegate {
+  id            String   @id @default(cuid())
+  name          String?
+  userId        String?
+  officeId      String?
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  transactions  Transaction[]
+}
+
+model Formation {
+  id              String   @id @default(cuid())
+  type            String
+  name            String
+  status          String   @default("ACTIVE")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  subDepartments  FormationSubDept[]
+}
+
+model FormationSubDept {
+  id          String    @id @default(cuid())
+  formationId String
+  name        String    // الدائرة الفرعية التابعة للتشكيل
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id               String    @id @default(cuid())
+  citizenName      String?
+  citizenPhone     String?
+  citizenAddress   String?
+  citizenIsEmployee   Boolean?
+  citizenEmployeeSector String?  // GOVERNMENT | PRIVATE | MIXED
+  citizenMinistry     String?
+  citizenDepartment   String?
+  citizenOrganization String?
+  officeId         String
+  delegateId       String?
+  status           String    @default("PENDING")
+  type             String?
+  transactionType  String?
+  transactionTitle String?
+  submissionDate   DateTime?
+  formationId      String?
+  subDeptId        String?
+  serialNumber     String?   @unique
+  attachments      Json?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  office           Office    @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  delegate         Delegate? @relation(fields: [delegateId], references: [id], onDelete: SetNull)
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+  AUDITOR       // مدقق
+  COORDINATOR   // تنسيق ومتابعة
+  RECEPTION     // استقبال واستعلامات
+  PARLIAMENT_MEMBER
+}
