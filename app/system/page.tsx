@@ -77,7 +77,7 @@ export default function SystemPage() {
       setKey(k);
       setVerified(true);
     } else {
-      setSubmitError("مفتاح غير صحيح أو صفحة إدارة النظام غير مفعّلة.");
+      setSubmitError("مفتاح غير صحيح. ضع في ملف البيئة SYSTEM_SETUP_SECRET=123456789 (أو المفتاح الذي اخترته).");
     }
   }
 
@@ -120,7 +120,10 @@ export default function SystemPage() {
         <div className="w-full max-w-md rounded-2xl border border-[#e8dfcf] bg-white p-8 shadow-lg">
           <h1 className="text-xl font-bold text-[#1B1B1B]">إدارة المنصة</h1>
           <p className="mt-2 text-sm text-[#5a5a5a]">
-            إنشاء حسابات الإدارة العليا (سوبر أدمن) فقط. هذه الصفحة من صلاحية برمجة/إدارة النظام.
+            إنشاء حسابات الإدارة العليا (سوبر أدمن) فقط. أدخل المفتاح ثم أنشئ الحسابات.
+          </p>
+          <p className="mt-1 text-xs text-[#5a5a5a]">
+            المفتاح = قيمة <code className="rounded bg-[#e8dfcf] px-1">SYSTEM_SETUP_SECRET</code> في ملف البيئة (.env أو .env.local). للتطوير يمكن استخدام 123456789.
           </p>
           <form onSubmit={handleKeySubmit} className="mt-6">
             <label className="mb-2 block text-sm font-medium text-[#1B1B1B]">
@@ -131,7 +134,7 @@ export default function SystemPage() {
               autoComplete="off"
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
-              placeholder="أدخل المفتاح"
+              placeholder="مثال: 123456789"
               className="w-full rounded-xl border border-[#d9cbb4] bg-[#f6f3ed] px-4 py-3 text-[#1B1B1B] focus:border-[#B08D57] focus:outline-none focus:ring-2 focus:ring-[#B08D57]/25"
             />
             {submitError && (
@@ -162,7 +165,7 @@ export default function SystemPage() {
             <>
               <p className="text-[#1B1B1B] font-medium">غير مصرح.</p>
               <p className="mt-2 text-sm text-[#5a5a5a]">
-                المفتاح غير صحيح أو لم يتم ضبط SYSTEM_SETUP_SECRET في البيئة.
+                المفتاح غير صحيح أو لم يتم ضبط <code className="rounded bg-[#e8dfcf] px-1">SYSTEM_SETUP_SECRET</code> في البيئة على السيرفر (8 أحرف على الأقل). للتطوير: ضع في .env.local السطر <code className="rounded bg-[#e8dfcf] px-1">SYSTEM_SETUP_SECRET=123456789</code>
               </p>
               <button
                 type="button"

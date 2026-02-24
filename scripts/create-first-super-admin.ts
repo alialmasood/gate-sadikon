@@ -2,16 +2,20 @@
  * إنشاء أول حساب سوبر أدمن من متغيرات البيئة (اختياري في الإنتاج).
  * يشغّل مرة واحدة بعد النشر إذا لم يكن هناك أي سوبر أدمن.
  *
- * متغيرات البيئة:
+ * متغيرات البيئة (في .env أو .env.local):
  *   FIRST_SUPER_ADMIN_EMAIL   - البريد الإلكتروني (مطلوب)
  *   FIRST_SUPER_ADMIN_PASSWORD - كلمة المرور (8 أحرف على الأقل)
  *   FIRST_SUPER_ADMIN_NAME    - الاسم (اختياري)
  *
- * مثال:
- *   FIRST_SUPER_ADMIN_EMAIL=admin@example.com FIRST_SUPER_ADMIN_PASSWORD=SecurePass123 node -r tsx/register scripts/create-first-super-admin.ts
- * أو بعد إضافة المتغيرات في .env:
- *   npm run create-super-admin
+ * تشغيل: npm run create-super-admin
  */
+import { config } from "dotenv";
+import path from "path";
+
+// تحميل .env ثم .env.local حتى تُقرأ المتغيرات عند تشغيل السكربت
+config({ path: path.join(process.cwd(), ".env") });
+config({ path: path.join(process.cwd(), ".env.local") });
+
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 

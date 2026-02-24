@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useCallback } from "react";
 import type React from "react";
-import { signIn, getSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -73,10 +73,8 @@ function LoginPageContent() {
         return;
       }
       if (res?.ok) {
-        const session = await getSession();
-        const role = (session?.user as { role?: string } | undefined)?.role;
-        const defaultTarget = getRedirectByRole(role);
-        const target = callbackUrl && callbackUrl !== "/" ? callbackUrl : defaultTarget;
+        // التوجيه حسب callbackUrl إن وُجد، وإلا نوجّه إلى "/" ليقوم الـ middleware بتوجيه المستخدم حسب دوره (الجلسة قد لا تُحدَّث فوراً في العميل)
+        const target = callbackUrl && callbackUrl !== "/" ? callbackUrl : "/";
         window.location.href = target;
         return;
       }
