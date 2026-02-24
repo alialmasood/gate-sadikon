@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useCallback } from "react";
+import type React from "react";
 import { signIn, getSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
