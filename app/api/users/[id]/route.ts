@@ -66,7 +66,7 @@ export async function PATCH(
     }
   }
   if (body.officeId !== undefined) updateData.officeId = body.officeId === null || body.officeId === "" ? null : (typeof body.officeId === "string" ? body.officeId : null);
-  const VALID_ROLES = ["AUDITOR", "COORDINATOR", "RECEPTION"];
+  const VALID_ROLES = ["AUDITOR", "COORDINATOR", "RECEPTION", "SORTING", "DOCUMENTATION"];
   if (typeof body.role === "string" && VALID_ROLES.includes(body.role)) updateData.role = body.role;
   if (body.password !== undefined && typeof body.password === "string" && body.password.length >= 8) {
     updateData.password = await bcrypt.hash(body.password, 12);

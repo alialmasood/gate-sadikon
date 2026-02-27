@@ -70,6 +70,20 @@ export async function requireAdminOrReception(req?: NextRequest) {
   return { session: result.session, officeId };
 }
 
+/** مدير مكتب أو موظف استقبال أو قسم الفرز أو تنسيق ومتابعة — للقراءة وعرض تفاصيل المعاملات، SORTING يمكنه تعيين عاجل فقط */
+export async function requireAdminOrReceptionOrSorting(req?: NextRequest) {
+  const result = await getSessionWithDbValidation(req);
+  if (!result) {
+    return { error: "غير مصرح", status: 403 };
+  }
+  const { role } = result.user;
+  if (role !== "ADMIN" && role !== "RECEPTION" && role !== "SORTING" && role !== "COORDINATOR") {
+    return { error: "غير مصرح", status: 403 };
+  }
+  const officeId = result.user.officeId ?? undefined;
+  return { session: result.session, officeId, role };
+}
+
 /** سوبر أدمن أو مدير مكتب */
 export async function requireSuperAdminOrAdmin() {
   const result = await getSessionWithDbValidation();
@@ -96,4 +110,23 @@ export async function requireSuperAdmin() {
     return { error: "غير مصرح", status: 403 };
   }
   return { session: result.session };
+}
+
+/** المخول: USER مع delegate مرتبط بحسابه — يُرجع delegateId */
+export async function requireDelegate(req?: NextRequest) {
+  const result = await getSessionWithDbValidation(req);
+  if (!result) {
+    return { error: "غير مصرح", status: 403 };
+  }
+  if (result.user.role !== "USER") {
+    return { error: "غير مصرح", status: 403 };
+  }
+  const delegate = await prisma.delegate.findFirst({
+    where: { userId: result.user.id },
+    select: { id: true },
+  });
+  if (!delegate) {
+    return { error: "الحساب غير مرتبط بمخول", status: 403 };
+  }
+  return { session: result.session, delegateId: delegate.id };
 }

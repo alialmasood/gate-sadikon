@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       assignmentDate = d;
     }
   }
-  const VALID_ROLES: Role[] = ["AUDITOR", "COORDINATOR", "RECEPTION"];
+  const VALID_ROLES: Role[] = ["AUDITOR", "COORDINATOR", "RECEPTION", "SORTING", "DOCUMENTATION"];
   const role: Role = typeof body.role === "string" && VALID_ROLES.includes(body.role as Role) ? (body.role as Role) : "COORDINATOR";
 
   if (!email || !/^[a-zA-Z0-9_.]+$/.test(emailRaw) || emailRaw.length < 2) {

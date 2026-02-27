@@ -33,6 +33,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name ?? undefined,
           role: user.role,
           officeId: user.officeId ?? undefined,
+          serialNumber: user.serialNumber ?? undefined,
         };
       },
     }),
@@ -47,6 +48,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
         token.officeId = (user as { officeId?: string }).officeId;
+        token.serialNumber = (user as { serialNumber?: string }).serialNumber;
       }
       return token;
     },
@@ -55,6 +57,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as { id?: string }).id = token.id as string;
         (session.user as { role?: string }).role = token.role as string;
         (session.user as { officeId?: string }).officeId = token.officeId as string | undefined;
+        (session.user as { serialNumber?: string }).serialNumber = token.serialNumber as string | undefined;
       }
       return session;
     },

@@ -51,6 +51,8 @@ const ROLE_LABELS: Record<string, string> = {
   AUDITOR: "مدقق",
   COORDINATOR: "تنسيق ومتابعة",
   RECEPTION: "استقبال واستعلامات",
+  SORTING: "قسم الفرز",
+  DOCUMENTATION: "قسم التوثيق",
   USER: "مستخدم",
   SUPER_ADMIN: "سوبر أدمن",
   PARLIAMENT_MEMBER: "عضو مجلس النواب",
@@ -368,6 +370,8 @@ function CreateAccountModal({
               <option value="AUDITOR">مدقق</option>
               <option value="COORDINATOR">تنسيق ومتابعة</option>
               <option value="RECEPTION">استقبال واستعلامات</option>
+              <option value="SORTING">قسم الفرز</option>
+              <option value="DOCUMENTATION">قسم التوثيق</option>
             </select>
           </div>
           {error && (

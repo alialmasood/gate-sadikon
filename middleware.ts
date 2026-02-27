@@ -6,35 +6,48 @@ const secret = process.env.NEXTAUTH_SECRET;
 
 // أي مسار مسموح لكل دور (SUPER_ADMIN يصل لجميع المسارات)
 const ROLE_ROUTES: Record<string, string[]> = {
-  SUPER_ADMIN: ["/super-admin", "/admin", "/user", "/coordinator", "/auditor", "/reception"],
+  SUPER_ADMIN: ["/super-admin", "/admin", "/user", "/authorized", "/coordinator", "/auditor", "/reception", "/sorting"],
   ADMIN: ["/admin"],
-  USER: ["/user"],
+  USER: ["/user", "/authorized"],
   AUDITOR: ["/auditor"],
   COORDINATOR: ["/coordinator"],
   RECEPTION: ["/reception"],
+  SORTING: ["/sorting"],
 };
 
-function hasAccess(role: string | undefined, pathname: string): boolean {
+function isDelegate(serialNumber: string | undefined): boolean {
+  return typeof serialNumber === "string" && serialNumber.startsWith("DEL-");
+}
+
+function hasAccess(role: string | undefined, pathname: string, serialNumber?: string): boolean {
   if (!role) return false;
+  if (pathname.startsWith("/authorized")) {
+    return role === "USER" && isDelegate(serialNumber);
+  }
+  if (pathname.startsWith("/user")) {
+    return role === "USER" && !isDelegate(serialNumber);
+  }
   const allowed = ROLE_ROUTES[role as keyof typeof ROLE_ROUTES];
   if (!allowed) return false;
   return allowed.some((base) => pathname === base || pathname.startsWith(base + "/"));
 }
 
-function getDefaultRoute(role: string | undefined): string {
+function getDefaultRoute(role: string | undefined, serialNumber?: string): string {
   switch (role) {
     case "SUPER_ADMIN":
       return "/super-admin";
     case "ADMIN":
       return "/admin";
     case "USER":
-      return "/user";
+      return isDelegate(serialNumber) ? "/authorized" : "/user";
     case "AUDITOR":
       return "/auditor";
     case "COORDINATOR":
       return "/coordinator";
     case "RECEPTION":
       return "/reception";
+    case "SORTING":
+      return "/sorting";
     default:
       return "/";
   }
@@ -49,12 +62,13 @@ export async function middleware(request: NextRequest) {
   });
 
   const role = (token?.role as string | undefined) ?? undefined;
+  const serialNumber = token?.serialNumber as string | undefined;
   const isLoggedIn = !!token;
 
   // مسجل ودخل على / أو /login — توجيهه حسب دوره
   if (pathname === "/" || pathname === "/login") {
     if (isLoggedIn) {
-      const target = getDefaultRoute(role);
+      const target = getDefaultRoute(role, serialNumber);
       if (target !== "/") {
         return NextResponse.redirect(new URL(target, request.url));
       }
@@ -72,9 +86,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/super-admin") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/user") ||
+    pathname.startsWith("/authorized") ||
     pathname.startsWith("/coordinator") ||
     pathname.startsWith("/auditor") ||
-    pathname.startsWith("/reception");
+    pathname.startsWith("/reception") ||
+    pathname.startsWith("/sorting");
 
   if (isProtected && !isLoggedIn) {
     const login = new URL("/login", request.url);
@@ -83,7 +99,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // مسجل لكن بدون صلاحية لهذا المسار
-  if (isProtected && !hasAccess(role, pathname)) {
+  if (isProtected && !hasAccess(role, pathname, serialNumber)) {
     return NextResponse.redirect(new URL("/forbidden", request.url));
   }
 
@@ -97,9 +113,11 @@ export const config = {
     "/super-admin/:path*",
     "/admin/:path*",
     "/user/:path*",
+    "/authorized/:path*",
     "/coordinator/:path*",
     "/auditor/:path*",
     "/reception/:path*",
+    "/sorting/:path*",
     "/forbidden",
   ],
 };

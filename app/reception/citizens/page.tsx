@@ -26,6 +26,9 @@ type Transaction = {
   delegateName: string | null;
   formationId?: string | null;
   subDeptId?: string | null;
+  urgent?: boolean;
+  cannotComplete?: boolean;
+  reachedSorting?: boolean;
 };
 
 type FullTransaction = Transaction & {
@@ -48,6 +51,18 @@ const SECTOR_LABELS: Record<string, string> = {
   NOT_LINKED: "جهة غير مرتبطة بوزارة",
   OTHER: "جهة أخرى",
 };
+
+const TRANSACTION_TYPES = [
+  { value: "طلب", label: "طلب" },
+  { value: "طلب نقل خدمات بين وزارتين", label: "طلب نقل خدمات بين وزارتين" },
+  { value: "نقل خدمات بين تشكيلين في وزارة", label: "نقل خدمات بين تشكيلين في وزارة" },
+  { value: "طلب تخصيص قطعة ارض", label: "طلب تخصيص قطعة ارض" },
+  { value: "طلب تعيين", label: "طلب تعيين" },
+  { value: "طلب تشغيل", label: "طلب تشغيل" },
+  { value: "تظلم", label: "تظلم" },
+  { value: "مفاتحة", label: "مفاتحة" },
+  { value: "طلب رعاية اجتماعية", label: "طلب رعاية اجتماعية" },
+];
 
 function formatDate(s: string | null): string {
   if (!s) return "—";
@@ -85,6 +100,10 @@ export default function ReceptionCitizensPage() {
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterTransactionType, setFilterTransactionType] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -113,6 +132,35 @@ export default function ReceptionCitizensPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const uniqueTypesFromData = Array.from(
+    new Set(transactions.map((t) => t.transactionType || t.type).filter(Boolean) as string[])
+  ).sort();
+  const allTransactionTypes = [
+    ...TRANSACTION_TYPES,
+    ...uniqueTypesFromData
+      .filter((v) => !TRANSACTION_TYPES.some((t) => t.value === v))
+      .map((v) => ({ value: v, label: v })),
+  ];
+
+  const filteredTransactions = transactions.filter((t) => {
+    const typeVal = t.transactionType || t.type || "";
+    if (filterTransactionType && typeVal !== filterTransactionType) return false;
+    const subDate = t.submissionDate ? new Date(t.submissionDate) : null;
+    if (filterDateFrom && subDate && subDate < new Date(filterDateFrom + "T00:00:00")) return false;
+    if (filterDateTo && subDate && subDate > new Date(filterDateTo + "T23:59:59")) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const name = (t.citizenName || "").toLowerCase();
+      const serial = (t.serialNumber || "").toLowerCase();
+      const type = (typeVal || "").toLowerCase();
+      const title = (t.transactionTitle || "").toLowerCase();
+      const phone = (t.citizenPhone || "").toLowerCase();
+      if (!name.includes(q) && !serial.includes(q) && !type.includes(q) && !title.includes(q) && !phone.includes(q))
+        return false;
+    }
+    return true;
+  });
 
   const handleView = useCallback(async (t: Transaction) => {
     try {
@@ -189,6 +237,53 @@ export default function ReceptionCitizensPage() {
         </div>
       </div>
 
+      {/* شريط البحث والفلترة */}
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-[#d4cfc8] bg-white p-4 shadow-sm">
+        <div className="min-w-[180px] flex-1">
+          <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">بحث</label>
+          <input
+            type="search"
+            placeholder="بحث بالاسم أو الرقم أو الهاتف..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]/30"
+          />
+        </div>
+        <div className="min-w-[160px]">
+          <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">نوع المعاملة</label>
+          <select
+            value={filterTransactionType}
+            onChange={(e) => setFilterTransactionType(e.target.value)}
+            className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]/30"
+          >
+            <option value="">الكل</option>
+            {allTransactionTypes.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="min-w-[140px]">
+          <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">تاريخ التقديم من</label>
+          <input
+            type="date"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]/30"
+          />
+        </div>
+        <div className="min-w-[140px]">
+          <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">تاريخ التقديم إلى</label>
+          <input
+            type="date"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]/30"
+          />
+        </div>
+      </div>
+
       {/* جدول المعاملات */}
       <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-[#1B1B1B]">جدول المعاملات</h2>
@@ -199,6 +294,9 @@ export default function ReceptionCitizensPage() {
           <p className="mt-4 py-12 text-center text-[#5a5a5a]">لا توجد معاملات مسجلة بعد.</p>
         ) : (
           <div className="mt-4 overflow-x-auto">
+            {filteredTransactions.length === 0 ? (
+              <p className="py-8 text-center text-[#5a5a5a]">لا توجد نتائج تطابق معايير البحث والفلترة.</p>
+            ) : (
             <table className="w-full min-w-[1000px] text-right text-sm">
               <thead>
                 <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
@@ -217,7 +315,7 @@ export default function ReceptionCitizensPage() {
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((t) => (
+                {filteredTransactions.map((t) => (
                   <tr
                     key={t.id}
                     className="border-b border-[#d4cfc8]/80 transition hover:bg-[#f6f3ed]/50"
@@ -237,17 +335,45 @@ export default function ReceptionCitizensPage() {
                     </td>
                     <td className="py-3 px-2 text-[#5a5a5a]">{formatDate(t.submissionDate)}</td>
                     <td className="py-3 px-2">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          t.status === "DONE"
-                            ? "bg-[#ccfbf1] text-[#0f766e]"
-                            : t.status === "OVERDUE"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {STATUS_LABELS[t.status] || t.status}
-                      </span>
+                      {(() => {
+                        if (t.cannotComplete)
+                          return (
+                            <span className="inline-block rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+                              لا يمكن الانجاز
+                            </span>
+                          );
+                        if (t.delegateName)
+                          return (
+                            <span className="inline-block rounded-full bg-[#1E6B3A]/20 px-2 py-0.5 text-xs font-medium text-[#1E6B3A]">
+                              إلى مخول
+                            </span>
+                          );
+                        if (t.urgent)
+                          return (
+                            <span className="inline-block rounded-full bg-[#5B7C99]/20 px-2 py-0.5 text-xs font-medium text-[#5B7C99]">
+                              وصلت قسم المتابعة
+                            </span>
+                          );
+                        if (t.reachedSorting)
+                          return (
+                            <span className="inline-block rounded-full bg-[#7C3AED]/20 px-2 py-0.5 text-xs font-medium text-[#7C3AED]">
+                              وصلت قسم الفرز
+                            </span>
+                          );
+                        return (
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                              t.status === "DONE"
+                                ? "bg-[#ccfbf1] text-[#0f766e]"
+                                : t.status === "OVERDUE"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}
+                          >
+                            {STATUS_LABELS[t.status] || t.status}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 px-2 text-[#5a5a5a]">{formatDate(t.createdAt)}</td>
                     <td className="py-3 px-2">
@@ -285,6 +411,7 @@ export default function ReceptionCitizensPage() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         )}
       </article>

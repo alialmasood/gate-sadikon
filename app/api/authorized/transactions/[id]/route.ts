@@ -1,0 +1,70 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireDelegate } from "@/lib/api-auth";
+
+/** عرض تفاصيل معاملة معينة للمخول (معاملاته فقط) */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireDelegate();
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { delegateId } = auth;
+  const { id } = await params;
+
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, delegateId },
+    include: { office: { select: { name: true } } },
+  });
+  if (!transaction) return NextResponse.json({ error: "المعاملة غير موجودة" }, { status: 404 });
+
+  let formationName: string | null = null;
+  let subDeptName: string | null = null;
+  if (transaction.formationId) {
+    const f = await prisma.formation.findUnique({
+      where: { id: transaction.formationId },
+      select: { name: true },
+    });
+    formationName = f?.name ?? null;
+  }
+  if (transaction.subDeptId) {
+    const s = await prisma.formationSubDept.findUnique({
+      where: { id: transaction.subDeptId },
+      select: { name: true },
+    });
+    subDeptName = s?.name ?? null;
+  }
+
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const followUpUrl = transaction.serialNumber
+    ? `${baseUrl}/track?sn=${transaction.serialNumber}`
+    : null;
+
+  return NextResponse.json({
+    id: transaction.id,
+    citizenName: transaction.citizenName,
+    citizenPhone: transaction.citizenPhone,
+    citizenAddress: transaction.citizenAddress,
+    citizenIsEmployee: transaction.citizenIsEmployee,
+    citizenEmployeeSector: transaction.citizenEmployeeSector,
+    citizenMinistry: transaction.citizenMinistry,
+    citizenDepartment: transaction.citizenDepartment,
+    citizenOrganization: transaction.citizenOrganization,
+    status: transaction.status,
+    type: transaction.type,
+    transactionType: transaction.transactionType,
+    transactionTitle: transaction.transactionTitle,
+    serialNumber: transaction.serialNumber,
+    submissionDate: transaction.submissionDate,
+    formationName,
+    subDeptName,
+    attachments: transaction.attachments,
+    createdAt: transaction.createdAt,
+    completedAt: transaction.completedAt,
+    officeName: transaction.office?.name ?? null,
+    followUpUrl,
+    urgent: transaction.urgent,
+    cannotComplete: transaction.cannotComplete,
+    reachedSorting: transaction.reachedSorting,
+  });
+}

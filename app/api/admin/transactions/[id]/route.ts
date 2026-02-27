@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminOrReception } from "@/lib/api-auth";
+import { requireAdminOrReception, requireAdminOrReceptionOrSorting } from "@/lib/api-auth";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdminOrReception();
+  const auth = await requireAdminOrReceptionOrSorting();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { officeId } = auth;
   const { id } = await params;
@@ -72,6 +72,10 @@ export async function GET(
     delegateName: transaction.delegate?.name ?? null,
     officeName: transaction.office?.name ?? null,
     followUpUrl,
+    urgent: transaction.urgent,
+    cannotComplete: transaction.cannotComplete,
+    reachedSorting: transaction.reachedSorting,
+    delegateId: transaction.delegateId,
   });
 }
 
@@ -101,9 +105,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdminOrReception();
+  const auth = await requireAdminOrReceptionOrSorting();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  const { officeId, role } = auth;
   const { id } = await params;
 
   if (!officeId) {
@@ -112,6 +116,8 @@ export async function PATCH(
 
   let body: {
     status?: string;
+    urgent?: boolean;
+    cannotComplete?: boolean;
     citizenName?: string;
     citizenPhone?: string;
     citizenAddress?: string;
@@ -138,7 +144,25 @@ export async function PATCH(
   });
   if (!existing) return NextResponse.json({ error: "المعاملة غير موجودة" }, { status: 404 });
 
+  if (role === "SORTING") {
+    const sortData: { urgent?: boolean; cannotComplete?: boolean; reachedSorting: boolean } = { reachedSorting: true };
+    if (body.urgent !== undefined) sortData.urgent = body.urgent === true;
+    if (body.cannotComplete !== undefined) sortData.cannotComplete = body.cannotComplete === true;
+    if (Object.keys(sortData).length > 1) {
+      const updated = await prisma.transaction.update({
+        where: { id },
+        data: sortData,
+        select: { id: true, urgent: true, cannotComplete: true, reachedSorting: true },
+      });
+      return NextResponse.json(updated);
+    }
+    return NextResponse.json({ error: "لا توجد بيانات للتحديث" }, { status: 400 });
+  }
+
   const data: Record<string, unknown> = {};
+
+  if (body.urgent !== undefined) data.urgent = body.urgent === true;
+  if (body.cannotComplete !== undefined) data.cannotComplete = body.cannotComplete === true;
 
   const status = body.status === "DONE" || body.status === "PENDING" || body.status === "OVERDUE" ? body.status : undefined;
   if (status) {

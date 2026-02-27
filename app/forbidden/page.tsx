@@ -3,7 +3,10 @@
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 
-function getDashboardUrl(role: string | undefined): string {
+function getDashboardUrl(role: string | undefined, serialNumber?: string): string {
+  if (role === "USER" && typeof serialNumber === "string" && serialNumber.startsWith("DEL-")) {
+    return "/authorized";
+  }
   switch (role) {
     case "SUPER_ADMIN":
       return "/super-admin";
@@ -11,6 +14,14 @@ function getDashboardUrl(role: string | undefined): string {
       return "/admin";
     case "USER":
       return "/user";
+    case "AUDITOR":
+      return "/auditor";
+    case "COORDINATOR":
+      return "/coordinator";
+    case "RECEPTION":
+      return "/reception";
+    case "SORTING":
+      return "/sorting";
     default:
       return "/";
   }
@@ -18,8 +29,8 @@ function getDashboardUrl(role: string | undefined): string {
 
 export default function ForbiddenPage() {
   const { data: session } = useSession();
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  const dashboardUrl = getDashboardUrl(role);
+  const user = session?.user as { role?: string; serialNumber?: string } | undefined;
+  const dashboardUrl = getDashboardUrl(user?.role, user?.serialNumber);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#F4F6F8] p-6" dir="rtl">

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   }
   const role = token.role as string | undefined;
   const officeId = token.officeId as string | undefined;
-  if (role !== "ADMIN" && role !== "RECEPTION") {
+  if (role !== "ADMIN" && role !== "RECEPTION" && role !== "SORTING" && role !== "COORDINATOR") {
     return NextResponse.json({ error: "غير مصرح", transactions: [] }, { status: 403 });
   }
   if (!officeId) {
@@ -24,10 +24,12 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = request.nextUrl;
   const status = searchParams.get("status") ?? undefined;
+  const urgentOnly = searchParams.get("urgent") === "true";
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 200);
 
-  const where: { officeId: string; status?: string } = { officeId };
+  const where: { officeId: string; status?: string; urgent?: boolean } = { officeId };
   if (status) where.status = status;
+  if (urgentOnly) where.urgent = true;
 
   const [transactions, overdueCount] = await Promise.all([
     prisma.transaction.findMany({
@@ -60,6 +62,9 @@ export async function GET(request: NextRequest) {
       createdAt: t.createdAt,
       completedAt: t.completedAt,
       delegateName: t.delegate?.name ?? null,
+      urgent: t.urgent,
+      cannotComplete: t.cannotComplete,
+      reachedSorting: t.reachedSorting,
     })),
     overdueCount,
   });

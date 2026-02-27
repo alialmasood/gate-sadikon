@@ -118,5 +118,10 @@ export async function POST(request: NextRequest) {
       office: { select: { id: true, name: true } },
     },
   });
+  if (role === "USER" && serialNumber) {
+    await prisma.delegate.create({
+      data: { userId: user.id, name: name || email, officeId, status: "ACTIVE" },
+    });
+  }
   return NextResponse.json(user);
 }

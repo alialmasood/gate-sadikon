@@ -28,6 +28,8 @@ function getRedirectByRole(role: string | undefined): string {
       return "/coordinator";
     case "RECEPTION":
       return "/reception";
+    case "SORTING":
+      return "/sorting";
     default:
       return "/";
   }

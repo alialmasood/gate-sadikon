@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
 type Transaction = {
@@ -17,7 +16,6 @@ type Transaction = {
   createdAt: string;
   completedAt: string | null;
   delegateName: string | null;
-  reachedSorting?: boolean;
   urgent?: boolean;
   cannotComplete?: boolean;
 };
@@ -40,30 +38,9 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING: "قيد التنفيذ",
   DONE: "منجزة",
   OVERDUE: "متأخرة",
-  REJECTED: "مرفوضة",
 };
 
-/** يعيد عرض الحالة حسب أين وصلت المعاملة */
-function getStatusDisplay(t: Transaction): { label: string; className: string } {
-  if (t.status === "DONE")
-    return { label: "منجزة", className: "bg-[#ccfbf1] text-[#0f766e]" };
-  if (t.status === "OVERDUE")
-    return { label: "متأخرة", className: "bg-red-100 text-red-700" };
-  if (t.status === "REJECTED")
-    return { label: "مرفوضة", className: "bg-red-100 text-red-700" };
-  if (t.cannotComplete)
-    return { label: "لا يمكن الإنجاز", className: "bg-slate-200 text-slate-700" };
-  if (t.delegateName)
-    return { label: "إلى مخول", className: "bg-[#1E6B3A]/20 text-[#1E6B3A]" };
-  if (t.urgent)
-    return { label: "وصلت قسم المتابعة", className: "bg-[#5B7C99]/20 text-[#5B7C99]" };
-  if (t.reachedSorting)
-    return { label: "وصلت قسم الفرز", className: "bg-[#7C3AED]/20 text-[#7C3AED]" };
-  return {
-    label: STATUS_LABELS[t.status] || t.status || "قيد التنفيذ",
-    className: "bg-amber-100 text-amber-700",
-  };
-}
+const POLL_INTERVAL_MS = 4000;
 
 function formatDate(s: string | null): string {
   if (!s) return "—";
@@ -77,25 +54,20 @@ function formatDate(s: string | null): string {
   }
 }
 
-export default function ReceptionTransactionsPage() {
+export default function SortingReceivedPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
-
-  const statusCounts = {
-    total: transactions.length,
-    pending: transactions.filter((t) => t.status === "PENDING").length,
-    done: transactions.filter((t) => t.status === "DONE").length,
-    rejected: transactions.filter((t) => t.status === "REJECTED").length,
-  };
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await fetch("/api/transactions?limit=200", { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        setTransactions(data.transactions || []);
+        const all = data.transactions || [];
+        setTransactions(all.filter((x: Transaction) => !x.urgent && !x.cannotComplete));
+        setLastUpdate(new Date());
       }
     } finally {
       setLoading(false);
@@ -104,6 +76,11 @@ export default function ReceptionTransactionsPage() {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const id = setInterval(loadData, POLL_INTERVAL_MS);
+    return () => clearInterval(id);
   }, [loadData]);
 
   const handleView = useCallback(async (t: Transaction) => {
@@ -120,27 +97,54 @@ export default function ReceptionTransactionsPage() {
     }
   }, []);
 
+  const handleUrgent = useCallback(async (t: Transaction) => {
+    if (t.urgent) return;
+    try {
+      const res = await fetch(`/api/admin/transactions/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ urgent: true }),
+      });
+      if (res.ok) {
+        setTransactions((prev) => prev.filter((x) => x.id !== t.id));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "فشل وضع علامة عاجل");
+      }
+    } catch {
+      alert("حدث خطأ غير متوقع");
+    }
+  }, []);
+
+  const handleTransferToDelegate = useCallback((t: Transaction) => {
+    alert(`تحويل المعاملة ${t.serialNumber ? `2026-${t.serialNumber}` : t.id} إلى مخول — قيد التطوير`);
+  }, []);
+
+  const handleCannotComplete = useCallback(async (t: Transaction) => {
+    try {
+      const res = await fetch(`/api/admin/transactions/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cannotComplete: true }),
+      });
+      if (res.ok) {
+        setTransactions((prev) => prev.filter((x) => x.id !== t.id));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "فشل تحديث الحالة");
+      }
+    } catch {
+      alert("حدث خطأ غير متوقع");
+    }
+  }, []);
+
   const handlePrint = useCallback(async (t: Transaction) => {
     try {
       const res = await fetch(`/api/admin/transactions/${t.id}`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        const receipt: ReceiptData = {
-          citizenName: data.citizenName,
-          citizenPhone: data.citizenPhone,
-          citizenAddress: data.citizenAddress,
-          citizenMinistry: data.citizenMinistry,
-          citizenDepartment: data.citizenDepartment,
-          citizenOrganization: data.citizenOrganization,
-          transactionType: data.transactionType || data.type,
-          formationName: data.formationName ?? null,
-          subDeptName: data.subDeptName ?? null,
-          officeName: data.officeName,
-          serialNumber: data.serialNumber,
-          followUpUrl: data.followUpUrl ?? null,
-          submissionDate: data.submissionDate,
-          createdAt: data.createdAt,
-        };
         setViewTransaction(data);
         setTimeout(() => {
           const content = document.getElementById("receipt-content");
@@ -170,58 +174,23 @@ export default function ReceptionTransactionsPage() {
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-[#1B1B1B]">المعاملات</h2>
+          <h2 className="text-lg font-semibold text-[#1B1B1B]">المعاملات المستلمة</h2>
           <p className="mt-1 text-sm text-[#5a5a5a]">
-            المعاملات المضافة من شؤون المواطنين — تحويل، طباعة، عرض
+            المعاملات الواردة من وحدة الاستقبال — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
+            {lastUpdate && (
+              <span className="mr-2 text-xs text-[#7C3AED]">(آخر تحديث: {formatDate(lastUpdate.toISOString())})</span>
+            )}
           </p>
-        </div>
-        <Link
-          href="/reception/citizens/new"
-          className="flex items-center gap-2 rounded-xl border border-[#0D9488] bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0f766e] hover:border-[#0f766e]"
-        >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          معاملة جديدة
-        </Link>
-      </div>
-
-      {/* شريط البطاقات */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-[#d4cfc8] bg-white p-4 shadow-sm">
-          <p className="text-sm font-medium text-[#5a5a5a]">إجمالي المعاملات</p>
-          <p className="mt-1 text-2xl font-bold text-[#1B1B1B]">{loading ? "—" : statusCounts.total}</p>
-        </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-          <p className="text-sm font-medium text-amber-700">قيد التنفيذ</p>
-          <p className="mt-1 text-2xl font-bold text-amber-700">{loading ? "—" : statusCounts.pending}</p>
-        </div>
-        <div className="rounded-xl border border-[#0D9488]/30 bg-[#ccfbf1]/50 p-4 shadow-sm">
-          <p className="text-sm font-medium text-[#0f766e]">المكتملة</p>
-          <p className="mt-1 text-2xl font-bold text-[#0D9488]">{loading ? "—" : statusCounts.done}</p>
-        </div>
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
-          <p className="text-sm font-medium text-red-700">المرفوضة</p>
-          <p className="mt-1 text-2xl font-bold text-red-700">{loading ? "—" : statusCounts.rejected}</p>
         </div>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#0D9488] border-t-transparent" />
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
         </div>
       ) : transactions.length === 0 ? (
         <div className="rounded-2xl border border-[#d4cfc8] bg-white p-12 text-center shadow-sm">
-          <p className="text-[#5a5a5a]">لا توجد معاملات مسجلة.</p>
-          <Link
-            href="/reception/citizens/new"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0f766e]"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            إضافة معاملة جديدة
-          </Link>
+          <p className="text-[#5a5a5a]">لا توجد معاملات مستلمة حالياً.</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -232,17 +201,20 @@ export default function ReceptionTransactionsPage() {
             >
               <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-sm font-bold text-[#0D9488]" dir="ltr">
+                  <span className="font-mono text-sm font-bold text-[#7C3AED]" dir="ltr">
                     {t.serialNumber ? `2026-${t.serialNumber}` : "—"}
                   </span>
-                  {(() => {
-                    const s = getStatusDisplay(t);
-                    return (
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${s.className}`}>
-                        {s.label}
-                      </span>
-                    );
-                  })()}
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      t.status === "DONE"
+                        ? "bg-[#ccfbf1] text-[#0f766e]"
+                        : t.status === "OVERDUE"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {STATUS_LABELS[t.status] || t.status}
+                  </span>
                 </div>
               </div>
               <div className="flex flex-1 flex-col p-4">
@@ -258,6 +230,36 @@ export default function ReceptionTransactionsPage() {
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-[#d4cfc8] pt-4">
                   <button
                     type="button"
+                    onClick={() => handleUrgent(t)}
+                    className="flex items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    عاجل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTransferToDelegate(t)}
+                    className="flex items-center gap-1.5 rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-3 py-2 text-xs font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    الى مخول
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCannotComplete(t)}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-400/50 bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    لا يمكن الانجاز
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handlePrint(t)}
                     className="flex items-center gap-1.5 rounded-lg border border-[#B08D57]/50 bg-[#B08D57]/10 px-3 py-2 text-xs font-medium text-[#9C7B49] hover:bg-[#B08D57]/20"
                   >
@@ -269,7 +271,7 @@ export default function ReceptionTransactionsPage() {
                   <button
                     type="button"
                     onClick={() => handleView(t)}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#0D9488]/50 bg-[#0D9488]/10 px-3 py-2 text-xs font-medium text-[#0f766e] hover:bg-[#0D9488]/20"
+                    className="flex items-center gap-1.5 rounded-lg border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-3 py-2 text-xs font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
