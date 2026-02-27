@@ -64,25 +64,14 @@ export default function IntroHero() {
         },
       };
 
-  const iraqVariants: Variants = reducedMotion
+  const logoVariants: Variants = reducedMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1, transition: { delay: 0.15 } } }
     : {
-        initial: { opacity: 0, scale: 0.92 },
+        initial: { opacity: 0, scale: 0.95 },
         animate: {
           opacity: 1,
           scale: 1,
-          transition: { duration: 0.65, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] },
-        },
-      };
-
-  const sadiqoonVariants: Variants = reducedMotion
-    ? { initial: { opacity: 0 }, animate: { opacity: 1, transition: { delay: 0.5 } } }
-    : {
-        initial: { opacity: 0, y: 14 },
-        animate: {
-          opacity: 1,
-          y: 0,
-          transition: { duration: 0.5, delay: 0.6 },
+          transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] },
         },
       };
 
@@ -136,7 +125,68 @@ export default function IntroHero() {
   return (
     <div
       className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[#F4F6F8]"
+      style={{
+        backgroundImage: [
+          "radial-gradient(ellipse 90% 80% at 50% 20%, rgba(201, 162, 39, 0.06) 0%, transparent 55%)",
+          "radial-gradient(ellipse 70% 60% at 80% 90%, rgba(184, 138, 26, 0.04) 0%, transparent 50%)",
+          "radial-gradient(ellipse 60% 70% at 20% 80%, rgba(140, 106, 18, 0.035) 0%, transparent 45%)",
+        ].join(", "),
+      }}
     >
+      {/* نمط هندسي إسلامي خلفية — دوائر، سداسيات، مربعات، خطوط (بدون نجوم) */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.09]" aria-hidden>
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="islamic-circles" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+              <circle cx="30" cy="30" r="12" fill="none" stroke="#8C6A12" strokeWidth="0.5" />
+              <circle cx="30" cy="30" r="6" fill="none" stroke="#B88A1A" strokeWidth="0.4" opacity="0.8" />
+            </pattern>
+            <pattern id="islamic-hex" x="0" y="0" width="80" height="69.28" patternUnits="userSpaceOnUse">
+              <polygon points="40,0 80,17.32 80,51.96 40,69.28 0,51.96 0,17.32" fill="none" stroke="#B88A1A" strokeWidth="0.4" opacity="0.7" />
+            </pattern>
+            <pattern id="islamic-squares" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse">
+              <rect x="5" y="5" width="40" height="40" fill="none" stroke="#8C6A12" strokeWidth="0.4" />
+              <rect x="15" y="15" width="20" height="20" fill="none" stroke="#B88A1A" strokeWidth="0.3" opacity="0.6" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#islamic-circles)" />
+          <rect width="100%" height="100%" fill="url(#islamic-hex)" opacity="0.5" />
+          <rect width="100%" height="100%" fill="url(#islamic-squares)" opacity="0.4" />
+        </svg>
+      </div>
+
+      {/* زخارف إسلامية في الزوايا — زخرفة أرابيسك بسيطة */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.08]" aria-hidden>
+        <svg className="absolute -top-20 -right-20 h-80 w-80" viewBox="0 0 160 160" fill="none">
+          <path d="M0 80 Q40 40 80 80 Q120 120 160 80" stroke="#8C6A12" strokeWidth="0.8" fill="none" />
+          <path d="M20 80 Q60 50 100 80 Q140 110 160 80" stroke="#B88A1A" strokeWidth="0.5" fill="none" opacity="0.8" />
+          <path d="M0 60 Q50 80 80 40 Q110 0 160 40" stroke="#8C6A12" strokeWidth="0.5" fill="none" opacity="0.6" />
+        </svg>
+        <svg className="absolute -bottom-20 -left-20 h-80 w-80 rotate-180" viewBox="0 0 160 160" fill="none">
+          <path d="M0 80 Q40 40 80 80 Q120 120 160 80" stroke="#8C6A12" strokeWidth="0.8" fill="none" />
+          <path d="M20 80 Q60 50 100 80 Q140 110 160 80" stroke="#B88A1A" strokeWidth="0.5" fill="none" opacity="0.8" />
+        </svg>
+        <svg className="absolute top-1/2 -left-32 h-64 w-64 -translate-y-1/2 -rotate-90 opacity-70" viewBox="0 0 100 100" fill="none">
+          <path d="M0 50 Q25 25 50 50 Q75 75 100 50" stroke="#8C6A12" strokeWidth="0.6" fill="none" />
+        </svg>
+        <svg className="absolute top-1/2 -right-32 h-64 w-64 -translate-y-1/2 rotate-90 opacity-70" viewBox="0 0 100 100" fill="none">
+          <path d="M0 50 Q25 25 50 50 Q75 75 100 50" stroke="#8C6A12" strokeWidth="0.6" fill="none" />
+        </svg>
+      </div>
+
+      {/* شبكة خفيفة — إحساس بالتناظر الهندسي */}
+      <div
+        className="pointer-events-none absolute inset-6 rounded-2xl opacity-[0.03]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(140, 106, 18, 0.5) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(140, 106, 18, 0.5) 1px, transparent 1px)
+          `,
+          backgroundSize: "40px 40px",
+        }}
+        aria-hidden
+      />
+
       {/* إطار مزدوج: ذهبي خارجي + ماروني (أحمر رسمي) داخلي */}
       <div
         className="pointer-events-none absolute inset-6 rounded-2xl"
@@ -150,7 +200,27 @@ export default function IntroHero() {
         }}
         aria-hidden
       >
-        {/* Corner accents — 28px، 2px سمك، لون أغمق قليلاً من الخط */}
+        {/* زوايا مزخرفة — هندسة إسلامية بسيطة */}
+        {[
+          { top: 0, right: 0, transform: "none" },
+          { top: 0, left: 0, transform: "scaleX(-1)" },
+          { bottom: 0, right: 0, transform: "scaleY(-1)" },
+          { bottom: 0, left: 0, transform: "scale(-1)" },
+        ].map((pos, i) => (
+          <svg
+            key={i}
+            className="absolute h-16 w-16 md:h-20 md:w-20"
+            style={{ ...pos, margin: 8 }}
+            viewBox="0 0 64 64"
+            fill="none"
+            aria-hidden
+          >
+            <path d="M0 32 L32 0 L64 32 L32 64 Z" stroke="rgba(140, 106, 18, 0.55)" strokeWidth="1.2" fill="none" />
+            <path d="M8 32 L32 8 L56 32 L32 56 Z" stroke="rgba(184, 138, 26, 0.4)" strokeWidth="0.8" fill="none" />
+            <circle cx="32" cy="32" r="3" fill="none" stroke="rgba(140, 106, 18, 0.6)" strokeWidth="0.8" />
+          </svg>
+        ))}
+        {/* خطوط الزوايا التقليدية */}
         {[
           { top: 0, right: 0, width: "28px", height: "2px" },
           { top: 0, right: 0, width: "2px", height: "28px" },
@@ -162,7 +232,7 @@ export default function IntroHero() {
           { bottom: 0, left: 0, width: "2px", height: "28px" },
         ].map((acc, i) => (
           <div
-            key={i}
+            key={`line-${i}`}
             className="absolute rounded-full"
             style={{
               ...acc,
@@ -190,7 +260,9 @@ export default function IntroHero() {
         <header className="flex shrink-0 flex-col items-center pt-8 md:pt-10">
           <div className="flex items-end gap-6 md:gap-8">
             <motion.div
-              variants={iraqVariants}
+              variants={logoVariants}
+              initial="initial"
+              animate="animate"
               className="flex h-20 shrink-0 items-end md:h-24 lg:h-28"
             >
               <Image
@@ -204,15 +276,17 @@ export default function IntroHero() {
               />
             </motion.div>
             <motion.div
-              variants={sadiqoonVariants}
-              className="flex h-[4.5rem] shrink-0 items-end md:h-[5.5rem] lg:h-[6.5rem]"
+              variants={logoVariants}
+              initial="initial"
+              animate="animate"
+              className="flex h-20 shrink-0 items-end md:h-24 lg:h-28"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/sadiqoon.png"
                 alt="شعار كتلة الصادقون"
-                width={104}
-                height={104}
+                width={112}
+                height={112}
                 className="h-full w-auto object-contain object-bottom drop-shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
                 loading="lazy"
               />

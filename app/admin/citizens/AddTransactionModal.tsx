@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 const TRANSACTION_TYPES = [
   { value: "طلب", label: "طلب" },
@@ -32,14 +33,19 @@ type ReceiptData = {
 };
 
 export default function AddTransactionModal({
-  open,
+  open = true,
   onClose,
   onSuccess,
+  asPage = false,
+  returnTo,
 }: {
-  open: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  open?: boolean;
+  onClose?: () => void;
+  onSuccess?: () => void;
+  asPage?: boolean;
+  returnTo?: string;
 }) {
+  const router = useRouter();
   const [citizenName, setCitizenName] = useState("");
   const [citizenPhone, setCitizenPhone] = useState("");
   const [citizenAddress, setCitizenAddress] = useState("");
@@ -91,8 +97,8 @@ export default function AddTransactionModal({
   }, []);
 
   useEffect(() => {
-    if (open) loadFormations();
-  }, [open, loadFormations]);
+    if (open || asPage) loadFormations();
+  }, [open, asPage, loadFormations]);
 
   useEffect(() => {
     if (formationId) {
@@ -133,8 +139,8 @@ export default function AddTransactionModal({
   }, []);
 
   useEffect(() => {
-    if (!open) resetForm();
-  }, [open, resetForm]);
+    if (!open && !asPage) resetForm();
+  }, [open, asPage, resetForm]);
 
   const handleFileUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -225,7 +231,8 @@ export default function AddTransactionModal({
           transactionType: data.transactionType,
           transactionTitle: data.transactionTitle,
         });
-        onSuccess();
+        if (asPage && returnTo) router.push(returnTo);
+        else onSuccess?.();
       } else {
         setError(data.error || "فشل الحفظ");
       }
@@ -280,13 +287,11 @@ export default function AddTransactionModal({
     }
   };
 
-  if (!open) return null;
+  if (!open && !asPage) return null;
 
   if (receipt) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
-        <div className="absolute inset-0 bg-black/50" aria-hidden />
-        <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl">
+    const receiptContent = (
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl">
           <div className="flex items-center gap-2 rounded-xl bg-[#1E6B3A]/10 p-4 text-[#1E6B3A]">
             <svg className="h-6 w-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -328,21 +333,28 @@ export default function AddTransactionModal({
             </button>
             <button
               type="button"
-              onClick={() => { setReceipt(null); onClose(); }}
+              onClick={() => {
+                setReceipt(null);
+                if (asPage && returnTo) router.push(returnTo);
+                else onClose?.();
+              }}
               className="rounded-xl border border-[#d4cfc8] px-4 py-2.5 text-sm font-medium text-[#1B1B1B] hover:bg-[#f6f3ed]"
             >
               إغلاق
             </button>
           </div>
-        </div>
+      </div>
+    );
+    return (
+      <div className={asPage ? "flex min-h-0 flex-1 flex-col items-center p-4" : "fixed inset-0 z-50 flex items-center justify-center p-4"} dir="rtl">
+        {!asPage && <div className="absolute inset-0 bg-black/50" aria-hidden />}
+        {receiptContent}
       </div>
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
-      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl">
+  const formContent = (
+    <div className={`relative w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl ${asPage ? "" : "max-h-[90vh]"}`}>
         <h3 className="text-xl font-semibold text-[#1B1B1B]">إضافة معاملة جديدة</h3>
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
           {/* معلومات صاحب المعاملة */}
@@ -535,7 +547,11 @@ export default function AddTransactionModal({
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-[#d4cfc8] px-4 py-2.5 font-medium text-[#1B1B1B] hover:bg-[#f6f3ed]">
+            <button
+              type="button"
+              onClick={() => (asPage && returnTo ? router.push(returnTo) : onClose?.())}
+              className="flex-1 rounded-xl border border-[#d4cfc8] px-4 py-2.5 font-medium text-[#1B1B1B] hover:bg-[#f6f3ed]"
+            >
               إلغاء
             </button>
             <button type="submit" disabled={submitting} className="flex-1 rounded-xl bg-[#1E6B3A] px-4 py-2.5 font-medium text-white hover:bg-[#175a2e] disabled:opacity-60">
@@ -544,6 +560,15 @@ export default function AddTransactionModal({
           </div>
         </form>
       </div>
+    );
+  return asPage ? (
+    <div className="space-y-6" dir="rtl">
+      {formContent}
+    </div>
+  ) : (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
+      {formContent}
     </div>
   );
 }

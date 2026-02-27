@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import AddTransactionModal from "@/app/admin/citizens/AddTransactionModal";
+import Link from "next/link";
+import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
 type Transaction = {
   id: string;
@@ -23,6 +24,15 @@ type Transaction = {
   createdAt: string;
   completedAt: string | null;
   delegateName: string | null;
+  formationId?: string | null;
+  subDeptId?: string | null;
+};
+
+type FullTransaction = Transaction & {
+  officeName?: string | null;
+  formationName?: string | null;
+  subDeptName?: string | null;
+  followUpUrl?: string | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -35,6 +45,8 @@ const SECTOR_LABELS: Record<string, string> = {
   GOVERNMENT: "حكومي",
   PRIVATE: "قطاع خاص",
   MIXED: "قطاع مشترك",
+  NOT_LINKED: "جهة غير مرتبطة بوزارة",
+  OTHER: "جهة أخرى",
 };
 
 function formatDate(s: string | null): string {
@@ -70,7 +82,9 @@ export default function ReceptionCitizensPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusCounts, setStatusCounts] = useState({ pending: 0, done: 0, overdue: 0, total: 0 });
-  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -100,8 +114,41 @@ export default function ReceptionCitizensPage() {
     loadData();
   }, [loadData]);
 
-  const handleAddSuccess = useCallback(() => {
-    loadData();
+  const handleView = useCallback(async (t: Transaction) => {
+    try {
+      const res = await fetch(`/api/admin/transactions/${t.id}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setViewTransaction(data);
+      } else {
+        alert("فشل تحميل تفاصيل المعاملة");
+      }
+    } catch {
+      alert("حدث خطأ غير متوقع");
+    }
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    setDeleteConfirming(true);
+    try {
+      const res = await fetch(`/api/admin/transactions/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setTransactions((prev) => prev.filter((t) => t.id !== id));
+        setDeleteId(null);
+        loadData();
+      } else {
+        const body = await res.json();
+        alert(body.error || "فشل الحذف");
+      }
+    } catch {
+      alert("حدث خطأ غير متوقع");
+    } finally {
+      setDeleteConfirming(false);
+      setDeleteId(null);
+    }
   }, [loadData]);
 
   return (
@@ -111,16 +158,15 @@ export default function ReceptionCitizensPage() {
           <h2 className="text-lg font-semibold text-[#1B1B1B]">شؤون المواطنين</h2>
           <p className="mt-1 text-sm text-[#5a5a5a]">إدارة بيانات المواطنين والاستعلامات والمعاملات</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setAddModalOpen(true)}
+        <Link
+          href="/reception/citizens/new"
           className="flex items-center gap-2 rounded-xl border border-[#0D9488] bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0f766e] hover:border-[#0f766e]"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
           معاملة جديدة
-        </button>
+        </Link>
       </div>
 
       {/* إحصائيات سريعة */}
@@ -167,6 +213,7 @@ export default function ReceptionCitizensPage() {
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">الحالة</th>
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">تاريخ الإنشاء</th>
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">مرفقات</th>
+                  <th className="py-3 px-2 font-medium text-[#5a5a5a]">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,6 +257,30 @@ export default function ReceptionCitizensPage() {
                         "—"
                       )}
                     </td>
+                    <td className="py-3 px-2">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleView(t)}
+                          className="rounded-lg border border-[#0D9488]/50 bg-[#0D9488]/10 px-2 py-1 text-xs font-medium text-[#0f766e] hover:bg-[#0D9488]/20"
+                        >
+                          عرض
+                        </button>
+                        <Link
+                          href={`/reception/citizens/new?edit=${t.id}`}
+                          className="rounded-lg border border-amber-600/50 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                        >
+                          تعديل
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteId(t.id)}
+                          className="rounded-lg border border-red-500/50 bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                        >
+                          حذف
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -218,11 +289,78 @@ export default function ReceptionCitizensPage() {
         )}
       </article>
 
-      <AddTransactionModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSuccess={handleAddSuccess}
-      />
+      {/* مودال عرض الوصل */}
+      {viewTransaction && (
+        <div className="fixed inset-0 z-50 overflow-y-auto p-4" dir="rtl">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setViewTransaction(null)} aria-hidden />
+          <div className="relative mx-auto mt-8 mb-16 w-full max-w-2xl rounded-2xl border border-[#d4cfc8] bg-[#FAFAF9] p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[#1B1B1B]">عرض وصل المعاملة</h3>
+              <button
+                type="button"
+                onClick={() => setViewTransaction(null)}
+                className="rounded-lg p-2 text-[#5a5a5a] hover:bg-gray-200"
+                aria-label="إغلاق"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <TransactionReceipt
+              receipt={
+                {
+                  citizenName: viewTransaction.citizenName,
+                  citizenPhone: viewTransaction.citizenPhone,
+                  citizenAddress: viewTransaction.citizenAddress,
+                  citizenMinistry: viewTransaction.citizenMinistry,
+                  citizenDepartment: viewTransaction.citizenDepartment,
+                  citizenOrganization: viewTransaction.citizenOrganization,
+                  transactionType: viewTransaction.transactionType || viewTransaction.type,
+                  formationName: viewTransaction.formationName ?? null,
+                  subDeptName: viewTransaction.subDeptName ?? null,
+                  officeName: viewTransaction.officeName,
+                  serialNumber: viewTransaction.serialNumber,
+                  followUpUrl: viewTransaction.followUpUrl ?? null,
+                  submissionDate: viewTransaction.submissionDate,
+                  createdAt: viewTransaction.createdAt,
+                } as ReceiptData
+              }
+              mode="modal"
+              onClose={() => setViewTransaction(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* تأكيد الحذف */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !deleteConfirming && setDeleteId(null)} aria-hidden />
+          <div className="relative rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-[#1B1B1B]">تأكيد الحذف</h3>
+            <p className="mt-2 text-sm text-[#5a5a5a]">هل أنت متأكد من حذف هذه المعاملة؟ لا يمكن التراجع عن هذا الإجراء.</p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteId(null)}
+                disabled={deleteConfirming}
+                className="flex-1 rounded-lg border border-[#d4cfc8] px-4 py-2.5 font-medium text-[#1B1B1B] hover:bg-gray-50 disabled:opacity-60"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(deleteId)}
+                disabled={deleteConfirming}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleteConfirming ? "جاري الحذف…" : "حذف"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

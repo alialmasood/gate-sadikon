@@ -64,4 +64,6 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
-};
+  // في الإنتاج خلف بروكسي: NextAuth يثق بـ Host الوارد في الطلب
+  trustHost: true,
+} as NextAuthOptions;

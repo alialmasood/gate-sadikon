@@ -54,18 +54,19 @@ export async function GET(request: NextRequest) {
   });
 }
 
-function generateSerialNumber(): string {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return String(n);
-}
-
 async function generateUniqueSerial(): Promise<string> {
-  for (let i = 0; i < 50; i++) {
-    const sn = generateSerialNumber();
-    const exists = await prisma.transaction.findUnique({ where: { serialNumber: sn } });
-    if (!exists) return sn;
-  }
-  return String(Date.now() % 1000000).padStart(6, "0");
+  const txns = await prisma.transaction.findMany({
+    where: { serialNumber: { not: null } },
+    select: { serialNumber: true },
+  });
+  const nums = txns
+    .map((t) => parseInt(t.serialNumber!, 10))
+    .filter((n) => !isNaN(n) && n >= 0);
+  const max = nums.length > 0 ? Math.max(...nums) : 0;
+  const next = String(max + 1).padStart(6, "0");
+  const exists = await prisma.transaction.findUnique({ where: { serialNumber: next } });
+  if (exists) return generateUniqueSerial();
+  return next;
 }
 
 export async function POST(request: NextRequest) {
@@ -104,7 +105,8 @@ export async function POST(request: NextRequest) {
   const citizenAddress = typeof body.citizenAddress === "string" ? body.citizenAddress.trim() || null : null;
   const citizenIsEmployee = typeof body.citizenIsEmployee === "boolean" ? body.citizenIsEmployee : undefined;
   const citizenEmployeeSector =
-    typeof body.citizenEmployeeSector === "string" && ["GOVERNMENT", "PRIVATE", "MIXED"].includes(body.citizenEmployeeSector)
+    typeof body.citizenEmployeeSector === "string" &&
+    ["GOVERNMENT", "PRIVATE", "MIXED", "NOT_LINKED", "OTHER"].includes(body.citizenEmployeeSector)
       ? body.citizenEmployeeSector
       : null;
   const citizenMinistry = typeof body.citizenMinistry === "string" ? body.citizenMinistry.trim() || null : null;

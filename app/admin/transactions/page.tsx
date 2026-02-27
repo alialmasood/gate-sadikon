@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
 type Transaction = {
   id: string;
@@ -10,6 +12,26 @@ type Transaction = {
   createdAt: string;
   completedAt: string | null;
   delegateName: string | null;
+};
+
+type FullTransaction = Transaction & {
+  citizenPhone?: string | null;
+  citizenAddress?: string | null;
+  citizenIsEmployee?: boolean | null;
+  citizenEmployeeSector?: string | null;
+  citizenMinistry?: string | null;
+  citizenDepartment?: string | null;
+  citizenOrganization?: string | null;
+  transactionType?: string | null;
+  transactionTitle?: string | null;
+  serialNumber?: string | null;
+  submissionDate?: string | null;
+  officeName?: string | null;
+  formationId?: string | null;
+  formationName?: string | null;
+  subDeptId?: string | null;
+  subDeptName?: string | null;
+  followUpUrl?: string | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -26,6 +48,33 @@ function formatDate(s: string) {
   return new Intl.DateTimeFormat("ar-IQ", { dateStyle: "short", timeStyle: "short", numberingSystem: "arab" }).format(new Date(s));
 }
 
+function getEmployeeInfo(t: FullTransaction): string {
+  if (t.citizenIsEmployee !== true) return "—";
+  const sectors: Record<string, string> = {
+    GOVERNMENT: "حكومي",
+    PRIVATE: "قطاع خاص",
+    MIXED: "قطاع مشترك",
+    NOT_LINKED: "جهة غير مرتبطة",
+    OTHER: "أخرى",
+  };
+  const sector = sectors[t.citizenEmployeeSector || ""] || t.citizenEmployeeSector || "";
+  if (!sector) return "موظف";
+  if (t.citizenEmployeeSector === "GOVERNMENT") {
+    const parts = [t.citizenMinistry, t.citizenDepartment].filter(Boolean);
+    return parts.length ? `${sector} (${parts.join(" / ")})` : sector;
+  }
+  return t.citizenOrganization ? `${sector} (${t.citizenOrganization})` : sector;
+}
+
+function formatDateShort(s: string | null): string {
+  if (!s) return "—";
+  try {
+    return new Intl.DateTimeFormat("ar-IQ", { dateStyle: "short", numberingSystem: "arab" }).format(new Date(s));
+  } catch {
+    return s;
+  }
+}
+
 export default function AdminTransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [overdueCount, setOverdueCount] = useState(0);
@@ -35,6 +84,9 @@ export default function AdminTransactionsPage() {
   const [newCitizenName, setNewCitizenName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -103,6 +155,40 @@ export default function AdminTransactionsPage() {
     }
   };
 
+  const handleView = useCallback(async (t: Transaction) => {
+    try {
+      const res = await fetch(`/api/admin/transactions/${t.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setViewTransaction(data);
+      } else {
+        alert("فشل تحميل تفاصيل المعاملة");
+      }
+    } catch {
+      alert("حدث خطأ غير متوقع");
+    }
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    setDeleteConfirming(true);
+    try {
+      const res = await fetch(`/api/admin/transactions/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setTransactions((prev) => prev.filter((t) => t.id !== id));
+        setDeleteId(null);
+        loadData();
+      } else {
+        const body = await res.json();
+        alert(body.error || "فشل الحذف");
+      }
+    } catch {
+      alert("حدث خطأ غير متوقع");
+    } finally {
+      setDeleteConfirming(false);
+      setDeleteId(null);
+    }
+  }, [loadData]);
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -168,16 +254,38 @@ export default function AdminTransactionsPage() {
                     <td className="py-3 pr-2 text-[#5a5a5a]">{t.delegateName || "—"}</td>
                     <td className="py-3 pr-2 text-sm text-[#5a5a5a]">{formatDate(t.createdAt)}</td>
                     <td className="py-3 pl-2">
-                      {t.status !== "DONE" && (
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => handleUpdateStatus(t.id, "DONE")}
-                          disabled={updatingId === t.id}
-                          className="rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-2 py-1 text-xs font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20 disabled:opacity-60"
+                          onClick={() => handleView(t)}
+                          className="rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-2 py-1 text-xs font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
                         >
-                          {updatingId === t.id ? "…" : "تسجيل إنجاز"}
+                          عرض
                         </button>
-                      )}
+                        <Link
+                          href={`/reception/citizens/new?edit=${t.id}`}
+                          className="rounded-lg border border-amber-600/50 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                        >
+                          تعديل
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteId(t.id)}
+                          className="rounded-lg border border-red-500/50 bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                        >
+                          حذف
+                        </button>
+                        {t.status !== "DONE" && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(t.id, "DONE")}
+                            disabled={updatingId === t.id}
+                            className="rounded-lg border border-[#0D9488]/50 bg-[#0D9488]/10 px-2 py-1 text-xs font-medium text-[#0f766e] hover:bg-[#0D9488]/20 disabled:opacity-60"
+                          >
+                            {updatingId === t.id ? "…" : "تسجيل إنجاز"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -220,6 +328,56 @@ export default function AdminTransactionsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {viewTransaction && (
+        <div className="fixed inset-0 z-50 overflow-y-auto p-4" dir="rtl">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setViewTransaction(null)} aria-hidden />
+          <div className="relative mx-auto mt-8 mb-16 w-full max-w-2xl rounded-2xl border border-[#d4cfc8] bg-[#FAFAF9] p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[#1B1B1B]">عرض وصل المعاملة</h3>
+              <button type="button" onClick={() => setViewTransaction(null)} className="rounded-lg p-2 text-[#5a5a5a] hover:bg-gray-200" aria-label="إغلاق">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <TransactionReceipt
+              receipt={
+                {
+                  citizenName: viewTransaction.citizenName,
+                  citizenPhone: viewTransaction.citizenPhone,
+                  citizenAddress: viewTransaction.citizenAddress,
+                  citizenMinistry: viewTransaction.citizenMinistry,
+                  citizenDepartment: viewTransaction.citizenDepartment,
+                  citizenOrganization: viewTransaction.citizenOrganization,
+                  transactionType: viewTransaction.transactionType || viewTransaction.type,
+                  formationName: viewTransaction.formationName ?? null,
+                  subDeptName: viewTransaction.subDeptName ?? null,
+                  officeName: viewTransaction.officeName,
+                  serialNumber: viewTransaction.serialNumber,
+                  followUpUrl: viewTransaction.followUpUrl ?? null,
+                  submissionDate: viewTransaction.submissionDate,
+                  createdAt: viewTransaction.createdAt,
+                } as ReceiptData
+              }
+              mode="modal"
+              onClose={() => setViewTransaction(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !deleteConfirming && setDeleteId(null)} aria-hidden />
+          <div className="relative rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-[#1B1B1B]">تأكيد الحذف</h3>
+            <p className="mt-2 text-sm text-[#5a5a5a]">هل أنت متأكد من حذف هذه المعاملة؟ لا يمكن التراجع عن هذا الإجراء.</p>
+            <div className="mt-6 flex gap-3">
+              <button type="button" onClick={() => setDeleteId(null)} disabled={deleteConfirming} className={`flex-1 ${BORDER_RADIUS} border border-[#d4cfc8] px-4 py-2.5 font-medium hover:bg-[#f6f3ed] disabled:opacity-60`}>إلغاء</button>
+              <button type="button" onClick={() => handleDelete(deleteId)} disabled={deleteConfirming} className={`flex-1 ${BORDER_RADIUS} bg-red-600 px-4 py-2.5 font-medium text-white hover:bg-red-700 disabled:opacity-60`}>{deleteConfirming ? "جاري الحذف…" : "حذف"}</button>
+            </div>
           </div>
         </div>
       )}
