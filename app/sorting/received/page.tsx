@@ -20,6 +20,13 @@ type Transaction = {
   cannotComplete?: boolean;
 };
 
+type DelegateOption = {
+  id: string;
+  name: string;
+  formationNames: string[];
+  isSuggested: boolean;
+};
+
 type FullTransaction = Transaction & {
   citizenAddress?: string | null;
   citizenIsEmployee?: boolean | null;
@@ -59,6 +66,12 @@ export default function SortingReceivedPage() {
   const [loading, setLoading] = useState(true);
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [delegateModalOpen, setDelegateModalOpen] = useState(false);
+  const [delegateModalTransaction, setDelegateModalTransaction] = useState<Transaction | null>(null);
+  const [delegates, setDelegates] = useState<DelegateOption[]>([]);
+  const [delegatesLoading, setDelegatesLoading] = useState(false);
+  const [selectedDelegateId, setSelectedDelegateId] = useState<string | null>(null);
+  const [sendingToDelegate, setSendingToDelegate] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -117,9 +130,64 @@ export default function SortingReceivedPage() {
     }
   }, []);
 
-  const handleTransferToDelegate = useCallback((t: Transaction) => {
-    alert(`تحويل المعاملة ${t.serialNumber ? `2026-${t.serialNumber}` : t.id} إلى مخول — قيد التطوير`);
+  const openDelegateModal = useCallback(async (t: Transaction) => {
+    setDelegateModalTransaction(t);
+    setSelectedDelegateId(null);
+    setDelegateModalOpen(true);
+    setDelegatesLoading(true);
+    try {
+      const res = await fetch(`/api/sorting/delegates-for-assign?transactionId=${encodeURIComponent(t.id)}`, {
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setDelegates(data.delegates || []);
+        if (data.suggestedIds?.length === 1) {
+          setSelectedDelegateId(data.suggestedIds[0]);
+        } else if (data.suggestedIds?.length > 0) {
+          setSelectedDelegateId(data.suggestedIds[0]);
+        }
+      } else {
+        setDelegates([]);
+      }
+    } finally {
+      setDelegatesLoading(false);
+    }
   }, []);
+
+  const closeDelegateModal = useCallback(() => {
+    setDelegateModalOpen(false);
+    setDelegateModalTransaction(null);
+    setDelegates([]);
+    setSelectedDelegateId(null);
+  }, []);
+
+  const handleSendToDelegate = useCallback(async () => {
+    if (!delegateModalTransaction || !selectedDelegateId) {
+      alert("يرجى اختيار مخول");
+      return;
+    }
+    setSendingToDelegate(true);
+    try {
+      const res = await fetch(`/api/admin/transactions/${delegateModalTransaction.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ delegateId: selectedDelegateId }),
+      });
+      if (res.ok) {
+        setTransactions((prev) => prev.filter((x) => x.id !== delegateModalTransaction.id));
+        closeDelegateModal();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "فشل إرسال المعاملة للمخول");
+      }
+    } catch {
+      alert("حدث خطأ غير متوقع");
+    } finally {
+      setSendingToDelegate(false);
+    }
+  }, [delegateModalTransaction, selectedDelegateId, closeDelegateModal]);
 
   const handleCannotComplete = useCallback(async (t: Transaction) => {
     try {
@@ -240,7 +308,7 @@ export default function SortingReceivedPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleTransferToDelegate(t)}
+                    onClick={() => openDelegateModal(t)}
                     className="flex items-center gap-1.5 rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-3 py-2 text-xs font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -283,6 +351,99 @@ export default function SortingReceivedPage() {
               </div>
             </article>
           ))}
+        </div>
+      )}
+
+      {delegateModalOpen && delegateModalTransaction && (
+        <div className="fixed inset-0 z-50 overflow-y-auto p-4" dir="rtl">
+          <div className="fixed inset-0 bg-black/50" onClick={closeDelegateModal} aria-hidden />
+          <div className="relative mx-auto mt-8 mb-16 w-full max-w-lg rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[#1B1B1B]">إرسال المعاملة إلى مخول</h3>
+              <button
+                type="button"
+                onClick={closeDelegateModal}
+                className="rounded-lg p-2 text-[#5a5a5a] hover:bg-gray-200"
+                aria-label="إغلاق"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="mb-4 text-sm text-[#5a5a5a]">
+              المعاملة: <span className="font-mono font-bold text-[#7C3AED]">{delegateModalTransaction.serialNumber ? `2026-${delegateModalTransaction.serialNumber}` : delegateModalTransaction.id.slice(-8)}</span>
+              {" — "}{delegateModalTransaction.citizenName || "—"}
+            </p>
+            {delegatesLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1E6B3A] border-t-transparent" />
+              </div>
+            ) : delegates.length === 0 ? (
+              <p className="py-6 text-center text-[#5a5a5a]">لا يوجد مخولون مسجلون في النظام.</p>
+            ) : (
+              <>
+                <p className="mb-2 text-xs font-medium text-[#5a5a5a]">اختر المخول (الاقتراح حسب الوزارة/التشكيل):</p>
+                <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-[#d4cfc8] p-2">
+                  {delegates.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setSelectedDelegateId(d.id)}
+                      className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-right transition-all ${
+                        selectedDelegateId === d.id
+                          ? "border-[#1E6B3A] bg-[#e8f0eb]"
+                          : "border-transparent hover:bg-[#f6f3ed]"
+                      }`}
+                    >
+                      <div className="flex-1 text-right">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-[#1B1B1B]">{d.name}</span>
+                          {d.isSuggested && (
+                            <span className="rounded-full bg-[#1E6B3A]/20 px-2 py-0.5 text-xs font-medium text-[#1E6B3A]">
+                              مقترح
+                            </span>
+                          )}
+                        </div>
+                        {d.formationNames.length > 0 && (
+                          <p className="mt-1 text-xs text-[#5a5a5a]">{d.formationNames.join("، ")}</p>
+                        )}
+                      </div>
+                      {selectedDelegateId === d.id && (
+                        <svg className="h-5 w-5 shrink-0 text-[#1E6B3A]" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-6 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeDelegateModal}
+                    className="rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B] hover:bg-[#f6f3ed]"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendToDelegate}
+                    disabled={!selectedDelegateId || sendingToDelegate}
+                    className="flex items-center gap-2 rounded-xl bg-[#1E6B3A] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#175a2e] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingToDelegate ? (
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    )}
+                    إرسال
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

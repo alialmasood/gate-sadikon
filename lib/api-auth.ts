@@ -121,12 +121,29 @@ export async function requireDelegate(req?: NextRequest) {
   if (result.user.role !== "USER") {
     return { error: "غير مصرح", status: 403 };
   }
-  const delegate = await prisma.delegate.findFirst({
+  let delegate = await prisma.delegate.findFirst({
     where: { userId: result.user.id },
     select: { id: true },
   });
   if (!delegate) {
-    return { error: "الحساب غير مرتبط بمخول", status: 403 };
+    const fullUser = await prisma.user.findUnique({
+      where: { id: result.user.id },
+      select: { serialNumber: true, name: true, email: true, officeId: true },
+    });
+    const isDelegate = fullUser?.serialNumber && String(fullUser.serialNumber).startsWith("DEL-");
+    if (isDelegate && fullUser) {
+      delegate = await prisma.delegate.create({
+        data: {
+          userId: result.user.id,
+          name: fullUser.name || fullUser.email,
+          officeId: fullUser.officeId,
+          status: "ACTIVE",
+        },
+        select: { id: true },
+      });
+    } else {
+      return { error: "الحساب غير مرتبط بمخول", status: 403 };
+    }
   }
   return { session: result.session, delegateId: delegate.id };
 }

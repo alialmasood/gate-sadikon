@@ -118,6 +118,7 @@ export async function PATCH(
     status?: string;
     urgent?: boolean;
     cannotComplete?: boolean;
+    delegateId?: string | null;
     citizenName?: string;
     citizenPhone?: string;
     citizenAddress?: string;
@@ -145,14 +146,35 @@ export async function PATCH(
   if (!existing) return NextResponse.json({ error: "المعاملة غير موجودة" }, { status: 404 });
 
   if (role === "SORTING") {
-    const sortData: { urgent?: boolean; cannotComplete?: boolean; reachedSorting: boolean } = { reachedSorting: true };
+    const sortData: { urgent?: boolean; cannotComplete?: boolean; reachedSorting?: boolean; delegateId?: string | null } = {};
     if (body.urgent !== undefined) sortData.urgent = body.urgent === true;
     if (body.cannotComplete !== undefined) sortData.cannotComplete = body.cannotComplete === true;
-    if (Object.keys(sortData).length > 1) {
+    if (body.delegateId !== undefined) {
+      const delegateId = typeof body.delegateId === "string" && body.delegateId.trim() ? body.delegateId.trim() : null;
+      if (delegateId) {
+        const delegate = await prisma.delegate.findFirst({
+          where: { id: delegateId, status: "ACTIVE" },
+          select: { officeId: true },
+        });
+        if (!delegate) {
+          return NextResponse.json({ error: "المخول غير موجود أو غير مفعّل" }, { status: 400 });
+        }
+        if (delegate.officeId && delegate.officeId !== officeId) {
+          return NextResponse.json({ error: "المخول غير مرتبط بنفس المكتب" }, { status: 400 });
+        }
+        sortData.delegateId = delegateId;
+        sortData.urgent = true;
+        sortData.reachedSorting = true;
+      } else {
+        sortData.delegateId = null;
+      }
+    }
+    if (Object.keys(sortData).length > 0) {
+      const updatePayload = { ...sortData, reachedSorting: sortData.reachedSorting ?? true };
       const updated = await prisma.transaction.update({
         where: { id },
-        data: sortData,
-        select: { id: true, urgent: true, cannotComplete: true, reachedSorting: true },
+        data: updatePayload,
+        select: { id: true, urgent: true, cannotComplete: true, reachedSorting: true, delegateId: true },
       });
       return NextResponse.json(updated);
     }

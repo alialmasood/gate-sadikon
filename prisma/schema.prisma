@@ -52,6 +52,7 @@ model Delegate {
   name          String?
   userId        String?
   officeId      String?
+  formationIds  Json?    // مصفوفة معرّفات التشكيلات المرتبطة بالمخول
   status        String   @default("ACTIVE")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
