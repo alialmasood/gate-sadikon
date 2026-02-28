@@ -84,6 +84,19 @@ export async function requireAdminOrReceptionOrSorting(req?: NextRequest) {
   return { session: result.session, officeId, role };
 }
 
+/** مدير مكتب أو قسم التوثيق أو قسم المتابعة — للوصول لمعاملات المكتب */
+export async function requireAdminOrDocumentationOrCoordinator(req?: NextRequest) {
+  const result = await getSessionWithDbValidation(req);
+  if (!result) return { error: "غير مصرح", status: 403 };
+  const { role } = result.user;
+  if (role !== "ADMIN" && role !== "DOCUMENTATION" && role !== "COORDINATOR") {
+    return { error: "غير مصرح", status: 403 };
+  }
+  const officeId = result.user.officeId ?? undefined;
+  if (!officeId) return { error: "الحساب غير مرتبط بمكتب", status: 403 };
+  return { session: result.session, officeId, role };
+}
+
 /** سوبر أدمن أو مدير مكتب */
 export async function requireSuperAdminOrAdmin() {
   const result = await getSessionWithDbValidation();

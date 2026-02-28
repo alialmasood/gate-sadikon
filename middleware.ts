@@ -10,7 +10,7 @@ const ROLE_ROUTES: Record<string, string[]> = {
   ADMIN: ["/admin"],
   USER: ["/user", "/authorized"],
   AUDITOR: ["/auditor"],
-  COORDINATOR: ["/coordinator"],
+  COORDINATOR: ["/coordinator", "/documentation/admin-done"],
   RECEPTION: ["/reception"],
   SORTING: ["/sorting"],
   DOCUMENTATION: ["/documentation"],

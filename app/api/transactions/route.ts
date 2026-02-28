@@ -26,12 +26,26 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status") ?? undefined;
   const urgentOnly = searchParams.get("urgent") === "true";
   const cannotCompleteOnly = searchParams.get("cannotComplete") === "true";
-  const limit = Math.min(Number(searchParams.get("limit")) || 100, 200);
+  const dateFrom = searchParams.get("dateFrom")?.trim();
+  const dateTo = searchParams.get("dateTo")?.trim();
+  const limit = Math.min(Number(searchParams.get("limit")) || 100, 3000);
 
-  const where: { officeId: string; status?: string; urgent?: boolean; cannotComplete?: boolean } = { officeId };
+  const where: Record<string, unknown> = { officeId };
   if (status) where.status = status;
   if (urgentOnly) where.urgent = true;
   if (cannotCompleteOnly) where.cannotComplete = true;
+
+  if (dateFrom || dateTo) {
+    const gte = dateFrom ? new Date(dateFrom + "T00:00:00") : undefined;
+    const lte = dateTo ? new Date(dateTo + "T23:59:59.999") : undefined;
+    const dateRange: { gte?: Date; lte?: Date } = {};
+    if (gte) dateRange.gte = gte;
+    if (lte) dateRange.lte = lte;
+    where.OR = [
+      { submissionDate: { not: null, ...dateRange } },
+      { submissionDate: null, createdAt: dateRange },
+    ];
+  }
 
   const [transactions, overdueCount] = await Promise.all([
     prisma.transaction.findMany({
@@ -75,6 +89,7 @@ export async function GET(request: NextRequest) {
       formationName: t.formation?.name ?? null,
       officeName: t.office?.name ?? null,
       updatedAt: t.updatedAt,
+      completedByAdmin: t.completedByAdmin ?? false,
     })),
     overdueCount,
   });

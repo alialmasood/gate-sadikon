@@ -201,14 +201,14 @@ export default function ReceptionCitizensPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#d4cfc8] pb-4">
         <div>
-          <h2 className="text-lg font-semibold text-[#1B1B1B]">شؤون المواطنين</h2>
+          <h2 className="text-xl font-bold text-[#1B1B1B]">شؤون المواطنين</h2>
           <p className="mt-1 text-sm text-[#5a5a5a]">إدارة بيانات المواطنين والاستعلامات والمعاملات</p>
         </div>
         <Link
           href="/reception/citizens/new"
-          className="flex items-center gap-2 rounded-xl border border-[#0D9488] bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0f766e] hover:border-[#0f766e]"
+          className="flex items-center gap-2 rounded-xl border border-[#1E6B3A] bg-[#1E6B3A] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#175a2e] hover:border-[#175a2e]"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -218,76 +218,91 @@ export default function ReceptionCitizensPage() {
       </div>
 
       {/* إحصائيات سريعة */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-[#d4cfc8] bg-white p-4 shadow-sm">
-          <p className="text-sm font-medium text-[#5a5a5a]">إجمالي المعاملات</p>
-          <p className="mt-1 text-2xl font-bold text-[#1B1B1B]">{loading ? "—" : statusCounts.total}</p>
+      <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+          <h2 className="text-base font-semibold text-[#1B1B1B]">حالة المتابعة</h2>
+          <p className="mt-0.5 text-sm text-[#5a5a5a]">ملخص إحصائي لحالة المعاملات في المكتب</p>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-          <p className="text-sm font-medium text-amber-700">قيد التنفيذ</p>
-          <p className="mt-1 text-2xl font-bold text-amber-700">{loading ? "—" : statusCounts.pending}</p>
+        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#5B7C99] bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-[#5a5a5a]">إجمالي المعاملات</p>
+            <p className="mt-2 text-2xl font-bold text-[#1B1B1B]">{loading ? "—" : statusCounts.total}</p>
+          </div>
+          <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#B08D57] bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-[#5a5a5a]">قيد التنفيذ</p>
+            <p className="mt-2 text-2xl font-bold text-[#1B1B1B]">{loading ? "—" : statusCounts.pending}</p>
+          </div>
+          <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#1E6B3A] bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-[#5a5a5a]">منجزة</p>
+            <p className="mt-2 text-2xl font-bold text-[#1E6B3A]">{loading ? "—" : statusCounts.done}</p>
+          </div>
+          <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#b91c1c] bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-[#5a5a5a]">متأخرة</p>
+            <p className="mt-2 text-2xl font-bold text-[#b91c1c]">{loading ? "—" : statusCounts.overdue}</p>
+          </div>
         </div>
-        <div className="rounded-xl border border-[#0D9488]/30 bg-[#ccfbf1]/50 p-4 shadow-sm">
-          <p className="text-sm font-medium text-[#0f766e]">منجزة</p>
-          <p className="mt-1 text-2xl font-bold text-[#0D9488]">{loading ? "—" : statusCounts.done}</p>
-        </div>
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
-          <p className="text-sm font-medium text-red-700">متأخرة</p>
-          <p className="mt-1 text-2xl font-bold text-red-700">{loading ? "—" : statusCounts.overdue}</p>
-        </div>
-      </div>
+      </article>
 
       {/* شريط البحث والفلترة */}
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-[#d4cfc8] bg-white p-4 shadow-sm">
-        <div className="min-w-[180px] flex-1">
-          <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">بحث</label>
-          <input
-            type="search"
-            placeholder="بحث بالاسم أو الرقم أو الهاتف..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]/30"
-          />
+      <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+          <h2 className="text-base font-semibold text-[#1B1B1B]">بحث وفلترة</h2>
+          <p className="mt-0.5 text-sm text-[#5a5a5a]">استعلام المعاملات حسب المعايير</p>
         </div>
-        <div className="min-w-[160px]">
-          <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">نوع المعاملة</label>
-          <select
-            value={filterTransactionType}
-            onChange={(e) => setFilterTransactionType(e.target.value)}
-            className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]/30"
-          >
-            <option value="">الكل</option>
-            {allTransactionTypes.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-end gap-3 p-6">
+          <div className="min-w-[180px] flex-1">
+            <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">بحث</label>
+            <input
+              type="search"
+              placeholder="بحث بالاسم أو الرقم أو الهاتف..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]/30"
+            />
+          </div>
+          <div className="min-w-[160px]">
+            <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">نوع المعاملة</label>
+            <select
+              value={filterTransactionType}
+              onChange={(e) => setFilterTransactionType(e.target.value)}
+              className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]/30"
+            >
+              <option value="">الكل</option>
+              {allTransactionTypes.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="min-w-[140px]">
+            <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">تاريخ التقديم من</label>
+            <input
+              type="date"
+              value={filterDateFrom}
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]/30"
+            />
+          </div>
+          <div className="min-w-[140px]">
+            <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">تاريخ التقديم إلى</label>
+            <input
+              type="date"
+              value={filterDateTo}
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]/30"
+            />
+          </div>
         </div>
-        <div className="min-w-[140px]">
-          <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">تاريخ التقديم من</label>
-          <input
-            type="date"
-            value={filterDateFrom}
-            onChange={(e) => setFilterDateFrom(e.target.value)}
-            className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]/30"
-          />
-        </div>
-        <div className="min-w-[140px]">
-          <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">تاريخ التقديم إلى</label>
-          <input
-            type="date"
-            value={filterDateTo}
-            onChange={(e) => setFilterDateTo(e.target.value)}
-            className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]/30"
-          />
-        </div>
-      </div>
+      </article>
 
       {/* جدول المعاملات */}
-      <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-[#1B1B1B]">جدول المعاملات</h2>
-        <p className="mt-1 text-sm text-[#5a5a5a]">جميع المعاملات المسجلة في مكتبك مع تفاصيلها</p>
+      <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+          <h2 className="text-base font-semibold text-[#1B1B1B]">جدول المعاملات</h2>
+          <p className="mt-0.5 text-sm text-[#5a5a5a]">جميع المعاملات المسجلة في مكتبك مع تفاصيلها</p>
+        </div>
+        <div className="p-6">
         {loading ? (
           <p className="mt-4 py-12 text-center text-[#5a5a5a]">جاري التحميل…</p>
         ) : transactions.length === 0 ? (
@@ -320,7 +335,7 @@ export default function ReceptionCitizensPage() {
                     key={t.id}
                     className="border-b border-[#d4cfc8]/80 transition hover:bg-[#f6f3ed]/50"
                   >
-                    <td className="py-3 px-2 font-mono text-[#0D9488]">{t.serialNumber || "—"}</td>
+                    <td className="py-3 px-2 font-mono font-medium text-[#1E6B3A]">{t.serialNumber || "—"}</td>
                     <td className="py-3 px-2 font-medium text-[#1B1B1B]">{t.citizenName || "—"}</td>
                     <td className="py-3 px-2 text-[#5a5a5a]" dir="ltr">{t.citizenPhone || "—"}</td>
                     <td className="max-w-[140px] truncate py-3 px-2 text-[#5a5a5a]" title={t.citizenAddress || undefined}>
@@ -336,6 +351,18 @@ export default function ReceptionCitizensPage() {
                     <td className="py-3 px-2 text-[#5a5a5a]">{formatDate(t.submissionDate)}</td>
                     <td className="py-3 px-2">
                       {(() => {
+                        if (t.status === "DONE")
+                          return (
+                            <span className="inline-block rounded-full bg-[#1E6B3A]/10 px-2 py-0.5 text-xs font-medium text-[#1E6B3A]">
+                              منجزة
+                            </span>
+                          );
+                        if (t.status === "OVERDUE")
+                          return (
+                            <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                              متأخرة
+                            </span>
+                          );
                         if (t.cannotComplete)
                           return (
                             <span className="inline-block rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
@@ -361,16 +388,8 @@ export default function ReceptionCitizensPage() {
                             </span>
                           );
                         return (
-                          <span
-                            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                              t.status === "DONE"
-                                ? "bg-[#ccfbf1] text-[#0f766e]"
-                                : t.status === "OVERDUE"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-amber-100 text-amber-700"
-                            }`}
-                          >
-                            {STATUS_LABELS[t.status] || t.status}
+                          <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            {STATUS_LABELS[t.status] || t.status || "قيد التنفيذ"}
                           </span>
                         );
                       })()}
@@ -378,7 +397,7 @@ export default function ReceptionCitizensPage() {
                     <td className="py-3 px-2 text-[#5a5a5a]">{formatDate(t.createdAt)}</td>
                     <td className="py-3 px-2">
                       {getAttachmentsCount(t.attachments) > 0 ? (
-                        <span className="text-[#0D9488]">{getAttachmentsCount(t.attachments)}</span>
+                        <span className="font-medium text-[#1E6B3A]">{getAttachmentsCount(t.attachments)}</span>
                       ) : (
                         "—"
                       )}
@@ -388,13 +407,13 @@ export default function ReceptionCitizensPage() {
                         <button
                           type="button"
                           onClick={() => handleView(t)}
-                          className="rounded-lg border border-[#0D9488]/50 bg-[#0D9488]/10 px-2 py-1 text-xs font-medium text-[#0f766e] hover:bg-[#0D9488]/20"
+                          className="rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-2 py-1 text-xs font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
                         >
                           عرض
                         </button>
                         <Link
                           href={`/reception/citizens/new?edit=${t.id}`}
-                          className="rounded-lg border border-amber-600/50 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                          className="rounded-lg border border-[#B08D57]/50 bg-[#f6f3ed] px-2 py-1 text-xs font-medium text-[#5a5a5a] hover:bg-[#f0ebe2]"
                         >
                           تعديل
                         </Link>
@@ -414,6 +433,7 @@ export default function ReceptionCitizensPage() {
             )}
           </div>
         )}
+        </div>
       </article>
 
       {/* مودال عرض الوصل */}
@@ -426,7 +446,7 @@ export default function ReceptionCitizensPage() {
               <button
                 type="button"
                 onClick={() => setViewTransaction(null)}
-                className="rounded-lg p-2 text-[#5a5a5a] hover:bg-gray-200"
+                className="rounded-lg p-2 text-[#5a5a5a] hover:bg-[#f6f3ed]"
                 aria-label="إغلاق"
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -472,7 +492,7 @@ export default function ReceptionCitizensPage() {
                 type="button"
                 onClick={() => setDeleteId(null)}
                 disabled={deleteConfirming}
-                className="flex-1 rounded-lg border border-[#d4cfc8] px-4 py-2.5 font-medium text-[#1B1B1B] hover:bg-gray-50 disabled:opacity-60"
+                className="flex-1 rounded-lg border border-[#d4cfc8] px-4 py-2.5 font-medium text-[#1B1B1B] hover:bg-[#f6f3ed] disabled:opacity-60"
               >
                 إلغاء
               </button>

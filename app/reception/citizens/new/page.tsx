@@ -43,6 +43,7 @@ function ReceptionNewTransactionContent() {
 
   // معلومات المعاملة
   const [transactionType, setTransactionType] = useState("");
+  const [transactionDescription, setTransactionDescription] = useState("");
   const [submissionDate, setSubmissionDate] = useState(() =>
     new Date().toISOString().slice(0, 10)
   );
@@ -114,6 +115,7 @@ function ReceptionNewTransactionContent() {
         setIsEmployee(t.citizenIsEmployee === true ? true : t.citizenIsEmployee === false ? false : null);
         setEmployeeSector((t.citizenEmployeeSector as string) || "");
         setTransactionType((t.transactionType as string) || (t.type as string) || "");
+        setTransactionDescription((t.transactionTitle as string) || "");
         setSubmissionDate(
           t.submissionDate
             ? (t.submissionDate as string).slice(0, 10)
@@ -401,7 +403,7 @@ function ReceptionNewTransactionContent() {
         citizenDepartment: getCitizenDepartment() ?? null,
         citizenOrganization: getCitizenOrganization() ?? null,
         transactionType: transactionType || null,
-        transactionTitle: transactionType || null,
+        transactionTitle: transactionDescription.trim() || transactionType || null,
         submissionDate: submissionDate || null,
         formationId: txFormationId || null,
         subDeptId: txSubDeptId || null,
@@ -1128,6 +1130,18 @@ function ReceptionNewTransactionContent() {
               صورة أو PDF (حتى 5 ميجابايت)
             </p>
           </div>
+        </div>
+
+        {/* وصف المعاملة */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">وصف المعاملة</label>
+          <textarea
+            value={transactionDescription}
+            onChange={(e) => setTransactionDescription(e.target.value)}
+            className={`${INPUT_CLASS} min-h-[80px] resize-y`}
+            placeholder="وصف أو تفاصيل إضافية عن المعاملة (اختياري)"
+            rows={3}
+          />
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

@@ -45,6 +45,10 @@ function formatDate(s: string | null): string {
 }
 
 function getWorkflowStatus(t: Transaction): { label: string; className: string } {
+  if (t.status === "DONE")
+    return { label: "منجزة", className: "bg-[#1E6B3A]/10 text-[#1E6B3A]" };
+  if (t.status === "OVERDUE")
+    return { label: "متأخرة", className: "bg-red-100 text-red-700" };
   if (t.cannotComplete)
     return { label: "لا يمكن الانجاز", className: "bg-slate-200 text-slate-700" };
   if (t.delegateName)
@@ -53,10 +57,6 @@ function getWorkflowStatus(t: Transaction): { label: string; className: string }
     return { label: "عاجل — قسم المتابعة", className: "bg-[#5B7C99]/20 text-[#5B7C99]" };
   if (t.reachedSorting)
     return { label: "قسم الفرز", className: "bg-[#7C3AED]/20 text-[#7C3AED]" };
-  if (t.status === "DONE")
-    return { label: "منجزة", className: "bg-[#ccfbf1] text-[#0f766e]" };
-  if (t.status === "OVERDUE")
-    return { label: "متأخرة", className: "bg-red-100 text-red-700" };
   return { label: "قيد التنفيذ", className: "bg-amber-100 text-amber-700" };
 }
 
@@ -67,6 +67,8 @@ export default function AdminCitizensPage() {
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -97,21 +99,31 @@ export default function AdminCitizensPage() {
   }, [loadData]);
 
   const searchLower = searchQuery.trim().toLowerCase();
-  const filteredTransactions = searchLower
-    ? transactions.filter((t) => {
-        const name = (t.citizenName || "").toLowerCase();
-        const phone = (t.citizenPhone || "").replace(/\s/g, "");
-        const serial = (t.serialNumber || "").toLowerCase();
-        const type = (t.transactionType || t.type || "").toLowerCase();
-        const q = searchLower.replace(/\s/g, "");
-        return (
-          name.includes(searchLower) ||
-          phone.includes(q) ||
-          serial.includes(searchLower) ||
-          type.includes(searchLower)
-        );
-      })
-    : transactions;
+  const filteredTransactions = transactions.filter((t) => {
+    if (searchLower) {
+      const name = (t.citizenName || "").toLowerCase();
+      const phone = (t.citizenPhone || "").replace(/\s/g, "");
+      const serial = (t.serialNumber || "").toLowerCase();
+      const type = (t.transactionType || t.type || "").toLowerCase();
+      const q = searchLower.replace(/\s/g, "");
+      const matchesSearch =
+        name.includes(searchLower) ||
+        phone.includes(q) ||
+        serial.includes(searchLower) ||
+        type.includes(searchLower);
+      if (!matchesSearch) return false;
+    }
+    const subDate = t.submissionDate || t.createdAt;
+    if (dateFrom && subDate) {
+      const d = subDate.slice(0, 10);
+      if (d < dateFrom) return false;
+    }
+    if (dateTo && subDate) {
+      const d = subDate.slice(0, 10);
+      if (d > dateTo) return false;
+    }
+    return true;
+  });
 
   const citizenTotals = transactions.reduce((acc, t) => {
     const name = (t.citizenName || "—").trim() || "—";
@@ -151,23 +163,68 @@ export default function AdminCitizensPage() {
       </div>
 
       <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+          <h2 className="text-base font-semibold text-[#1B1B1B]">حالة المتابعة</h2>
+          <p className="mt-0.5 text-sm text-[#5a5a5a]">ملخص إحصائي لحالة المعاملات في المكتب</p>
+        </div>
+        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#5B7C99] bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-[#5a5a5a]">إجمالي المعاملات</p>
+            <p className="mt-2 text-2xl font-bold text-[#1B1B1B]">{loading ? "—" : statusCounts.total}</p>
+          </div>
+          <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#B08D57] bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-[#5a5a5a]">قيد التنفيذ</p>
+            <p className="mt-2 text-2xl font-bold text-[#1B1B1B]">{loading ? "—" : statusCounts.pending}</p>
+          </div>
+          <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#1E6B3A] bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-[#5a5a5a]">منجزة</p>
+            <p className="mt-2 text-2xl font-bold text-[#1E6B3A]">{loading ? "—" : statusCounts.done}</p>
+          </div>
+          <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#b91c1c] bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-[#5a5a5a]">متأخرة</p>
+            <p className="mt-2 text-2xl font-bold text-[#b91c1c]">{loading ? "—" : statusCounts.overdue}</p>
+          </div>
+        </div>
+      </article>
+
+      <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
         <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-4">
           <h2 className="text-lg font-semibold text-[#1B1B1B]">جدول المعاملات — شؤون المواطنين</h2>
           <p className="mt-1 text-sm text-[#5a5a5a]">جميع المعاملات المسجلة مع حالة كل معاملة</p>
           <div className="mt-4">
             <label htmlFor="admin-search" className="mb-2 block text-sm font-medium text-[#1B1B1B]">
-              بحث
+              بحث وفلترة
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-end gap-3">
               <input
                 id="admin-search"
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ابحث بالاسم، الهاتف، الرقم التسلسلي، أو نوع المعاملة"
-                className="flex-1 rounded-lg border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm text-[#1B1B1B] placeholder:text-[#8a8a8a] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]"
+                className="min-w-[200px] flex-1 rounded-lg border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm text-[#1B1B1B] placeholder:text-[#8a8a8a] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]"
                 aria-label="بحث في المعاملات"
               />
+              <div className="flex flex-wrap items-center gap-2">
+                <label htmlFor="date-from" className="text-sm font-medium text-[#5a5a5a]">من تاريخ</label>
+                <input
+                  id="date-from"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="rounded-lg border border-[#d4cfc8] bg-white px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]"
+                  aria-label="من تاريخ المعاملة"
+                />
+                <label htmlFor="date-to" className="text-sm font-medium text-[#5a5a5a]">إلى تاريخ</label>
+                <input
+                  id="date-to"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="rounded-lg border border-[#d4cfc8] bg-white px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]"
+                  aria-label="إلى تاريخ المعاملة"
+                />
+              </div>
               <span className="flex items-center rounded-lg border border-[#d4cfc8] bg-white px-3 py-2.5 text-sm text-[#5a5a5a]">
                 {filteredTransactions.length} معاملة
               </span>
@@ -236,28 +293,6 @@ export default function AdminCitizensPage() {
             </table>
           </div>
         )}
-      </article>
-
-      <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-[#1B1B1B]">حالة المتابعة</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col rounded-xl border border-[#d4cfc8] bg-white p-4 shadow-sm">
-            <p className="text-sm font-medium text-[#5a5a5a]">إجمالي المعاملات</p>
-            <p className="mt-1 text-2xl font-bold text-[#1B1B1B]">{loading ? "—" : statusCounts.total}</p>
-          </div>
-          <div className="flex flex-col rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm font-medium text-amber-700">قيد التنفيذ</p>
-            <p className="mt-1 text-2xl font-bold text-amber-700">{loading ? "—" : statusCounts.pending}</p>
-          </div>
-          <div className="flex flex-col rounded-xl border border-[#1E6B3A]/30 bg-[#1E6B3A]/5 p-4">
-            <p className="text-sm font-medium text-[#1E6B3A]">منجزة</p>
-            <p className="mt-1 text-2xl font-bold text-[#1E6B3A]">{loading ? "—" : statusCounts.done}</p>
-          </div>
-          <div className="flex flex-col rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm font-medium text-red-700">متأخرة</p>
-            <p className="mt-1 text-2xl font-bold text-red-700">{loading ? "—" : statusCounts.overdue}</p>
-          </div>
-        </div>
       </article>
 
       {viewTransaction && (

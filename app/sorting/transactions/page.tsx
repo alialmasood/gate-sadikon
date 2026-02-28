@@ -195,7 +195,15 @@ export default function SortingTransactionsPage() {
                     </td>
                     <td className="border-l border-[#d4cfc8]/60 py-3 px-3 text-[#5a5a5a]">{formatDate(t.submissionDate)}</td>
                     <td className="border-l border-[#d4cfc8]/60 py-3 px-3">
-                      {t.cannotComplete ? (
+                      {t.status === "DONE" ? (
+                        <span className="inline-block rounded-full bg-[#1E6B3A]/10 px-2 py-0.5 text-xs font-medium text-[#1E6B3A]">
+                          منجزة
+                        </span>
+                      ) : t.status === "OVERDUE" ? (
+                        <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                          متأخرة
+                        </span>
+                      ) : t.cannotComplete ? (
                         <span className="inline-block rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
                           لا يمكن الانجاز
                         </span>
@@ -212,16 +220,8 @@ export default function SortingTransactionsPage() {
                           وصلت قسم الفرز
                         </span>
                       ) : (
-                        <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                            t.status === "DONE"
-                              ? "bg-[#ccfbf1] text-[#0f766e]"
-                              : t.status === "OVERDUE"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-amber-100 text-amber-700"
-                          }`}
-                        >
-                          {STATUS_LABELS[t.status] || t.status}
+                        <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          {STATUS_LABELS[t.status] || t.status || "قيد التنفيذ"}
                         </span>
                       )}
                     </td>

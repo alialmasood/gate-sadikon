@@ -18,6 +18,7 @@ function getBreadcrumb(pathname: string): string[] {
     "/reception": "لوحة التحكم",
     "/reception/citizens": "شؤون المواطنين",
     "/reception/transactions": "المعاملات",
+    "/reception/reports": "تقارير وإحصائيات",
   };
   if (pathname in map) return ["استقبال واستعلامات", map[pathname]];
   return ["استقبال واستعلامات", "لوحة التحكم"];
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { href: "/reception", label: "لوحة التحكم" },
   { href: "/reception/citizens", label: "شؤون المواطنين" },
   { href: "/reception/transactions", label: "المعاملات" },
+  { href: "/reception/reports", label: "تقارير وإحصائيات" },
 ];
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
@@ -43,6 +45,11 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   "/reception/transactions": (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  ),
+  "/reception/reports": (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
     </svg>
   ),
 };
@@ -85,10 +92,10 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
           sidebarOpen ? "translate-x-0" : "translate-x-full"
         } ${sidebarCollapsed ? "w-[72px]" : "w-64"}`}
       >
-        <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] px-3">
+        <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] bg-[#f6f3ed]/30 px-3">
           {!sidebarCollapsed ? (
             <Link href="/reception" className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0D9488] text-white">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E6B3A] text-white shadow-sm">
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
@@ -96,7 +103,7 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
               <span className="truncate text-[15px] font-bold text-[#1B1B1B]">استقبال واستعلامات</span>
             </Link>
           ) : (
-            <Link href="/reception" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0D9488] text-white">
+            <Link href="/reception" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E6B3A] text-white shadow-sm">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
@@ -108,6 +115,7 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
               onClick={toggleCollapsed}
               className="hidden rounded p-2 text-[#5a5a5a] hover:bg-[#f6f3ed] lg:flex"
               aria-label={sidebarCollapsed ? "توسيع القائمة" : "طي القائمة"}
+              title={sidebarCollapsed ? "توسيع القائمة" : "طي القائمة"}
             >
               <svg className={`h-5 w-5 transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -130,16 +138,16 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
                 onClick={() => setSidebarOpen(false)}
                 title={sidebarCollapsed ? item.label : undefined}
                 className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-all duration-200 ${
-                  isActive ? "bg-[#ccfbf1] text-[#0D9488]" : "text-[#1B1B1B] hover:bg-[#f6f3ed] hover:text-[#0D9488]"
+                  isActive ? "bg-[#e8f0eb] text-[#1E6B3A]" : "text-[#1B1B1B] hover:bg-[#f6f3ed] hover:text-[#1E6B3A]"
                 }`}
               >
                 {isActive && (
                   <>
-                    <span className="absolute right-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-l-full bg-[#0D9488] shadow-sm" aria-hidden />
-                    {sidebarCollapsed && <span className="absolute left-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[#0D9488] ring-2 ring-white" aria-hidden />}
+                    <span className="absolute right-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-l-full bg-[#1E6B3A] shadow-sm" aria-hidden />
+                    {sidebarCollapsed && <span className="absolute left-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[#1E6B3A] ring-2 ring-white" aria-hidden />}
                   </>
                 )}
-                <span className={isActive ? "text-[#0D9488]" : "text-[#5a5a5a] group-hover:text-[#0D9488]"}>
+                <span className={isActive ? "text-[#1E6B3A]" : "text-[#5a5a5a] group-hover:text-[#1E6B3A]"}>
                   {NAV_ICONS[item.href]}
                 </span>
                 {!sidebarCollapsed && <span className="flex-1 truncate">{item.label}</span>}
@@ -152,7 +160,7 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
             href="/"
             onClick={() => setSidebarOpen(false)}
             title={sidebarCollapsed ? "العودة للمنصة الرئيسية" : undefined}
-            className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-[#5a5a5a] transition-all duration-200 hover:bg-[#f6f3ed] hover:text-[#0D9488] ${sidebarCollapsed ? "justify-center" : ""}`}
+            className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-[#5a5a5a] transition-all duration-200 hover:bg-[#f6f3ed] hover:text-[#1E6B3A] ${sidebarCollapsed ? "justify-center" : ""}`}
           >
             <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -180,11 +188,11 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
                 className="flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-[#f6f3ed]"
                 title="العودة للصفحة الرئيسية"
               >
-                <span className="text-base font-bold text-[#0D9488] sm:text-lg">بوابة الصادقون</span>
+                <span className="text-base font-bold text-[#1E6B3A] sm:text-lg">بوابة الصادقون</span>
               </Link>
               <span className="hidden h-5 w-px bg-[#d4cfc8] sm:block" aria-hidden />
               <div className="hidden items-center gap-2 text-sm text-[#5a5a5a] sm:flex">
-                <Link href="/reception" className="hover:text-[#0D9488]">{breadcrumb[0]}</Link>
+                <Link href="/reception" className="hover:text-[#1E6B3A]">{breadcrumb[0]}</Link>
                 <span>/</span>
                 <span className="font-medium text-[#1B1B1B]">{breadcrumb[1]}</span>
               </div>
@@ -207,16 +215,16 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
         <main className="relative flex-1 p-4 sm:p-6">{children}</main>
       </div>
 
-      <button
-        type="button"
-        className="fixed bottom-6 left-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#0D9488] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#0f766e] active:scale-95"
-        aria-label="إجراء سريع"
-        title="إجراء سريع"
-      >
-        <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
+        <Link
+          href="/reception/citizens/new"
+          className="fixed bottom-6 left-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#1E6B3A] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#175a2e] active:scale-95"
+          aria-label="معاملة جديدة"
+          title="معاملة جديدة"
+        >
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </Link>
     </div>
   );
 }

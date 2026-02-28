@@ -106,6 +106,7 @@ model Transaction {
   cannotComplete       Boolean   @default(false)
   cannotCompleteReason String?
   reachedSorting       Boolean   @default(false)
+  completedByAdmin     Boolean   @default(false)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   office           Office    @relation(fields: [officeId], references: [id], onDelete: Cascade)

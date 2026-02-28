@@ -74,6 +74,7 @@ export async function GET(
     followUpUrl,
     urgent: transaction.urgent,
     cannotComplete: transaction.cannotComplete,
+    completedByAdmin: transaction.completedByAdmin ?? false,
     cannotCompleteReason: transaction.cannotCompleteReason,
     reachedSorting: transaction.reachedSorting,
     delegateId: transaction.delegateId,
@@ -121,6 +122,7 @@ export async function PATCH(
     cannotComplete?: boolean;
     cannotCompleteReason?: string | null;
     delegateId?: string | null;
+    completedByAdmin?: boolean;
     citizenName?: string;
     citizenPhone?: string;
     citizenAddress?: string;
@@ -146,6 +148,51 @@ export async function PATCH(
     where: { id, officeId },
   });
   if (!existing) return NextResponse.json({ error: "المعاملة غير موجودة" }, { status: 404 });
+
+  if (role === "ADMIN" && (body.delegateId !== undefined || (body.status === "DONE" && body.completedByAdmin === true))) {
+    const adminData: Record<string, unknown> = {};
+    if (body.delegateId !== undefined) {
+      const delegateId = typeof body.delegateId === "string" && body.delegateId.trim() ? body.delegateId.trim() : null;
+      if (delegateId) {
+        const delegate = await prisma.delegate.findFirst({
+          where: { id: delegateId, status: "ACTIVE" },
+          select: { officeId: true },
+        });
+        if (!delegate) {
+          return NextResponse.json({ error: "المخول غير موجود أو غير مفعّل" }, { status: 400 });
+        }
+        if (delegate.officeId && delegate.officeId !== officeId) {
+          return NextResponse.json({ error: "المخول غير مرتبط بنفس المكتب" }, { status: 400 });
+        }
+        adminData.delegateId = delegateId;
+        adminData.urgent = false;
+        adminData.reachedSorting = true;
+      } else {
+        adminData.delegateId = null;
+      }
+    }
+    if (body.status === "DONE" && body.completedByAdmin === true) {
+      adminData.status = "DONE";
+      adminData.completedAt = new Date();
+      adminData.completedByAdmin = true;
+      adminData.urgent = false;
+    }
+    if (Object.keys(adminData).length > 0) {
+      const updated = await prisma.transaction.update({
+        where: { id },
+        data: adminData,
+        include: { delegate: { select: { name: true } }, office: { select: { name: true } } },
+      });
+      return NextResponse.json({
+        id: updated.id,
+        status: updated.status,
+        delegateId: updated.delegateId,
+        delegateName: updated.delegate?.name ?? null,
+        completedAt: updated.completedAt,
+        completedByAdmin: updated.completedByAdmin,
+      });
+    }
+  }
 
   if (role === "SORTING") {
     const sortData: { urgent?: boolean; cannotComplete?: boolean; cannotCompleteReason?: string | null; reachedSorting?: boolean; delegateId?: string | null } = {};
