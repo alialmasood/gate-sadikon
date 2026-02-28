@@ -6,13 +6,14 @@ const secret = process.env.NEXTAUTH_SECRET;
 
 // أي مسار مسموح لكل دور (SUPER_ADMIN يصل لجميع المسارات)
 const ROLE_ROUTES: Record<string, string[]> = {
-  SUPER_ADMIN: ["/super-admin", "/admin", "/user", "/authorized", "/coordinator", "/auditor", "/reception", "/sorting"],
+  SUPER_ADMIN: ["/super-admin", "/admin", "/user", "/authorized", "/coordinator", "/auditor", "/reception", "/sorting", "/documentation"],
   ADMIN: ["/admin"],
   USER: ["/user", "/authorized"],
   AUDITOR: ["/auditor"],
   COORDINATOR: ["/coordinator"],
   RECEPTION: ["/reception"],
   SORTING: ["/sorting"],
+  DOCUMENTATION: ["/documentation"],
 };
 
 function isDelegate(serialNumber: string | undefined): boolean {
@@ -48,6 +49,8 @@ function getDefaultRoute(role: string | undefined, serialNumber?: string): strin
       return "/reception";
     case "SORTING":
       return "/sorting";
+    case "DOCUMENTATION":
+      return "/documentation";
     default:
       return "/";
   }
@@ -90,7 +93,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/coordinator") ||
     pathname.startsWith("/auditor") ||
     pathname.startsWith("/reception") ||
-    pathname.startsWith("/sorting");
+    pathname.startsWith("/sorting") ||
+    pathname.startsWith("/documentation");
 
   if (isProtected && !isLoggedIn) {
     const login = new URL("/login", request.url);
@@ -118,6 +122,7 @@ export const config = {
     "/auditor/:path*",
     "/reception/:path*",
     "/sorting/:path*",
+    "/documentation/:path*",
     "/forbidden",
   ],
 };

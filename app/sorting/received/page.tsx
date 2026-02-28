@@ -72,6 +72,10 @@ export default function SortingReceivedPage() {
   const [delegatesLoading, setDelegatesLoading] = useState(false);
   const [selectedDelegateId, setSelectedDelegateId] = useState<string | null>(null);
   const [sendingToDelegate, setSendingToDelegate] = useState(false);
+  const [cannotCompleteModalOpen, setCannotCompleteModalOpen] = useState(false);
+  const [cannotCompleteTransaction, setCannotCompleteTransaction] = useState<Transaction | null>(null);
+  const [cannotCompleteReason, setCannotCompleteReason] = useState("");
+  const [submittingCannotComplete, setSubmittingCannotComplete] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -189,24 +193,45 @@ export default function SortingReceivedPage() {
     }
   }, [delegateModalTransaction, selectedDelegateId, closeDelegateModal]);
 
-  const handleCannotComplete = useCallback(async (t: Transaction) => {
+  const openCannotCompleteModal = useCallback((t: Transaction) => {
+    setCannotCompleteTransaction(t);
+    setCannotCompleteReason("");
+    setCannotCompleteModalOpen(true);
+  }, []);
+
+  const closeCannotCompleteModal = useCallback(() => {
+    setCannotCompleteModalOpen(false);
+    setCannotCompleteTransaction(null);
+    setCannotCompleteReason("");
+  }, []);
+
+  const handleSubmitCannotComplete = useCallback(async () => {
+    if (!cannotCompleteTransaction) return;
+    if (!cannotCompleteReason.trim()) {
+      alert("يرجى إدخال سبب عدم الإنجاز");
+      return;
+    }
+    setSubmittingCannotComplete(true);
     try {
-      const res = await fetch(`/api/admin/transactions/${t.id}`, {
+      const res = await fetch(`/api/admin/transactions/${cannotCompleteTransaction.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ cannotComplete: true }),
+        body: JSON.stringify({ cannotComplete: true, cannotCompleteReason: cannotCompleteReason.trim() }),
       });
       if (res.ok) {
-        setTransactions((prev) => prev.filter((x) => x.id !== t.id));
+        setTransactions((prev) => prev.filter((x) => x.id !== cannotCompleteTransaction.id));
+        closeCannotCompleteModal();
       } else {
         const data = await res.json().catch(() => ({}));
         alert(data.error || "فشل تحديث الحالة");
       }
     } catch {
       alert("حدث خطأ غير متوقع");
+    } finally {
+      setSubmittingCannotComplete(false);
     }
-  }, []);
+  }, [cannotCompleteTransaction, cannotCompleteReason, closeCannotCompleteModal]);
 
   const handlePrint = useCallback(async (t: Transaction) => {
     try {
@@ -318,7 +343,7 @@ export default function SortingReceivedPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleCannotComplete(t)}
+                    onClick={() => openCannotCompleteModal(t)}
                     className="flex items-center gap-1.5 rounded-lg border border-slate-400/50 bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -443,6 +468,68 @@ export default function SortingReceivedPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {cannotCompleteModalOpen && cannotCompleteTransaction && (
+        <div className="fixed inset-0 z-50 overflow-y-auto p-4" dir="rtl">
+          <div className="fixed inset-0 bg-black/50" onClick={closeCannotCompleteModal} aria-hidden />
+          <div className="relative mx-auto mt-8 mb-16 w-full max-w-lg rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[#1B1B1B]">سبب عدم الإنجاز</h3>
+              <button
+                type="button"
+                onClick={closeCannotCompleteModal}
+                className="rounded-lg p-2 text-[#5a5a5a] hover:bg-gray-200"
+                aria-label="إغلاق"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="mb-4 text-sm text-[#5a5a5a]">
+              المعاملة: <span className="font-mono font-bold text-[#7C3AED]">{cannotCompleteTransaction.serialNumber ? `2026-${cannotCompleteTransaction.serialNumber}` : cannotCompleteTransaction.id.slice(-8)}</span>
+              {" — "}{cannotCompleteTransaction.citizenName || "—"}
+            </p>
+            <div className="mb-6">
+              <label htmlFor="cannot-complete-reason" className="mb-2 block text-sm font-medium text-[#1B1B1B]">
+                سبب عدم الإنجاز
+              </label>
+              <textarea
+                id="cannot-complete-reason"
+                value={cannotCompleteReason}
+                onChange={(e) => setCannotCompleteReason(e.target.value)}
+                placeholder="أدخل سبب عدم إمكانية إنجاز هذه المعاملة..."
+                rows={4}
+                className="w-full rounded-xl border border-[#d4cfc8] bg-[#f6f3ed] px-4 py-3 text-base text-[#1B1B1B] placeholder:text-gray-500 focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/25"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeCannotCompleteModal}
+                className="rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B] hover:bg-[#f6f3ed]"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitCannotComplete}
+                disabled={!cannotCompleteReason.trim() || submittingCannotComplete}
+                className="flex items-center gap-2 rounded-xl bg-slate-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submittingCannotComplete ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                )}
+                ارسال او اكمال
+              </button>
+            </div>
           </div>
         </div>
       )}

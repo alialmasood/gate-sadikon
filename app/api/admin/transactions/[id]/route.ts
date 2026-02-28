@@ -74,6 +74,7 @@ export async function GET(
     followUpUrl,
     urgent: transaction.urgent,
     cannotComplete: transaction.cannotComplete,
+    cannotCompleteReason: transaction.cannotCompleteReason,
     reachedSorting: transaction.reachedSorting,
     delegateId: transaction.delegateId,
   });
@@ -118,6 +119,7 @@ export async function PATCH(
     status?: string;
     urgent?: boolean;
     cannotComplete?: boolean;
+    cannotCompleteReason?: string | null;
     delegateId?: string | null;
     citizenName?: string;
     citizenPhone?: string;
@@ -146,9 +148,10 @@ export async function PATCH(
   if (!existing) return NextResponse.json({ error: "المعاملة غير موجودة" }, { status: 404 });
 
   if (role === "SORTING") {
-    const sortData: { urgent?: boolean; cannotComplete?: boolean; reachedSorting?: boolean; delegateId?: string | null } = {};
+    const sortData: { urgent?: boolean; cannotComplete?: boolean; cannotCompleteReason?: string | null; reachedSorting?: boolean; delegateId?: string | null } = {};
     if (body.urgent !== undefined) sortData.urgent = body.urgent === true;
     if (body.cannotComplete !== undefined) sortData.cannotComplete = body.cannotComplete === true;
+    if (body.cannotCompleteReason !== undefined) sortData.cannotCompleteReason = typeof body.cannotCompleteReason === "string" ? body.cannotCompleteReason.trim() || null : null;
     if (body.delegateId !== undefined) {
       const delegateId = typeof body.delegateId === "string" && body.delegateId.trim() ? body.delegateId.trim() : null;
       if (delegateId) {
@@ -174,7 +177,7 @@ export async function PATCH(
       const updated = await prisma.transaction.update({
         where: { id },
         data: updatePayload,
-        select: { id: true, urgent: true, cannotComplete: true, reachedSorting: true, delegateId: true },
+        select: { id: true, urgent: true, cannotComplete: true, cannotCompleteReason: true, reachedSorting: true, delegateId: true },
       });
       return NextResponse.json(updated);
     }
@@ -185,6 +188,7 @@ export async function PATCH(
 
   if (body.urgent !== undefined) data.urgent = body.urgent === true;
   if (body.cannotComplete !== undefined) data.cannotComplete = body.cannotComplete === true;
+  if (body.cannotCompleteReason !== undefined) data.cannotCompleteReason = typeof body.cannotCompleteReason === "string" ? body.cannotCompleteReason.trim() || null : null;
 
   const status = body.status === "DONE" || body.status === "PENDING" || body.status === "OVERDUE" ? body.status : undefined;
   if (status) {

@@ -67,6 +67,7 @@ model Formation {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   subDepartments  FormationSubDept[]
+  transactions    Transaction[]
 }
 
 model FormationSubDept {
@@ -101,13 +102,15 @@ model Transaction {
   serialNumber     String?   @unique
   attachments      Json?
   completedAt      DateTime?
-  urgent           Boolean   @default(false)
-  cannotComplete   Boolean   @default(false)
-  reachedSorting   Boolean   @default(false)
+  urgent               Boolean   @default(false)
+  cannotComplete       Boolean   @default(false)
+  cannotCompleteReason String?
+  reachedSorting       Boolean   @default(false)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   office           Office    @relation(fields: [officeId], references: [id], onDelete: Cascade)
   delegate         Delegate? @relation(fields: [delegateId], references: [id], onDelete: SetNull)
+  formation        Formation? @relation(fields: [formationId], references: [id], onDelete: SetNull)
 }
 
 enum Role {

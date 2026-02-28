@@ -25,18 +25,24 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const status = searchParams.get("status") ?? undefined;
   const urgentOnly = searchParams.get("urgent") === "true";
+  const cannotCompleteOnly = searchParams.get("cannotComplete") === "true";
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 200);
 
-  const where: { officeId: string; status?: string; urgent?: boolean } = { officeId };
+  const where: { officeId: string; status?: string; urgent?: boolean; cannotComplete?: boolean } = { officeId };
   if (status) where.status = status;
   if (urgentOnly) where.urgent = true;
+  if (cannotCompleteOnly) where.cannotComplete = true;
 
   const [transactions, overdueCount] = await Promise.all([
     prisma.transaction.findMany({
       where,
       orderBy: { createdAt: "desc" },
       take: limit,
-      include: { delegate: { select: { name: true } } },
+      include: {
+        delegate: { select: { name: true } },
+        formation: { select: { name: true } },
+        office: { select: { name: true } },
+      },
     }),
     prisma.transaction.count({ where: { officeId, status: "OVERDUE" } }),
   ]);
@@ -64,7 +70,11 @@ export async function GET(request: NextRequest) {
       delegateName: t.delegate?.name ?? null,
       urgent: t.urgent,
       cannotComplete: t.cannotComplete,
+      cannotCompleteReason: t.cannotCompleteReason,
       reachedSorting: t.reachedSorting,
+      formationName: t.formation?.name ?? null,
+      officeName: t.office?.name ?? null,
+      updatedAt: t.updatedAt,
     })),
     overdueCount,
   });

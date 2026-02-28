@@ -19,6 +19,8 @@ function getBreadcrumb(pathname: string): string[] {
     "/coordinator/incoming": "المعاملات الواردة",
     "/coordinator/urgent": "المعاملات العاجلة",
     "/coordinator/follow-up": "متابعة المعاملات",
+    "/coordinator/cannot-complete": "المعاملات تعذر انجازها",
+    "/coordinator/delegates": "متابعة المخولين",
   };
   if (pathname in map) return ["تنسيق ومتابعة", map[pathname]];
   return ["تنسيق ومتابعة", "لوحة التحكم"];
@@ -29,6 +31,8 @@ const NAV_ITEMS = [
   { href: "/coordinator/incoming", label: "المعاملات الواردة" },
   { href: "/coordinator/urgent", label: "المعاملات العاجلة" },
   { href: "/coordinator/follow-up", label: "متابعة المعاملات" },
+  { href: "/coordinator/cannot-complete", label: "المعاملات تعذر انجازها" },
+  { href: "/coordinator/delegates", label: "متابعة المخولين" },
 ];
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
@@ -50,6 +54,16 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   "/coordinator/follow-up": (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  ),
+  "/coordinator/cannot-complete": (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  "/coordinator/delegates": (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
 };

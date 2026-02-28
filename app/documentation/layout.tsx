@@ -15,48 +15,55 @@ function formatDateTime(date: Date) {
 
 function getBreadcrumb(pathname: string): string[] {
   const map: Record<string, string> = {
-    "/sorting": "لوحة التحكم",
-    "/sorting/transactions": "جميع المعاملات",
-    "/sorting/received": "المعاملات المستلمة",
-    "/sorting/outgoing": "المعاملات الصادرة",
+    "/documentation": "لوحة التحكم",
+    "/documentation/transactions": "جميع المعاملات",
+    "/documentation/urgent": "المعاملات العاجلة",
+    "/documentation/incomplete": "المعاملات غير منجزة",
+    "/documentation/delegates": "انجاز المخولين",
   };
-  if (pathname in map) return ["قسم الفرز", map[pathname]];
-  return ["قسم الفرز", "لوحة التحكم"];
+  if (pathname in map) return ["قسم التوثيق", map[pathname]];
+  return ["قسم التوثيق", "لوحة التحكم"];
 }
 
 const NAV_ITEMS = [
-  { href: "/sorting", label: "لوحة التحكم" },
-  { href: "/sorting/received", label: "المعاملات المستلمة" },
-  { href: "/sorting/outgoing", label: "المعاملات الصادرة" },
-  { href: "/sorting/transactions", label: "جميع المعاملات" },
+  { href: "/documentation", label: "لوحة التحكم" },
+  { href: "/documentation/transactions", label: "جميع المعاملات" },
+  { href: "/documentation/urgent", label: "المعاملات العاجلة" },
+  { href: "/documentation/incomplete", label: "المعاملات غير منجزة" },
+  { href: "/documentation/delegates", label: "انجاز المخولين" },
 ];
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
-  "/sorting": (
+  "/documentation": (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
   ),
-  "/sorting/transactions": (
+  "/documentation/transactions": (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     </svg>
   ),
-  "/sorting/received": (
+  "/documentation/urgent": (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
-  "/sorting/outgoing": (
+  "/documentation/incomplete": (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  "/documentation/delegates": (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
 };
 
-const SIDEBAR_COLLAPSED_KEY = "sorting-sidebar-collapsed";
+const SIDEBAR_COLLAPSED_KEY = "documentation-sidebar-collapsed";
 
-export default function SortingLayout({ children }: { children: React.ReactNode }) {
+export default function DocumentationLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -94,18 +101,18 @@ export default function SortingLayout({ children }: { children: React.ReactNode 
       >
         <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] px-3">
           {!sidebarCollapsed ? (
-            <Link href="/sorting" className="flex min-w-0 flex-1 items-center gap-2">
+            <Link href="/documentation" className="flex min-w-0 flex-1 items-center gap-2">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </span>
-              <span className="truncate text-[15px] font-bold text-[#1B1B1B]">قسم الفرز</span>
+              <span className="truncate text-[15px] font-bold text-[#1B1B1B]">قسم التوثيق</span>
             </Link>
           ) : (
-            <Link href="/sorting" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
+            <Link href="/documentation" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </Link>
           )}
@@ -129,7 +136,7 @@ export default function SortingLayout({ children }: { children: React.ReactNode 
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
           {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/sorting" && pathname.startsWith(item.href));
+            const isActive = pathname === item.href || (item.href !== "/documentation" && pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}
@@ -147,7 +154,7 @@ export default function SortingLayout({ children }: { children: React.ReactNode 
                   </>
                 )}
                 <span className={isActive ? "text-[#7C3AED]" : "text-[#5a5a5a] group-hover:text-[#7C3AED]"}>
-                  {NAV_ICONS[item.href] ?? NAV_ICONS["/sorting"]}
+                  {NAV_ICONS[item.href]}
                 </span>
                 {!sidebarCollapsed && <span className="flex-1 truncate">{item.label}</span>}
               </Link>
@@ -191,7 +198,7 @@ export default function SortingLayout({ children }: { children: React.ReactNode 
               </Link>
               <span className="hidden h-5 w-px bg-[#d4cfc8] sm:block" aria-hidden />
               <div className="hidden items-center gap-2 text-sm text-[#5a5a5a] sm:flex">
-                <Link href="/sorting" className="hover:text-[#7C3AED]">{breadcrumb[0]}</Link>
+                <Link href="/documentation" className="hover:text-[#7C3AED]">{breadcrumb[0]}</Link>
                 <span>/</span>
                 <span className="font-medium text-[#1B1B1B]">{breadcrumb[1]}</span>
               </div>

@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
       createdAt: t.createdAt,
       completedAt: t.completedAt,
       delegateName: t.delegate?.name ?? null,
+      urgent: t.urgent,
+      cannotComplete: t.cannotComplete,
+      reachedSorting: t.reachedSorting,
     })),
     overdueCount,
   });
