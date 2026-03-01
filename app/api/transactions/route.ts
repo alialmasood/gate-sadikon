@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status") ?? undefined;
   const urgentOnly = searchParams.get("urgent") === "true";
   const cannotCompleteOnly = searchParams.get("cannotComplete") === "true";
+  const completedByAdminOnly = searchParams.get("completedByAdmin") === "true";
   const dateFrom = searchParams.get("dateFrom")?.trim();
   const dateTo = searchParams.get("dateTo")?.trim();
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 3000);
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
   if (status) where.status = status;
   if (urgentOnly) where.urgent = true;
   if (cannotCompleteOnly) where.cannotComplete = true;
+  if (completedByAdminOnly) where.completedByAdmin = true;
 
   if (dateFrom || dateTo) {
     const gte = dateFrom ? new Date(dateFrom + "T00:00:00") : undefined;

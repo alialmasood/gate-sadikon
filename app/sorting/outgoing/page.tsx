@@ -19,6 +19,7 @@ type Transaction = {
   urgent?: boolean;
   cannotComplete?: boolean;
   cannotCompleteReason?: string | null;
+  completedByAdmin?: boolean;
 };
 
 type FullTransaction = Transaction & {
@@ -60,11 +61,28 @@ export default function SortingOutgoingPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const res = await fetch("/api/transactions?limit=200", { credentials: "include" });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        const all = data.transactions || [];
-        setTransactions(all.filter((t: Transaction) => t.urgent || t.cannotComplete));
+      const [resUrgent, resCannotComplete, resCompletedByAdmin] = await Promise.all([
+        fetch("/api/transactions?limit=500&urgent=true", { credentials: "include" }),
+        fetch("/api/transactions?limit=500&cannotComplete=true", { credentials: "include" }),
+        fetch("/api/transactions?limit=500&completedByAdmin=true", { credentials: "include" }),
+      ]);
+      const dataUrgent = await resUrgent.json().catch(() => ({}));
+      const dataCannotComplete = await resCannotComplete.json().catch(() => ({}));
+      const dataCompletedByAdmin = await resCompletedByAdmin.json().catch(() => ({}));
+      if (resUrgent.ok || resCannotComplete.ok || resCompletedByAdmin.ok) {
+        const urgentList = dataUrgent.transactions || [];
+        const cannotCompleteList = dataCannotComplete.transactions || [];
+        const completedByAdminList = dataCompletedByAdmin.transactions || [];
+        const seen = new Set<string>();
+        const merged: Transaction[] = [];
+        for (const t of [...urgentList, ...cannotCompleteList, ...completedByAdminList]) {
+          if (!seen.has(t.id)) {
+            seen.add(t.id);
+            merged.push(t);
+          }
+        }
+        merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setTransactions(merged);
         setLastUpdate(new Date());
       }
     } finally {
@@ -131,7 +149,7 @@ export default function SortingOutgoingPage() {
         <div>
           <h2 className="text-lg font-semibold text-[#1B1B1B]">المعاملات الصادرة</h2>
           <p className="mt-1 text-sm text-[#5a5a5a]">
-            المعاملات المُرسلة كعاجلة والتالية تعذر إنجازها — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
+            المعاملات العاجلة، تعذر إنجازها، والمنجزة من المدير — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
             {lastUpdate && (
               <span className="mr-2 text-xs text-[#7C3AED]">(آخر تحديث: {formatDate(lastUpdate.toISOString())})</span>
             )}
@@ -160,7 +178,14 @@ export default function SortingOutgoingPage() {
                     {t.serialNumber ? `2026-${t.serialNumber}` : "—"}
                   </span>
                   <div className="flex flex-wrap gap-1">
-                    {t.cannotComplete ? (
+                    {t.completedByAdmin ? (
+                      <span className="flex items-center gap-1 rounded-full bg-[#ccfbf1] px-2.5 py-0.5 text-xs font-medium text-[#0f766e]">
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        منجزة
+                      </span>
+                    ) : t.cannotComplete ? (
                       <span className="flex items-center gap-1 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

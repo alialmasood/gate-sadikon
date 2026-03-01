@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
 type Transaction = {
@@ -18,6 +20,9 @@ type Transaction = {
   delegateName: string | null;
   urgent?: boolean;
   cannotComplete?: boolean;
+  completedByAdmin?: boolean;
+  formationName?: string | null;
+  officeName?: string | null;
 };
 
 type DelegateOption = {
@@ -62,6 +67,7 @@ function formatDate(s: string | null): string {
 }
 
 export default function SortingReceivedPage() {
+  const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
@@ -83,7 +89,7 @@ export default function SortingReceivedPage() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         const all = data.transactions || [];
-        setTransactions(all.filter((x: Transaction) => !x.urgent && !x.cannotComplete));
+        setTransactions(all.filter((x: Transaction) => !x.urgent && !x.cannotComplete && !x.completedByAdmin));
         setLastUpdate(new Date());
       }
     } finally {
@@ -100,6 +106,25 @@ export default function SortingReceivedPage() {
     return () => clearInterval(id);
   }, [loadData]);
 
+  const stats = useMemo(() => {
+    const total = transactions.length;
+    const pending = transactions.filter((t) => t.status === "PENDING").length;
+    const overdue = transactions.filter((t) => t.status === "OVERDUE").length;
+    return { total, pending, overdue };
+  }, [transactions]);
+
+  const formationBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of transactions) {
+      const key = t.formationName || t.officeName || "وحدة الاستقبال";
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  }, [transactions]);
+
   const handleView = useCallback(async (t: Transaction) => {
     try {
       const res = await fetch(`/api/admin/transactions/${t.id}`, { credentials: "include" });
@@ -114,25 +139,29 @@ export default function SortingReceivedPage() {
     }
   }, []);
 
-  const handleUrgent = useCallback(async (t: Transaction) => {
-    if (t.urgent) return;
-    try {
-      const res = await fetch(`/api/admin/transactions/${t.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ urgent: true }),
-      });
-      if (res.ok) {
-        setTransactions((prev) => prev.filter((x) => x.id !== t.id));
-      } else {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || "فشل وضع علامة عاجل");
+  const handleUrgent = useCallback(
+    async (t: Transaction) => {
+      if (t.urgent) return;
+      try {
+        const res = await fetch(`/api/admin/transactions/${t.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ urgent: true }),
+        });
+        if (res.ok) {
+          setTransactions((prev) => prev.filter((x) => x.id !== t.id));
+          router.push("/sorting/outgoing");
+        } else {
+          const data = await res.json().catch(() => ({}));
+          alert(data.error || "فشل وضع علامة عاجل");
+        }
+      } catch {
+        alert("حدث خطأ غير متوقع");
       }
-    } catch {
-      alert("حدث خطأ غير متوقع");
-    }
-  }, []);
+    },
+    [router]
+  );
 
   const openDelegateModal = useCallback(async (t: Transaction) => {
     setDelegateModalTransaction(t);
@@ -265,9 +294,9 @@ export default function SortingReceivedPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] pb-4">
         <div>
-          <h2 className="text-lg font-semibold text-[#1B1B1B]">المعاملات المستلمة</h2>
+          <h2 className="text-xl font-bold text-[#1B1B1B]">المعاملات المستلمة</h2>
           <p className="mt-1 text-sm text-[#5a5a5a]">
             المعاملات الواردة من وحدة الاستقبال — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
             {lastUpdate && (
@@ -275,18 +304,87 @@ export default function SortingReceivedPage() {
             )}
           </p>
         </div>
+        <Link
+          href="/sorting"
+          className="flex items-center gap-2 rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B] transition-colors hover:bg-[#f6f3ed]"
+        >
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          لوحة التحكم
+        </Link>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
         </div>
-      ) : transactions.length === 0 ? (
-        <div className="rounded-2xl border border-[#d4cfc8] bg-white p-12 text-center shadow-sm">
-          <p className="text-[#5a5a5a]">لا توجد معاملات مستلمة حالياً.</p>
-        </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <>
+          {/* بطاقات إحصائية */}
+          <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+            <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+              <h2 className="text-base font-semibold text-[#1B1B1B]">ملخص إحصائي</h2>
+              <p className="mt-0.5 text-sm text-[#5a5a5a]">عدد المعاملات المستلمة حسب الحالة</p>
+            </div>
+            <div className="grid gap-4 p-6 sm:grid-cols-3">
+              <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#7C3AED] bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-[#5a5a5a]">إجمالي المعاملات المستلمة</p>
+                <p className="mt-2 text-2xl font-bold text-[#7C3AED]">{stats.total}</p>
+              </div>
+              <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#B08D57] bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-[#5a5a5a]">قيد التنفيذ</p>
+                <p className="mt-2 text-2xl font-bold text-[#1B1B1B]">{stats.pending}</p>
+              </div>
+              <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#b91c1c] bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-[#5a5a5a]">متأخرة</p>
+                <p className="mt-2 text-2xl font-bold text-[#b91c1c]">{stats.overdue}</p>
+              </div>
+            </div>
+            {formationBreakdown.length > 0 && (
+              <div className="border-t border-[#d4cfc8] bg-[#f6f3ed]/30 px-6 py-4">
+                <p className="mb-3 text-sm font-medium text-[#5a5a5a]">حسب الجهة المصدرية (أعلى ٥)</p>
+                <div className="flex flex-wrap gap-3">
+                  {formationBreakdown.map((item, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-3 py-1.5 text-sm"
+                    >
+                      <span className="font-medium text-[#1B1B1B]">{item.name}</span>
+                      <span className="rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-xs font-bold text-[#7C3AED]">
+                        {item.value}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </article>
+
+          {transactions.length === 0 ? (
+            <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+              <div className="flex flex-col items-center justify-center gap-4 p-12">
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#f6f3ed] text-[#7C3AED]/50">
+                  <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                </span>
+                <p className="text-center text-[#5a5a5a]">لا توجد معاملات مستلمة حالياً.</p>
+                <Link
+                  href="/sorting"
+                  className="rounded-xl border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-4 py-2 text-sm font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
+                >
+                  العودة للوحة التحكم
+                </Link>
+              </div>
+            </article>
+          ) : (
+            <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+              <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+                <h2 className="text-base font-semibold text-[#1B1B1B]">قائمة المعاملات</h2>
+                <p className="mt-0.5 text-sm text-[#5a5a5a]">إجراءات: عاجل — إرسال لمخول — تعذر الإنجاز — طباعة — عرض</p>
+              </div>
+              <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
           {transactions.map((t) => (
             <article
               key={t.id}
@@ -376,7 +474,10 @@ export default function SortingReceivedPage() {
               </div>
             </article>
           ))}
-        </div>
+              </div>
+            </article>
+          )}
+        </>
       )}
 
       {delegateModalOpen && delegateModalTransaction && (
