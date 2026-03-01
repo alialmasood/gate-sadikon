@@ -18,6 +18,7 @@ function getBreadcrumb(pathname: string): string[] {
     "/coordinator": "لوحة التحكم",
     "/coordinator/incoming": "المعاملات الواردة",
     "/coordinator/urgent": "المعاملات العاجلة",
+    "/coordinator/completed": "المعاملات المنجزة",
     "/coordinator/follow-up": "متابعة المعاملات",
     "/coordinator/cannot-complete": "المعاملات تعذر انجازها",
     "/coordinator/delegates": "متابعة المخولين",
@@ -30,8 +31,9 @@ const NAV_ITEMS = [
   { href: "/coordinator", label: "لوحة التحكم" },
   { href: "/coordinator/incoming", label: "المعاملات الواردة" },
   { href: "/coordinator/urgent", label: "المعاملات العاجلة" },
-  { href: "/coordinator/follow-up", label: "متابعة المعاملات" },
+  { href: "/coordinator/completed", label: "المعاملات المنجزة" },
   { href: "/coordinator/cannot-complete", label: "المعاملات تعذر انجازها" },
+  { href: "/coordinator/follow-up", label: "متابعة المعاملات" },
   { href: "/coordinator/delegates", label: "متابعة المخولين" },
 ];
 
@@ -49,6 +51,11 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   "/coordinator/urgent": (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    </svg>
+  ),
+  "/coordinator/completed": (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
   "/coordinator/follow-up": (
