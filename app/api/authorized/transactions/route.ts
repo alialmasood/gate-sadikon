@@ -6,12 +6,19 @@ import { requireDelegate } from "@/lib/api-auth";
 export async function GET(request: NextRequest) {
   const auth = await requireDelegate(request);
   if (auth.error) return NextResponse.json({ error: auth.error, transactions: [] }, { status: auth.status });
-  const { delegateId } = auth;
+  const delegateId = auth.delegateId;
+  if (!delegateId) return NextResponse.json({ error: "غير مصرح", transactions: [] }, { status: 403 });
 
   const limit = Math.min(Number(request.nextUrl.searchParams.get("limit")) || 100, 200);
+  const statusFilter = request.nextUrl.searchParams.get("status") || undefined;
+  const excludeCompleted = request.nextUrl.searchParams.get("excludeCompleted") === "true";
+
+  const where: { delegateId: string; status?: string | { not: string } } = { delegateId };
+  if (statusFilter === "DONE") where.status = "DONE";
+  else if (excludeCompleted) where.status = { not: "DONE" };
 
   const transactions = await prisma.transaction.findMany({
-    where: { delegateId },
+    where,
     orderBy: { createdAt: "desc" },
     take: limit,
     include: { office: { select: { name: true } } },
@@ -41,6 +48,8 @@ export async function GET(request: NextRequest) {
       cannotComplete: t.cannotComplete,
       reachedSorting: t.reachedSorting,
       officeName: t.office?.name ?? null,
+      assignedFromSection: t.assignedFromSection ?? null,
+      delegateActions: t.delegateActions ?? [],
     })),
   });
 }

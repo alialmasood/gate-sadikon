@@ -62,9 +62,76 @@ export async function GET(
     createdAt: transaction.createdAt,
     completedAt: transaction.completedAt,
     officeName: transaction.office?.name ?? null,
+    assignedFromSection: transaction.assignedFromSection ?? null,
     followUpUrl,
     urgent: transaction.urgent,
     cannotComplete: transaction.cannotComplete,
     reachedSorting: transaction.reachedSorting,
+    delegateActions: transaction.delegateActions ?? [],
+  });
+}
+
+type DelegateAction = { text: string; attachmentUrl?: string; attachmentName?: string; createdAt: string };
+
+/** إضافة إجراء أو إكمال المعاملة */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireDelegate(request);
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { delegateId } = auth;
+  const { id } = await params;
+
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, delegateId },
+  });
+  if (!transaction) return NextResponse.json({ error: "المعاملة غير موجودة" }, { status: 404 });
+
+  let body: { addAction?: DelegateAction; complete?: boolean };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+  }
+
+  const data: { delegateActions?: object; status?: string; completedAt?: Date | null } = {};
+
+  if (body.addAction) {
+    const action = body.addAction as DelegateAction;
+    const text = typeof action.text === "string" ? action.text.trim() : "";
+    if (!text) {
+      return NextResponse.json({ error: "نص الإجراء مطلوب" }, { status: 400 });
+    }
+    const actions = (transaction.delegateActions as DelegateAction[] | null) ?? [];
+    const newAction: DelegateAction = {
+      text,
+      attachmentUrl: typeof action.attachmentUrl === "string" ? action.attachmentUrl : undefined,
+      attachmentName: typeof action.attachmentName === "string" ? action.attachmentName : undefined,
+      createdAt: new Date().toISOString(),
+    };
+    data.delegateActions = [...actions, newAction] as object;
+  }
+
+  if (body.complete === true) {
+    data.status = "DONE";
+    data.completedAt = new Date();
+  }
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: "لا توجد بيانات للتحديث" }, { status: 400 });
+  }
+
+  const updated = await prisma.transaction.update({
+    where: { id },
+    data,
+    include: { office: { select: { name: true } } },
+  });
+
+  return NextResponse.json({
+    id: updated.id,
+    status: updated.status,
+    completedAt: updated.completedAt,
+    delegateActions: updated.delegateActions ?? [],
   });
 }

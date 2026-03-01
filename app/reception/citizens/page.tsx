@@ -6,6 +6,7 @@ import { TransactionReceipt, type ReceiptData } from "@/components/TransactionRe
 
 type Transaction = {
   id: string;
+  citizenId: string | null;
   citizenName: string | null;
   citizenPhone: string | null;
   citizenAddress: string | null;
@@ -93,6 +94,14 @@ function getAttachmentsCount(attachments: unknown): number {
   return attachments.filter((a: { url?: string }) => a?.url).length;
 }
 
+function getAttachmentsList(attachments: unknown): { url: string; name?: string }[] {
+  if (!attachments || !Array.isArray(attachments)) return [];
+  return attachments.filter(
+    (a): a is { url: string; name?: string } =>
+      a && typeof a === "object" && typeof (a as { url?: string }).url === "string"
+  );
+}
+
 export default function ReceptionCitizensPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,11 +161,12 @@ export default function ReceptionCitizensPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       const name = (t.citizenName || "").toLowerCase();
+      const cid = (t.citizenId || "").toLowerCase();
       const serial = (t.serialNumber || "").toLowerCase();
       const type = (typeVal || "").toLowerCase();
       const title = (t.transactionTitle || "").toLowerCase();
       const phone = (t.citizenPhone || "").toLowerCase();
-      if (!name.includes(q) && !serial.includes(q) && !type.includes(q) && !title.includes(q) && !phone.includes(q))
+      if (!name.includes(q) && !cid.includes(q) && !serial.includes(q) && !type.includes(q) && !title.includes(q) && !phone.includes(q))
         return false;
     }
     return true;
@@ -254,7 +264,7 @@ export default function ReceptionCitizensPage() {
             <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">بحث</label>
             <input
               type="search"
-              placeholder="بحث بالاسم أو الرقم أو الهاتف..."
+              placeholder="بحث بالاسم أو المعرف أو الرقم أو الهاتف..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]/30"
@@ -316,11 +326,11 @@ export default function ReceptionCitizensPage() {
               <thead>
                 <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">رقم المعاملة</th>
+                  <th className="py-3 px-2 font-medium text-[#5a5a5a]">معرف المواطن</th>
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">اسم المواطن</th>
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">الهاتف</th>
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">العنوان</th>
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">نوع المعاملة</th>
-                  <th className="py-3 px-2 font-medium text-[#5a5a5a]">عنوان المعاملة</th>
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">موظف / جهة العمل</th>
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">تاريخ التقديم</th>
                   <th className="py-3 px-2 font-medium text-[#5a5a5a]">الحالة</th>
@@ -336,15 +346,13 @@ export default function ReceptionCitizensPage() {
                     className="border-b border-[#d4cfc8]/80 transition hover:bg-[#f6f3ed]/50"
                   >
                     <td className="py-3 px-2 font-mono font-medium text-[#1E6B3A]">{t.serialNumber || "—"}</td>
+                    <td className="py-3 px-2 text-[#5a5a5a]" dir="ltr">{t.citizenId || "—"}</td>
                     <td className="py-3 px-2 font-medium text-[#1B1B1B]">{t.citizenName || "—"}</td>
                     <td className="py-3 px-2 text-[#5a5a5a]" dir="ltr">{t.citizenPhone || "—"}</td>
                     <td className="max-w-[140px] truncate py-3 px-2 text-[#5a5a5a]" title={t.citizenAddress || undefined}>
                       {t.citizenAddress || "—"}
                     </td>
                     <td className="py-3 px-2 text-[#1B1B1B]">{t.transactionType || t.type || "—"}</td>
-                    <td className="max-w-[180px] truncate py-3 px-2 text-[#1B1B1B]" title={t.transactionTitle || undefined}>
-                      {t.transactionTitle || "—"}
-                    </td>
                     <td className="max-w-[160px] truncate py-3 px-2 text-[#5a5a5a]" title={getEmployeeInfo(t)}>
                       {getEmployeeInfo(t)}
                     </td>
@@ -397,7 +405,21 @@ export default function ReceptionCitizensPage() {
                     <td className="py-3 px-2 text-[#5a5a5a]">{formatDate(t.createdAt)}</td>
                     <td className="py-3 px-2">
                       {getAttachmentsCount(t.attachments) > 0 ? (
-                        <span className="font-medium text-[#1E6B3A]">{getAttachmentsCount(t.attachments)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-[#1E6B3A]">{getAttachmentsCount(t.attachments)}</span>
+                          <a
+                            href={getAttachmentsList(t.attachments)[0]?.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="rounded p-1 text-[#1E6B3A] hover:bg-[#1E6B3A]/10"
+                            title="تحميل المرفقات"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </a>
+                        </div>
                       ) : (
                         "—"
                       )}

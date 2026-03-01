@@ -8,6 +8,59 @@ import { TransactionReceipt, type ReceiptData } from "@/components/TransactionRe
 const INPUT_CLASS =
   "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20";
 
+const STORAGE_KEY = "gate-sadikon-citizen-names";
+const STORAGE_KEY_IDS = "gate-sadikon-citizen-ids";
+
+function loadStoredNames(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveNameToStorage(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const existing = loadStoredNames();
+  const key = trimmed.toLowerCase();
+  const without = existing.filter((n) => n.toLowerCase() !== key);
+  const updated = [trimmed, ...without].slice(0, 100);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+}
+
+function loadStoredIds(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_IDS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveIdToStorage(id: string) {
+  const trimmed = id.trim();
+  if (!trimmed) return;
+  const existing = loadStoredIds();
+  const key = trimmed.toLowerCase();
+  const without = existing.filter((n) => n.toLowerCase() !== key);
+  const updated = [trimmed, ...without].slice(0, 100);
+  try {
+    localStorage.setItem(STORAGE_KEY_IDS, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+}
+
 type Formation = { id: string; name: string; type: string };
 type SubDept = { id: string; name: string; formationId: string };
 
@@ -36,6 +89,11 @@ function ReceptionNewTransactionContent() {
   const editId = searchParams.get("edit")?.trim() || null;
 
   const [fullName, setFullName] = useState("");
+  const [showNameSuggestions, setShowNameSuggestions] = useState(false);
+  const [allCitizenNames, setAllCitizenNames] = useState<string[]>([]);
+  const [citizenId, setCitizenId] = useState("");
+  const [showCitizenIdSuggestions, setShowCitizenIdSuggestions] = useState(false);
+  const [allCitizenIds, setAllCitizenIds] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [isEmployee, setIsEmployee] = useState<boolean | null>(null);
@@ -100,6 +158,53 @@ function ReceptionNewTransactionContent() {
   }, [loadFormations]);
 
   useEffect(() => {
+    const storedNames = loadStoredNames();
+    const storedIds = loadStoredIds();
+    fetch("/api/reception/citizen-names", { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) return { names: [] as string[], citizenIds: [] as string[] };
+        const data = await res.json().catch(() => ({}));
+        return {
+          names: Array.isArray(data?.names) ? data.names : [],
+          citizenIds: Array.isArray(data?.citizenIds) ? data.citizenIds : [],
+        };
+      })
+      .then(({ names, citizenIds }) => {
+        const seenN = new Set<string>();
+        const mergedNames: string[] = [];
+        for (const n of [...storedNames, ...names]) {
+          const s = (n || "").trim();
+          if (!s) continue;
+          const k = s.toLowerCase();
+          if (!seenN.has(k)) {
+            seenN.add(k);
+            mergedNames.push(s);
+          }
+        }
+        mergedNames.sort((a, b) => a.localeCompare(b, "ar"));
+        setAllCitizenNames(mergedNames);
+
+        const seenI = new Set<string>();
+        const mergedIds: string[] = [];
+        for (const i of [...storedIds, ...citizenIds]) {
+          const s = (i || "").trim();
+          if (!s) continue;
+          const k = s.toLowerCase();
+          if (!seenI.has(k)) {
+            seenI.add(k);
+            mergedIds.push(s);
+          }
+        }
+        mergedIds.sort((a, b) => a.localeCompare(b, "ar"));
+        setAllCitizenIds(mergedIds);
+      })
+      .catch(() => {
+        setAllCitizenNames(storedNames);
+        setAllCitizenIds(storedIds);
+      });
+  }, []);
+
+  useEffect(() => {
     if (!editId || formationsLoading) return;
     setEditLoading(true);
     setEditLoadError("");
@@ -110,6 +215,7 @@ function ReceptionNewTransactionContent() {
       })
       .then(async (t: Record<string, unknown>) => {
         setFullName((t.citizenName as string) || "");
+        setCitizenId((t.citizenId as string) || "");
         setPhone((t.citizenPhone as string) || "");
         setAddress((t.citizenAddress as string) || "");
         setIsEmployee(t.citizenIsEmployee === true ? true : t.citizenIsEmployee === false ? false : null);
@@ -234,6 +340,20 @@ function ReceptionNewTransactionContent() {
     const key = f.name.trim().toLowerCase();
     return arr.findIndex((x) => x.name.trim().toLowerCase() === key) === i;
   });
+
+  const nameSuggestions =
+    fullName.trim().length >= 2
+      ? allCitizenNames.filter((n) =>
+          n.toLowerCase().includes(fullName.trim().toLowerCase())
+        )
+      : [];
+
+  const citizenIdSuggestions =
+    citizenId.trim().length >= 2
+      ? allCitizenIds.filter((id) =>
+          id.toLowerCase().includes(citizenId.trim().toLowerCase())
+        )
+      : [];
 
   const ministrySuggestions =
     ministryName.trim().length >= 2
@@ -394,6 +514,7 @@ function ReceptionNewTransactionContent() {
         .filter((a) => a.url)
         .map(({ url, name }) => ({ url, name }));
       const payload = {
+        citizenId: citizenId.trim() || null,
         citizenName: fullName.trim(),
         citizenPhone: phone.trim() || null,
         citizenAddress: address.trim() || null,
@@ -436,6 +557,8 @@ function ReceptionNewTransactionContent() {
         if (text.trim()) data = JSON.parse(text);
       } catch {}
       if (res.ok) {
+        saveNameToStorage(fullName.trim());
+        if (citizenId.trim()) saveIdToStorage(citizenId.trim());
         const formationName = (data as { formationName?: string }).formationName
           ?? (txFormationId ? formations.find((f) => f.id === txFormationId)?.name ?? null : null);
         const subDeptName = (data as { subDeptName?: string }).subDeptName
@@ -546,16 +669,43 @@ function ReceptionNewTransactionContent() {
             معلومات المواطن
           </h4>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div>
+            <div className="relative">
               <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">الاسم الكامل واللقب *</label>
               <input
                 type="text"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  setShowNameSuggestions(e.target.value.trim().length >= 2);
+                }}
+                onFocus={() => {
+                  if (fullName.trim().length >= 2) setShowNameSuggestions(true);
+                }}
+                onBlur={() => setTimeout(() => setShowNameSuggestions(false), 200)}
                 required
                 className={INPUT_CLASS}
-                placeholder="الاسم الكامل واللقب"
+                placeholder="اكتب حرفين أو أكثر لعرض اقتراحات أسماء سابقة"
+                autoComplete="off"
               />
+              {showNameSuggestions && nameSuggestions.length > 0 && (
+                <ul className="absolute top-full right-0 left-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+                  {nameSuggestions.map((n) => (
+                    <li key={n}>
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2.5 text-right text-sm text-[#1B1B1B] hover:bg-gray-50"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setFullName(n);
+                          setShowNameSuggestions(false);
+                        }}
+                      >
+                        {n}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">رقم الهاتف</label>
@@ -976,6 +1126,51 @@ function ReceptionNewTransactionContent() {
                 ))}
               </select>
             </div>
+          </div>
+        </div>
+
+        {/* معرف المواطن */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <h4 className="mb-4 flex items-center gap-2 rounded border-r-4 border-[#0D9488] bg-gray-50 px-3 py-2 text-base font-bold text-[#1B1B1B]">
+            <span className="text-lg">🪪</span>
+            معرف المواطن
+          </h4>
+          <div className="relative">
+            <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">معرف المواطن (اختياري)</label>
+            <input
+              type="text"
+              value={citizenId}
+              onChange={(e) => {
+                setCitizenId(e.target.value);
+                setShowCitizenIdSuggestions(e.target.value.trim().length >= 2);
+              }}
+              onFocus={() => {
+                if (citizenId.trim().length >= 2) setShowCitizenIdSuggestions(true);
+              }}
+              onBlur={() => setTimeout(() => setShowCitizenIdSuggestions(false), 200)}
+              className={INPUT_CLASS}
+              placeholder="اكتب حرفين أو أكثر لعرض اقتراحات معرفات سابقة"
+              autoComplete="off"
+            />
+            {showCitizenIdSuggestions && citizenIdSuggestions.length > 0 && (
+              <ul className="absolute top-full right-0 left-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+                {citizenIdSuggestions.map((id) => (
+                  <li key={id}>
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2.5 text-right text-sm text-[#1B1B1B] hover:bg-gray-50"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setCitizenId(id);
+                        setShowCitizenIdSuggestions(false);
+                      }}
+                    >
+                      {id}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 

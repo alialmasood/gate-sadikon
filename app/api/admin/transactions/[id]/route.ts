@@ -48,6 +48,7 @@ export async function GET(
 
   return NextResponse.json({
     id: transaction.id,
+    citizenId: transaction.citizenId,
     citizenName: transaction.citizenName,
     citizenPhone: transaction.citizenPhone,
     citizenAddress: transaction.citizenAddress,
@@ -78,6 +79,7 @@ export async function GET(
     cannotCompleteReason: transaction.cannotCompleteReason,
     reachedSorting: transaction.reachedSorting,
     delegateId: transaction.delegateId,
+    delegateActions: transaction.delegateActions ?? [],
   });
 }
 
@@ -123,6 +125,7 @@ export async function PATCH(
     cannotCompleteReason?: string | null;
     delegateId?: string | null;
     completedByAdmin?: boolean;
+    citizenId?: string;
     citizenName?: string;
     citizenPhone?: string;
     citizenAddress?: string;
@@ -165,6 +168,7 @@ export async function PATCH(
           return NextResponse.json({ error: "المخول غير مرتبط بنفس المكتب" }, { status: 400 });
         }
         adminData.delegateId = delegateId;
+        adminData.assignedFromSection = "ADMIN";
         adminData.urgent = false;
         adminData.reachedSorting = true;
       } else {
@@ -195,7 +199,7 @@ export async function PATCH(
   }
 
   if (role === "SORTING") {
-    const sortData: { urgent?: boolean; cannotComplete?: boolean; cannotCompleteReason?: string | null; reachedSorting?: boolean; delegateId?: string | null } = {};
+    const sortData: { urgent?: boolean; cannotComplete?: boolean; cannotCompleteReason?: string | null; reachedSorting?: boolean; delegateId?: string | null; assignedFromSection?: string } = {};
     if (body.urgent !== undefined) sortData.urgent = body.urgent === true;
     if (body.cannotComplete !== undefined) sortData.cannotComplete = body.cannotComplete === true;
     if (body.cannotCompleteReason !== undefined) sortData.cannotCompleteReason = typeof body.cannotCompleteReason === "string" ? body.cannotCompleteReason.trim() || null : null;
@@ -213,6 +217,7 @@ export async function PATCH(
           return NextResponse.json({ error: "المخول غير مرتبط بنفس المكتب" }, { status: 400 });
         }
         sortData.delegateId = delegateId;
+        sortData.assignedFromSection = "SORTING";
         sortData.urgent = true;
         sortData.reachedSorting = true;
       } else {
@@ -243,6 +248,7 @@ export async function PATCH(
     data.completedAt = status === "DONE" ? new Date() : null;
   }
 
+  if (body.citizenId !== undefined) data.citizenId = typeof body.citizenId === "string" ? body.citizenId.trim() || null : null;
   if (body.citizenName !== undefined) data.citizenName = typeof body.citizenName === "string" ? body.citizenName.trim() || null : null;
   if (body.citizenPhone !== undefined) data.citizenPhone = typeof body.citizenPhone === "string" ? body.citizenPhone.trim() || null : null;
   if (body.citizenAddress !== undefined) data.citizenAddress = typeof body.citizenAddress === "string" ? body.citizenAddress.trim() || null : null;
@@ -284,6 +290,7 @@ export async function PATCH(
 
   return NextResponse.json({
     id: transaction.id,
+    citizenId: transaction.citizenId,
     citizenName: transaction.citizenName,
     citizenPhone: transaction.citizenPhone,
     citizenAddress: transaction.citizenAddress,

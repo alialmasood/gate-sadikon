@@ -82,6 +82,7 @@ model FormationSubDept {
 
 model Transaction {
   id               String    @id @default(cuid())
+  citizenId        String?   // معرف المواطن (يدوي)
   citizenName      String?
   citizenPhone     String?
   citizenAddress   String?
@@ -101,12 +102,14 @@ model Transaction {
   subDeptId        String?
   serialNumber     String?   @unique
   attachments      Json?
+  delegateActions  Json?    // [{ text, attachmentUrl?, attachmentName?, createdAt }] — إجراءات المخول
   completedAt      DateTime?
   urgent               Boolean   @default(false)
   cannotComplete       Boolean   @default(false)
   cannotCompleteReason String?
   reachedSorting       Boolean   @default(false)
   completedByAdmin     Boolean   @default(false)
+  assignedFromSection  String?   // SORTING | ADMIN | COORDINATOR | RECEPTION — القسم الذي سلّم المعاملة للمخول
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   office           Office    @relation(fields: [officeId], references: [id], onDelete: Cascade)

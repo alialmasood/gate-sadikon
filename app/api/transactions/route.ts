@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     transactions: transactions.map((t) => ({
       id: t.id,
+      citizenId: t.citizenId,
       citizenName: t.citizenName,
       citizenPhone: t.citizenPhone,
       citizenAddress: t.citizenAddress,
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
       officeName: t.office?.name ?? null,
       updatedAt: t.updatedAt,
       completedByAdmin: t.completedByAdmin ?? false,
+      delegateActions: t.delegateActions ?? [],
     })),
     overdueCount,
   });

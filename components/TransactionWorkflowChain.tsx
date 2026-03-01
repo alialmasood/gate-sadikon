@@ -1,5 +1,12 @@
 "use client";
 
+type DelegateActionItem = {
+  text: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  createdAt: string;
+};
+
 type WorkflowTransaction = {
   status?: string;
   urgent?: boolean;
@@ -11,6 +18,7 @@ type WorkflowTransaction = {
   createdAt?: string | null;
   updatedAt?: string | null;
   completedAt?: string | null;
+  delegateActions?: DelegateActionItem[];
 };
 
 function formatDate(s: string | null | undefined): string {
@@ -56,6 +64,16 @@ export function TransactionWorkflowChain({ transaction }: { transaction: Workflo
       done: true,
     });
   }
+  const delegateActions = transaction.delegateActions ?? [];
+  if (delegateActions.length > 0) {
+    delegateActions.forEach((a, i) => {
+      steps.push({
+        label: `إجراء من المخول (${i + 1})`,
+        detail: `${formatDate(a.createdAt)} — ${a.text}${a.attachmentUrl ? " (مرفق)" : ""}`,
+        done: true,
+      });
+    });
+  }
   if (transaction.cannotComplete) {
     steps.push({
       label: "تعذر إنجازها",
@@ -70,8 +88,9 @@ export function TransactionWorkflowChain({ transaction }: { transaction: Workflo
     });
   }
   if (transaction.completedByAdmin || transaction.status === "DONE") {
+    const byWhom = transaction.completedByAdmin ? "المدير" : transaction.delegateName ? "المخول" : "—";
     steps.push({
-      label: "منجزة — أُنجزت من قبل المدير",
+      label: byWhom ? `منجزة — أُنجزت من قبل ${byWhom}` : "منجزة",
       detail: transaction.completedAt ? `تاريخ الإنجاز: ${formatDate(transaction.completedAt)}` : undefined,
       done: true,
     });

@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     transactions: transactions.map((t) => ({
       id: t.id,
+      citizenId: t.citizenId,
       citizenName: t.citizenName,
       citizenPhone: t.citizenPhone,
       citizenAddress: t.citizenAddress,
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
   }
 
   let body: {
+    citizenId?: string;
     citizenName?: string;
     citizenPhone?: string;
     citizenAddress?: string;
@@ -104,6 +106,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
   }
 
+  const citizenId = typeof body.citizenId === "string" ? body.citizenId.trim() || null : null;
   const citizenName = typeof body.citizenName === "string" ? body.citizenName.trim() || null : null;
   const citizenPhone = typeof body.citizenPhone === "string" ? body.citizenPhone.trim() || null : null;
   const citizenAddress = typeof body.citizenAddress === "string" ? body.citizenAddress.trim() || null : null;
@@ -138,6 +141,7 @@ export async function POST(request: NextRequest) {
 
   const transaction = await prisma.transaction.create({
     data: {
+      citizenId,
       citizenName,
       citizenPhone,
       citizenAddress,
@@ -168,6 +172,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     id: transaction.id,
+    citizenId: transaction.citizenId,
     citizenName: transaction.citizenName,
     citizenPhone: transaction.citizenPhone,
     status: transaction.status,

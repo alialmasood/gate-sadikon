@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { getSeenTransactionIds } from "@/lib/authorized-seen";
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -13,6 +14,15 @@ type Transaction = {
   urgent?: boolean;
   officeName: string | null;
   createdAt: string;
+};
+
+type Stats = {
+  total: number;
+  completed: number;
+  notCompleted: number;
+  officesCount: number;
+  officeNames: string[];
+  distribution: { officeName: string; count: number }[];
 };
 
 function formatDate(s: string | null): string {
@@ -30,8 +40,19 @@ function formatDate(s: string | null): string {
 
 export default function AuthorizedDashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/authorized/stats", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch {}
+  }, []);
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) {
@@ -39,7 +60,7 @@ export default function AuthorizedDashboard() {
       setError(null);
     }
     try {
-      const res = await fetch("/api/authorized/transactions?limit=50", { credentials: "include" });
+      const res = await fetch("/api/authorized/transactions?limit=50&excludeCompleted=true", { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setTransactions(data.transactions || []);
@@ -55,14 +76,29 @@ export default function AuthorizedDashboard() {
 
   useEffect(() => {
     loadData(false);
-  }, [loadData]);
+    loadStats();
+  }, [loadData, loadStats]);
 
   useEffect(() => {
-    const id = setInterval(() => loadData(true), POLL_INTERVAL_MS);
+    const id = setInterval(() => {
+      loadData(true);
+      loadStats();
+    }, POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [loadData]);
+  }, [loadData, loadStats]);
+
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => getSeenTransactionIds());
+  useEffect(() => {
+    const refresh = () => setSeenIds(getSeenTransactionIds());
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, []);
+  useEffect(() => {
+    setSeenIds(getSeenTransactionIds());
+  }, [transactions]);
 
   const urgentTransactions = transactions.filter((t) => t.urgent);
+  const urgentUnseen = urgentTransactions.filter((t) => !seenIds.has(t.id));
   const otherTransactions = transactions.filter((t) => !t.urgent);
 
   return (
@@ -71,6 +107,52 @@ export default function AuthorizedDashboard() {
         <h2 className="text-base font-semibold text-[#1B1B1B] sm:text-lg">مرحباً، المخول</h2>
         <p className="mt-1 text-sm text-[#5a5a5a]">لوحة تحكم المعاملات المستلمة</p>
       </div>
+
+      {/* إحصائيات */}
+      {stats && (
+        <div className="rounded-2xl border border-[#d4cfc8] bg-white p-4 shadow-sm sm:p-6">
+          <h3 className="mb-4 text-base font-semibold text-[#1B1B1B]">إحصائيات المعاملات</h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-[#5B7C99]/20 bg-[#5B7C99]/5 p-4">
+              <p className="text-xs font-medium text-[#5a5a5a]">إجمالي المستلمة</p>
+              <p className="mt-1 text-2xl font-bold text-[#5B7C99]">{stats.total}</p>
+            </div>
+            <div className="rounded-xl border border-[#1E6B3A]/20 bg-[#1E6B3A]/5 p-4">
+              <p className="text-xs font-medium text-[#5a5a5a]">المنجزة</p>
+              <p className="mt-1 text-2xl font-bold text-[#1E6B3A]">{stats.completed}</p>
+            </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+              <p className="text-xs font-medium text-[#5a5a5a]">غير المنجزة</p>
+              <p className="mt-1 text-2xl font-bold text-amber-700">{stats.notCompleted}</p>
+            </div>
+            <div className="rounded-xl border border-[#7C3AED]/20 bg-[#7C3AED]/5 p-4">
+              <p className="text-xs font-medium text-[#5a5a5a]">عدد المكاتب</p>
+              <p className="mt-1 text-2xl font-bold text-[#7C3AED]">{stats.officesCount}</p>
+            </div>
+          </div>
+
+          {stats.distribution.length > 0 && (
+            <div className="mt-6">
+              <h4 className="mb-3 text-sm font-semibold text-[#1B1B1B]">توزيع المعاملات حسب المكاتب</h4>
+              <div className="space-y-3">
+                {stats.distribution.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between gap-4 rounded-lg border border-[#d4cfc8] bg-[#f8fafc] px-4 py-3">
+                    <span className="font-medium text-[#1B1B1B]">{d.officeName}</span>
+                    <span className="rounded-full bg-[#5B7C99]/15 px-3 py-1 text-sm font-bold text-[#5B7C99]">
+                      {d.count} معاملة
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {stats.officeNames.length > 0 && (
+                <p className="mt-3 text-xs text-[#5a5a5a]">
+                  المكاتب التي تستلم منها: {stats.officeNames.join(" • ")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">
@@ -86,7 +168,7 @@ export default function AuthorizedDashboard() {
         </div>
       ) : (
         <>
-          {urgentTransactions.length > 0 && (
+          {urgentUnseen.length > 0 && (
             <div className="rounded-2xl border-2 border-amber-400 bg-amber-50/80 p-4 shadow-sm sm:p-6">
               <div className="mb-4 flex items-center gap-2">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-white">
@@ -96,14 +178,14 @@ export default function AuthorizedDashboard() {
                 </span>
                 <div>
                   <h3 className="font-bold text-amber-900">إشعارات عاجلة — معاملات جديدة</h3>
-                  <p className="text-sm text-amber-800">استلمت {urgentTransactions.length} معاملة جديدة — راجع التفاصيل</p>
+                  <p className="text-sm text-amber-800">استلمت {urgentUnseen.length} معاملة جديدة — راجع التفاصيل</p>
                 </div>
               </div>
               <ul className="space-y-3">
-                {urgentTransactions.slice(0, 5).map((t) => (
+                {urgentUnseen.slice(0, 5).map((t) => (
                   <li key={t.id}>
                     <Link
-                      href="/authorized/transactions"
+                      href={`/authorized/transactions/${t.id}`}
                       className="flex items-center justify-between gap-4 rounded-xl border border-amber-200 bg-white p-4 shadow-sm transition-colors hover:border-amber-400 hover:bg-amber-50/50"
                     >
                       <div className="min-w-0 flex-1">
@@ -123,12 +205,12 @@ export default function AuthorizedDashboard() {
                   </li>
                 ))}
               </ul>
-              {urgentTransactions.length > 5 && (
+              {urgentUnseen.length > 5 && (
                 <Link
                   href="/authorized/transactions"
                   className="mt-4 inline-block text-sm font-medium text-amber-800 hover:text-amber-900 hover:underline"
                 >
-                  عرض كل {urgentTransactions.length} معاملة عاجلة →
+                  عرض كل {urgentUnseen.length} معاملة عاجلة →
                 </Link>
               )}
               <Link

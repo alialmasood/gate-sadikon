@@ -204,8 +204,9 @@ export default function CoordinatorCompletedPage() {
     }
   }, []);
 
+  const POLL_INTERVAL_MS = 4000;
+
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await fetch("/api/transactions?status=DONE&limit=500", { credentials: "include" });
       const data = await res.json().catch(() => ({}));
@@ -222,12 +223,19 @@ export default function CoordinatorCompletedPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const id = setInterval(load, POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [load]);
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] pb-4">
         <div>
           <h2 className="text-xl font-bold text-[#1B1B1B]">المعاملات المنجزة</h2>
-          <p className="mt-1 text-sm text-[#5a5a5a]">المعاملات التي تم إنجازها — من المدير أو المخولين</p>
+          <p className="mt-1 text-sm text-[#5a5a5a]">
+            المعاملات التي تم إنجازها — من المدير أو المخولين — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
+          </p>
         </div>
         <Link href="/coordinator" className="flex items-center gap-2 rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B] transition-colors hover:bg-[#f6f3ed]">
           لوحة التحكم

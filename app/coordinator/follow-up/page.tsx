@@ -5,6 +5,13 @@ import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 import { TransactionWorkflowChain } from "@/components/TransactionWorkflowChain";
 
+type DelegateActionItem = {
+  text: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  createdAt: string;
+};
+
 type TxItem = {
   id: string;
   citizenName: string | null;
@@ -31,6 +38,7 @@ type TxItem = {
   reachedSorting?: boolean;
   updatedAt?: string | null;
   status?: string;
+  delegateActions?: DelegateActionItem[];
 };
 
 function daysBetween(start: string | null, end: string | null): number {
@@ -417,7 +425,7 @@ export default function CoordinatorFollowUpPage() {
                     <th className="border-l border-[#999] px-4 py-3 font-bold text-[#1B1B1B]">الهاتف</th>
                     <th className="border-l border-[#999] px-4 py-3 font-bold text-[#1B1B1B]">نوع المعاملة</th>
                     <th className="border-l border-[#999] px-4 py-3 font-bold text-[#1B1B1B]">تاريخ الإنشاء</th>
-                    <th className="border-l border-[#999] px-4 py-3 font-bold text-[#1B1B1B]">الحالة</th>
+                    <th className="border-l border-[#999] px-4 py-3 text-center font-bold text-[#1B1B1B]">الحالة</th>
                     <th className="border-l border-[#999] px-4 py-3 font-bold text-[#1B1B1B]">إجراءات</th>
                   </tr>
                 </thead>
@@ -432,8 +440,8 @@ export default function CoordinatorFollowUpPage() {
                       <td className="border-l border-[#d4cfc8] px-4 py-3 text-[#1B1B1B]" dir="ltr">{t.citizenPhone || "—"}</td>
                       <td className="border-l border-[#d4cfc8] px-4 py-3 text-[#1B1B1B]">{t.transactionType || t.type || "—"}</td>
                       <td className="border-l border-[#d4cfc8] px-4 py-3 text-[#5a5a5a]">{formatDate(t.createdAt)}</td>
-                      <td className="border-l border-[#d4cfc8] px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2">
+                      <td className="border-l border-[#d4cfc8] px-4 py-3 align-middle">
+                        <div className="flex flex-wrap items-center justify-center gap-2">
                           <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(t)}`}>
                             {getStatusText(t)}
                           </span>
@@ -510,6 +518,24 @@ export default function CoordinatorFollowUpPage() {
                 </svg>
               </button>
             </div>
+            {viewTx.delegateActions && viewTx.delegateActions.length > 0 && (
+              <div className="mb-6 rounded-xl border border-[#5B7C99]/20 bg-[#5B7C99]/5 p-4">
+                <h3 className="mb-3 text-sm font-bold text-[#5B7C99]">تحديثات المخول</h3>
+                <ul className="space-y-2">
+                  {viewTx.delegateActions.map((a, i) => (
+                    <li key={i} className="rounded-lg border border-[#d4cfc8] bg-white p-3">
+                      <p className="text-xs text-[#5a5a5a]">{formatDateTime(a.createdAt)}</p>
+                      <p className="mt-1 text-sm text-[#1B1B1B]">{a.text}</p>
+                      {a.attachmentUrl && (
+                        <a href={a.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-[#0D9488]">
+                          {a.attachmentName || "عرض المرفق"}
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <TransactionReceipt
               receipt={
                 {

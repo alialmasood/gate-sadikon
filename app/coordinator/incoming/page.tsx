@@ -5,6 +5,13 @@ import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 import { TransactionWorkflowChain } from "@/components/TransactionWorkflowChain";
 
+type DelegateActionItem = {
+  text: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  createdAt: string;
+};
+
 type Transaction = {
   id: string;
   citizenName: string | null;
@@ -25,6 +32,7 @@ type Transaction = {
   completedByAdmin?: boolean;
   formationName?: string | null;
   updatedAt?: string | null;
+  delegateActions?: DelegateActionItem[];
 };
 
 type FullTransaction = Transaction & {
@@ -59,6 +67,19 @@ function formatDate(s: string | null): string {
   try {
     return new Intl.DateTimeFormat("ar-IQ", {
       dateStyle: "short",
+      numberingSystem: "arab",
+    }).format(new Date(s));
+  } catch {
+    return s;
+  }
+}
+
+function formatDateTime(s: string | null | undefined): string {
+  if (!s) return "—";
+  try {
+    return new Intl.DateTimeFormat("ar-IQ", {
+      dateStyle: "short",
+      timeStyle: "short",
       numberingSystem: "arab",
     }).format(new Date(s));
   } catch {
@@ -443,6 +464,24 @@ export default function CoordinatorIncomingPage() {
                 </svg>
               </button>
             </div>
+            {viewTransaction.delegateActions && viewTransaction.delegateActions.length > 0 && (
+              <div className="mb-6 rounded-xl border border-[#5B7C99]/20 bg-[#5B7C99]/5 p-4">
+                <h3 className="mb-3 text-sm font-bold text-[#5B7C99]">تحديثات المخول</h3>
+                <ul className="space-y-2">
+                  {viewTransaction.delegateActions.map((a, i) => (
+                    <li key={i} className="rounded-lg border border-[#d4cfc8] bg-white p-3">
+                      <p className="text-xs text-[#5a5a5a]">{formatDateTime(a.createdAt)}</p>
+                      <p className="mt-1 text-sm text-[#1B1B1B]">{a.text}</p>
+                      {a.attachmentUrl && (
+                        <a href={a.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-[#0D9488]">
+                          {a.attachmentName || "عرض المرفق"}
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <TransactionReceipt
               receipt={
                 {
