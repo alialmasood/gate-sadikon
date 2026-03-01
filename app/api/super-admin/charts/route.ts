@@ -37,21 +37,21 @@ export async function GET(request: NextRequest) {
   const baseWhere = officeId ? { officeId } : {};
 
   if (chart === "timeline") {
+    const numDays = 30;
+    const now = new Date();
     const days: { date: string; count: number }[] = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(lte);
-      d.setDate(d.getDate() - i);
-      d.setHours(0, 0, 0, 0);
-      const next = new Date(d);
-      next.setDate(next.getDate() + 1);
+    for (let i = numDays - 1; i >= 0; i--) {
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
       const count = await prisma.transaction.count({
         where: {
           ...baseWhere,
-          createdAt: { gte: d, lt: next },
+          createdAt: { gte: dayStart, lt: dayEnd },
         },
       });
       days.push({
-        date: d.toISOString().slice(0, 10),
+        date: dayStart.toISOString().slice(0, 10),
         count,
       });
     }
@@ -59,10 +59,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (chart === "status") {
+    const statusWhere = { ...baseWhere, createdAt: { gte, lte } };
     const [pending, done, overdue] = await Promise.all([
-      prisma.transaction.count({ where: { ...baseWhere, status: "PENDING" } }),
-      prisma.transaction.count({ where: { ...baseWhere, status: "DONE" } }),
-      prisma.transaction.count({ where: { ...baseWhere, status: "OVERDUE" } }),
+      prisma.transaction.count({ where: { ...statusWhere, status: "PENDING" } }),
+      prisma.transaction.count({ where: { ...statusWhere, status: "DONE" } }),
+      prisma.transaction.count({ where: { ...statusWhere, status: "OVERDUE" } }),
     ]);
     return NextResponse.json([
       { name: "قيد التنفيذ", value: pending, fill: "#B08D57" },
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
 
   if (chart === "activity") {
     const transactions = await prisma.transaction.findMany({
-      where: baseWhere,
+      where: { ...baseWhere, createdAt: { gte, lte } },
       orderBy: { updatedAt: "desc" },
       take: 10,
       include: {
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
   if (chart === "offices") {
     const grouped = await prisma.transaction.groupBy({
       by: ["officeId"],
-      where: { status: "DONE" },
+      where: { status: "DONE", createdAt: { gte, lte } },
       _count: { id: true },
     });
     const officeIds = grouped.map((g) => g.officeId);

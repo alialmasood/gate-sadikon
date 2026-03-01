@@ -28,8 +28,14 @@ export async function GET() {
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+  const officeManagerIds = (
+    await prisma.office.findMany({ where: { managerId: { not: null } }, select: { managerId: true } })
+  )
+    .map((o) => o.managerId)
+    .filter((id): id is string => id != null);
+
   const results = await Promise.all([
-    prisma.user.count(),
+    prisma.user.count({ where: { role: { not: "SUPER_ADMIN" } } }),
     prisma.office.count(),
     prisma.transaction.count({
       where: { createdAt: { gte: today, lt: tomorrow } },
@@ -66,7 +72,7 @@ export async function GET() {
         ],
       },
     }),
-    prisma.user.count({ where: { createdAt: { lt: thirtyDaysAgo } } }),
+    prisma.user.count({ where: { role: { not: "SUPER_ADMIN" }, createdAt: { lt: thirtyDaysAgo } } }),
     prisma.office.count({ where: { createdAt: { lt: thirtyDaysAgo } } }),
     prisma.delegate.count({ where: { createdAt: { lt: thirtyDaysAgo } } }),
     prisma.transaction.count({
@@ -100,6 +106,19 @@ export async function GET() {
   ] = results;
 
   const delegateCount = delegateCountActive;
+
+  const adminAccountsCount = await prisma.user.count({
+    where: {
+      AND: [
+        { role: { notIn: ["SUPER_ADMIN", "PARLIAMENT_MEMBER"] } },
+        { OR: [{ serialNumber: null }, { serialNumber: { not: { startsWith: "DEL-" } } }] },
+        ...(officeManagerIds.length > 0 ? [{ id: { notIn: officeManagerIds } }] : []),
+      ],
+    },
+  });
+  const parliamentMembersCount = await prisma.user.count({ where: { role: "PARLIAMENT_MEMBER" } });
+  const formationsCount = await prisma.formation.count();
+
   const completionRate = totalTransactions > 0 ? Math.round((doneTransactions / totalTransactions) * 100) : 0;
   const overdueCount = await prisma.transaction.count({ where: { status: "OVERDUE" } });
 
@@ -206,6 +225,9 @@ export async function GET() {
   return NextResponse.json({
     userCount,
     officeCount,
+    adminAccountsCount,
+    parliamentMembersCount,
+    formationsCount,
     totalTransactions,
     transactionsToday,
     delegateCount,

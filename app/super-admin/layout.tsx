@@ -20,7 +20,7 @@ function getBreadcrumb(pathname: string): string[] {
     "/super-admin/offices": "إدارة المكاتب",
     "/super-admin/ministries": "وزارات و دوائر و هيئات",
     "/super-admin/parliament-members": "شؤون أعضاء مجلس النواب",
-    "/super-admin/citizens": "شؤون المواطنين",
+    "/super-admin/citizens": "تحليلات المكاتب",
     "/super-admin/reports": "التقارير",
     "/super-admin/evaluation": "التقييم",
     "/super-admin/meetings": "اجتماعات",
@@ -40,7 +40,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/super-admin/offices", label: "إدارة المكاتب" },
       { href: "/super-admin/users", label: "إدارة المستخدمين" },
-      { href: "/super-admin/citizens", label: "شؤون المواطنين" },
+      { href: "/super-admin/citizens", label: "تحليلات المكاتب" },
       { href: "/super-admin/meetings", label: "اجتماعات" },
     ],
   },
