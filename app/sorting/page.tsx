@@ -601,9 +601,9 @@ export default function SortingDashboard() {
             <h2 className="text-base font-semibold text-[#1B1B1B]">المعاملات الواردة خلال الأسبوع</h2>
             <p className="mt-0.5 text-sm text-[#5a5a5a]">عدد المعاملات المسجلة لكل يوم في آخر ٧ أيام</p>
           </div>
-          <div className="h-64 px-6 py-4">
+          <div className="h-64 min-h-[200px] px-6 py-4">
             {weeklyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={256} minHeight={200}>
                 <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#555" }} />
@@ -636,8 +636,8 @@ export default function SortingDashboard() {
           </div>
           <div className="px-6 py-4">
           {delegatesChartData.length > 0 ? (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-64 min-h-[200px] w-full" style={{ minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height={256} minHeight={200}>
                 <BarChart
                   data={delegatesChartData}
                   layout="vertical"

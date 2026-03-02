@@ -64,18 +64,14 @@ export default function AuditorLayout({ children }: { children: React.ReactNode 
         <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] px-3">
           {!sidebarCollapsed ? (
             <Link href="/auditor" className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+                <img src="/gatmark.png" alt="المدقق" className="h-full w-full object-contain" />
               </span>
               <span className="truncate text-[15px] font-bold text-[#1B1B1B]">المدقق</span>
             </Link>
           ) : (
-            <Link href="/auditor" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <Link href="/auditor" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+              <img src="/gatmark.png" alt="المدقق" className="h-full w-full object-contain" />
             </Link>
           )}
           <div className="flex items-center gap-1">

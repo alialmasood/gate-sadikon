@@ -28,10 +28,46 @@ function normalizeSnInput(value: string): string {
   return digits;
 }
 
+function normalizePhoneInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length > 11) return digits.slice(0, 11);
+  return digits;
+}
+
+const TRACK_SESSION_KEY = "track-session";
+
+function loadTrackSession(): { sn: string; phone: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(TRACK_SESSION_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as { sn?: string; phone?: string };
+    const sn = normalizeSnInput(data.sn || "").padStart(6, "0");
+    const phone = normalizePhoneInput(data.phone || "");
+    if (sn.length === 6 && phone.length >= 10) return { sn, phone };
+  } catch {}
+  return null;
+}
+
+function saveTrackSession(sn: string, phone: string) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(TRACK_SESSION_KEY, JSON.stringify({ sn, phone }));
+  } catch {}
+}
+
+function clearTrackSession() {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(TRACK_SESSION_KEY);
+  } catch {}
+}
+
 function TrackPageContent() {
   const searchParams = useSearchParams();
   const snFromUrl = searchParams.get("sn")?.trim();
   const [sn, setSn] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [result, setResult] = useState<{
@@ -41,10 +77,15 @@ function TrackPageContent() {
     workflow?: WorkflowData;
   } | null>(null);
 
-  const doSearch = useCallback(async (serialNum: string) => {
+  const doSearch = useCallback(async (serialNum: string, phoneNum: string) => {
     const trimmed = normalizeSnInput(serialNum);
     const normalized = trimmed.padStart(6, "0");
+    const phoneDigits = normalizePhoneInput(phoneNum);
     if (normalized.length !== 6) {
+      setResult({ found: false });
+      return;
+    }
+    if (phoneDigits.length < 10) {
       setResult({ found: false });
       return;
     }
@@ -52,9 +93,15 @@ function TrackPageContent() {
     setResult(null);
     setSearched(true);
     try {
-      const res = await fetch(`/api/track?sn=${encodeURIComponent(normalized)}`);
+      const params = new URLSearchParams({ sn: normalized, phone: phoneDigits });
+      const res = await fetch(`/api/track?${params.toString()}`);
       const data = await res.json();
-      setResult(data.found ? data : { found: false });
+      if (data.found) {
+        setResult(data);
+        saveTrackSession(normalized, phoneDigits);
+      } else {
+        setResult({ found: false });
+      }
     } catch {
       setResult({ found: false });
     } finally {
@@ -62,25 +109,53 @@ function TrackPageContent() {
     }
   }, []);
 
+  // استعادة الجلسة من sessionStorage أو من الرابط — عند إعادة التحميل نبقى على نفس المعاملة
   useEffect(() => {
+    const session = loadTrackSession();
+    if (session) {
+      setSn(session.sn);
+      setPhone(session.phone);
+      doSearch(session.sn, session.phone);
+      return;
+    }
     if (snFromUrl) {
       const normalized = normalizeSnInput(snFromUrl).padStart(6, "0");
       setSn(normalized);
-      if (normalized.length === 6) {
-        doSearch(normalized);
-      }
     }
   }, [snFromUrl, doSearch]);
 
+  // تحديث تلقائي للمعاملات عند عرض النتيجة — كل 25 ثانية
+  useEffect(() => {
+    if (!result?.found || !result.receipt?.serialNumber) return;
+    const normalized = result.receipt.serialNumber;
+    const phoneDigits = normalizePhoneInput(phone);
+    if (phoneDigits.length < 10) return;
+
+    const refresh = async () => {
+      try {
+        const params = new URLSearchParams({ sn: normalized, phone: phoneDigits });
+        const res = await fetch(`/api/track?${params.toString()}`);
+        const data = await res.json();
+        if (data.found) setResult(data);
+        // عند فشل التحديث أو عدم العثور: لا نحدّث — نبقي المستخدم في العرض الحالي (لا تسجيل خروج تلقائي)
+      } catch { /* تجاهل خطأ التحديث */ }
+    };
+
+    const interval = setInterval(refresh, 25_000);
+    return () => clearInterval(interval);
+  }, [result?.found, result?.receipt?.serialNumber, phone]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    doSearch(sn);
+    doSearch(sn, phone);
   };
 
   const handleNewSearch = () => {
+    clearTrackSession();
     setResult(null);
     setSearched(false);
     setSn("");
+    setPhone("");
   };
 
   if (result?.found) {
@@ -90,12 +165,12 @@ function TrackPageContent() {
           <button
             type="button"
             onClick={handleNewSearch}
-            className="flex min-h-[44px] items-center gap-2 rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B]"
+            className="flex min-h-[44px] items-center gap-2 rounded-xl border border-[#c9d6e3] bg-[#f0f4f8] px-4 py-2.5 text-sm font-medium text-[#1e3a5f] hover:bg-[#e5ecf3]"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            استعلام جديد
+            تسجيل الخروج
           </button>
           <span className="font-mono text-sm font-bold text-[#1E6B3A]" dir="ltr">
             {result.receipt?.serialNumber ? `2026-${result.receipt.serialNumber}` : "—"}
@@ -109,7 +184,7 @@ function TrackPageContent() {
               mode="standalone"
               showStandaloneNav={false}
               backHref="#"
-              backLabel="استعلام جديد"
+              backLabel="تسجيل الخروج"
               bannerText="متابعة مسيرة المعاملة"
               hidePrintButton={false}
             />
@@ -168,25 +243,41 @@ function TrackPageContent() {
         </div>
         <h1 className="text-xl font-bold text-[#1B1B1B] sm:text-2xl">متابعة المعاملة</h1>
         <p className="mt-2 text-center text-sm text-[#5a5a5a]">
-          أدخل رقم المعاملة المكون من 6 أرقام للمتابعة
+          أدخل رقم المعاملة ورقم هاتفك المسجل للمتابعة
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-8 w-full max-w-sm">
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={6}
-            value={sn}
-            onChange={(e) => setSn(normalizeSnInput(e.target.value))}
-            placeholder="000001"
-            className="w-full rounded-xl border-2 border-[#d4cfc8] bg-white px-4 py-4 text-center text-2xl font-bold tracking-[0.3em] text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-2 focus:ring-[#1E6B3A]/20 sm:py-5"
-            dir="ltr"
-            autoFocus={!snFromUrl}
-          />
+        <form onSubmit={handleSubmit} className="mt-8 w-full max-w-sm space-y-4">
+          <div>
+            <label className="mb-1 block text-right text-sm font-medium text-[#5a5a5a]">رقم المعاملة (6 أرقام)</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={sn}
+              onChange={(e) => setSn(normalizeSnInput(e.target.value))}
+              placeholder="000001"
+              className="w-full rounded-xl border-2 border-[#d4cfc8] bg-white px-4 py-4 text-center text-2xl font-bold tracking-[0.3em] text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-2 focus:ring-[#1E6B3A]/20 sm:py-5"
+              dir="ltr"
+              autoFocus={!snFromUrl}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-right text-sm font-medium text-[#5a5a5a]">رقم هاتف المواطن</label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={phone}
+              onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+              placeholder="07XXXXXXXXX"
+              className="w-full rounded-xl border-2 border-[#d4cfc8] bg-white px-4 py-4 text-center text-lg font-medium text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-2 focus:ring-[#1E6B3A]/20 sm:py-5"
+              dir="ltr"
+              autoFocus={!!snFromUrl}
+            />
+          </div>
           <button
             type="submit"
-            disabled={loading || normalizeSnInput(sn).length !== 6}
+            disabled={loading || normalizeSnInput(sn).length !== 6 || normalizePhoneInput(phone).length < 10}
             className="mt-4 w-full min-h-[48px] rounded-xl bg-[#1E6B3A] py-3.5 text-base font-medium text-white transition-colors hover:bg-[#175a2e] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
           >
             {loading ? "جاري البحث…" : "استعلام"}
@@ -196,7 +287,7 @@ function TrackPageContent() {
         {searched && result && !result.found && (
           <div className="mt-6 w-full max-w-sm rounded-xl border border-amber-200 bg-amber-50 p-4">
             <p className="text-center text-amber-800">
-              لم يتم العثور على معاملة بهذا الرقم. تأكد من إدخال الرقم الصحيح.
+              لم يتم العثور على معاملة. تأكد من صحة رقم المعاملة ورقم الهاتف المسجل في الاستمارة.
             </p>
           </div>
         )}

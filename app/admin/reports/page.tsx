@@ -75,13 +75,13 @@ export default function AdminReportsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-[#1B1B1B]">رسم المعاملات حسب التاريخ</h2>
-          <div className="mt-4 h-72">
+          <div className="mt-4 h-72 w-full min-h-[200px]">
             {loading ? (
               <div className="flex h-full items-center justify-center text-[#5a5a5a]">جاري التحميل…</div>
             ) : timelineData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-[#5a5a5a]">لا توجد بيانات</div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={288} minHeight={200}>
                 <AreaChart data={timelineData}>
                   <defs>
                     <linearGradient id="reportGrad" x1="0" y1="0" x2="0" y2="1">

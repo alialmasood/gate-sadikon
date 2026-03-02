@@ -102,18 +102,14 @@ export default function SortingLayout({ children }: { children: React.ReactNode 
         <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] px-3">
           {!sidebarCollapsed ? (
             <Link href="/sorting" className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+                <img src="/gatmark.png" alt="قسم الفرز" className="h-full w-full object-contain" />
               </span>
               <span className="truncate text-[15px] font-bold text-[#1B1B1B]">قسم الفرز</span>
             </Link>
           ) : (
-            <Link href="/sorting" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
+            <Link href="/sorting" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+              <img src="/gatmark.png" alt="قسم الفرز" className="h-full w-full object-contain" />
             </Link>
           )}
           <div className="flex items-center gap-1">

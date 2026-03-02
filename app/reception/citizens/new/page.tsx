@@ -508,6 +508,13 @@ function ReceptionNewTransactionContent() {
       setError("الاسم الكامل واللقب مطلوب");
       return;
     }
+    if (!editId) {
+      const phoneDigits = (phone.trim() || "").replace(/\D/g, "");
+      if (phoneDigits.length < 10) {
+        setError("رقم الهاتف مطلوب (10 أرقام على الأقل) — يلزم للمتابعة والمصادقة");
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const validAttachments = attachments
@@ -708,7 +715,7 @@ function ReceptionNewTransactionContent() {
               )}
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">رقم الهاتف</label>
+              <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">رقم الهاتف <span className="text-amber-600">*</span></label>
               <input
                 type="tel"
                 value={phone}

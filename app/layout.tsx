@@ -12,6 +12,9 @@ const tajawal = Tajawal({
 export const metadata: Metadata = {
   title: "بوابة الصادقون",
   description: "منصة إلكترونية لإدارة الطلبات والخدمات والمتابعة المركزية",
+  icons: {
+    icon: "/gat.png",
+  },
 };
 
 export default function RootLayout({

@@ -9,14 +9,23 @@ function normalizeSn(input: string): string | null {
   return digits.padStart(6, "0");
 }
 
+/** تسوية رقم الهاتف للمقارنة — أخذ آخر 10 أرقام (للتوافق 07X مع 9647X) */
+function normalizePhoneForCompare(phone: string | null): string {
+  if (!phone || typeof phone !== "string") return "";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length >= 10) return digits.slice(-10);
+  return digits;
+}
+
 /**
- * صفحة عامة لمتابعة المعاملة — لا تتطلب تسجيل دخول
- * إرجاع الوصل والمرفقات ومسيرة المعاملة
+ * صفحة عامة لمتابعة المعاملة — تتطلب الرقم التسلسلي + رقم هاتف المواطن للمصادقة
+ * إرجاع الوصل والمرفقات ومسيرة المعاملة عند تطابق الرقم والهاتف
  */
 export async function GET(request: NextRequest) {
   const rawSn = request.nextUrl.searchParams.get("sn")?.trim();
+  const rawPhone = request.nextUrl.searchParams.get("phone")?.trim();
   const sn = rawSn ? normalizeSn(rawSn) : null;
-  if (!sn) {
+  if (!sn || !rawPhone) {
     return NextResponse.json({ found: false });
   }
 
@@ -30,6 +39,12 @@ export async function GET(request: NextRequest) {
   });
 
   if (!t) {
+    return NextResponse.json({ found: false });
+  }
+
+  const storedPhone = normalizePhoneForCompare(t.citizenPhone);
+  const providedPhone = normalizePhoneForCompare(rawPhone);
+  if (!storedPhone || storedPhone !== providedPhone) {
     return NextResponse.json({ found: false });
   }
 

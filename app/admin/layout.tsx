@@ -103,18 +103,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] px-3">
           {!sidebarCollapsed ? (
             <Link href="/admin" className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#B08D57] text-white">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+                <img src="/gatmark.png" alt="مدير المكتب" className="h-full w-full object-contain" />
               </span>
               <span className="truncate text-[15px] font-bold text-[#1B1B1B]">مدير المكتب</span>
             </Link>
           ) : (
-            <Link href="/admin" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#B08D57] text-white">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
+            <Link href="/admin" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+              <img src="/gatmark.png" alt="مدير المكتب" className="h-full w-full object-contain" />
             </Link>
           )}
           <div className="flex items-center gap-1">

@@ -116,18 +116,14 @@ export default function CoordinatorLayout({ children }: { children: React.ReactN
         <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] px-3">
           {!sidebarCollapsed ? (
             <Link href="/coordinator" className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#5B7C99] text-white">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+                <img src="/gatmark.png" alt="تنسيق ومتابعة" className="h-full w-full object-contain" />
               </span>
               <span className="truncate text-[15px] font-bold text-[#1B1B1B]">تنسيق ومتابعة</span>
             </Link>
           ) : (
-            <Link href="/coordinator" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#5B7C99] text-white">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
+            <Link href="/coordinator" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+              <img src="/gatmark.png" alt="تنسيق ومتابعة" className="h-full w-full object-contain" />
             </Link>
           )}
           <div className="flex items-center gap-1">

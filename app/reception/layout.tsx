@@ -95,18 +95,14 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
         <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] bg-[#f6f3ed]/30 px-3">
           {!sidebarCollapsed ? (
             <Link href="/reception" className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E6B3A] text-white shadow-sm">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+                <img src="/gatmark.png" alt="استقبال واستعلامات" className="h-full w-full object-contain" />
               </span>
               <span className="truncate text-[15px] font-bold text-[#1B1B1B]">استقبال واستعلامات</span>
             </Link>
           ) : (
-            <Link href="/reception" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E6B3A] text-white shadow-sm">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+            <Link href="/reception" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+              <img src="/gatmark.png" alt="استقبال واستعلامات" className="h-full w-full object-contain" />
             </Link>
           )}
           <div className="flex items-center gap-1">

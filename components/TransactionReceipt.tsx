@@ -114,9 +114,20 @@ export function TransactionReceipt({
       return;
     }
     const sn = receipt.serialNumber ? `2026-${receipt.serialNumber}` : receipt.serialNumber;
-    const msg = `مرحباً، تم تسجيل معاملتك بنجاح.
+    const trackBase = typeof window !== "undefined" ? `${window.location.origin}/track` : (receipt.followUpUrl || "").split("?")[0] || "/track";
+    const citizenName = receipt.citizenName?.trim() || "المواطن";
+    const msg = `مرحباً ${citizenName}،
+
+تم تسجيل معاملتك بنجاح في بوابة الصادقون.
+
 رقم المعاملة: ${sn}
-للمتابعة: ${receipt.followUpUrl}`;
+
+لمتابعة معاملتك يرجى الدخول على الرابط:
+${trackBase}
+
+وإدخال:
+• رقم معاملتك: ${receipt.serialNumber || sn}
+• رقم هاتفك: ${receipt.citizenPhone || ""}`;
     const waUrl = `https://wa.me/964${ph.startsWith("0") ? ph.slice(1) : ph}?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, "_blank");
   };
@@ -220,22 +231,26 @@ export function TransactionReceipt({
                 باركود تفاصيل المعاملة
               </h3>
               <p className="mb-3 text-xs text-[#5a5a5a]">
-                صحة صدور المعاملة — يحتوي على التفاصيل الكاملة للتحقق الرسمي
+                صحة صدور المعاملة — يحتوي على التفاصيل الأساسية للتحقق الرسمي من بوابة الصادقون
               </p>
               <div className="flex justify-center">
                 <QRCodeSVG
-                  value={JSON.stringify({
-                    gate: "GATE-SADIKON",
-                    sn: receipt.serialNumber ? `2026-${receipt.serialNumber}` : null,
-                    citizenName: receipt.citizenName,
-                    citizenPhone: receipt.citizenPhone,
-                    transactionType: receipt.transactionType,
-                    formationName: receipt.formationName,
-                    subDeptName: receipt.subDeptName,
-                    officeName: receipt.officeName,
-                    submissionDate: receipt.submissionDate,
-                    createdAt: receipt.createdAt,
-                  })}
+                  value={[
+                    "بوابة الصادقون — صحة صدور المعاملة",
+                    "---------------------------",
+                    `اسم المواطن: ${receipt.citizenName || "—"}`,
+                    `المكتب: ${receipt.officeName || "—"}`,
+                    `رقم الهاتف: ${receipt.citizenPhone || "—"}`,
+                    `رقم المعاملة: ${receipt.serialNumber ? `2026-${receipt.serialNumber}` : "—"}`,
+                    `نوع المعاملة: ${receipt.transactionType || "—"}`,
+                    receipt.formationName ? `الجهة المخاطبة: ${receipt.formationName}` : null,
+                    receipt.subDeptName ? `الدائرة: ${receipt.subDeptName}` : null,
+                    receipt.createdAt ? `تاريخ التسجيل: ${formatDateAr(receipt.createdAt)}` : null,
+                    "---------------------------",
+                    "صادر عن منصة بوابة الصادقون",
+                  ]
+                    .filter(Boolean)
+                    .join("\n")}
                   size={140}
                   level="M"
                   includeMargin
@@ -248,7 +263,7 @@ export function TransactionReceipt({
                 باركود رابط المتابعة
               </h3>
               <p className="mb-3 text-xs text-[#5a5a5a]">
-                مسح الباركود يفتح صفحة متابعة المعاملة مباشرة
+                مسح الباركود يفتح صفحة المتابعة — سيُطلب إدخال رقم هاتفك للمصادقة
               </p>
               <div className="flex justify-center">
                 <QRCodeSVG

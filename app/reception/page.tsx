@@ -261,11 +261,11 @@ export default function ReceptionDashboard() {
               <h2 className="text-base font-semibold text-[#1B1B1B]">المعاملات المستلمة — آخر ٣٠ يوماً</h2>
               <p className="mt-0.5 text-sm text-[#5a5a5a]">عدد المعاملات المسجلة يومياً</p>
             </div>
-            <div className="h-72 px-6 py-4">
+            <div className="h-72 min-h-[200px] px-6 py-4" style={{ minWidth: 0 }}>
               {!data?.typeByDay?.length ? (
                 <div className="flex h-full items-center justify-center text-[#5a5a5a]">لا توجد بيانات</div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={288} minHeight={200}>
                   <BarChart
                     data={data.typeByDay}
                     margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -295,11 +295,11 @@ export default function ReceptionDashboard() {
               <h2 className="text-base font-semibold text-[#1B1B1B]">المعاملات المستلمة — آخر ٤ أسابيع</h2>
               <p className="mt-0.5 text-sm text-[#5a5a5a]">عدد المعاملات حسب الأسبوع</p>
             </div>
-            <div className="h-64 px-6 py-4">
+            <div className="h-64 min-h-[200px] px-6 py-4" style={{ minWidth: 0 }}>
               {!data?.typeByWeek?.length ? (
                 <div className="flex h-full items-center justify-center text-[#5a5a5a]">لا توجد بيانات</div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={256} minHeight={200}>
                   <BarChart
                     data={data.typeByWeek}
                     margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -325,8 +325,8 @@ export default function ReceptionDashboard() {
                 <h2 className="text-base font-semibold text-[#1B1B1B]">نوع المعاملات خلال الفترات الزمنية</h2>
                 <p className="mt-0.5 text-sm text-[#5a5a5a]">توزيع الأنواع حسب الأسبوع (أكثر ٥ أنواع)</p>
               </div>
-              <div className="h-72 px-6 py-4">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-72 min-h-[200px] px-6 py-4" style={{ minWidth: 0 }}>
+                <ResponsiveContainer width="100%" height={288} minHeight={200}>
                   <BarChart
                     data={data.typeByWeek}
                     margin={{ top: 10, right: 10, left: 0, bottom: 0 }}

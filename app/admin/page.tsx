@@ -379,13 +379,13 @@ export default function AdminDashboard() {
             <h2 className="text-base font-semibold text-[#1B1B1B]">المعاملات خلال 30 يوم</h2>
             <p className="mt-0.5 text-sm text-[#5a5a5a]">رسم بياني لتوزيع المعاملات خلال الشهر الماضي</p>
           </div>
-          <div className="h-64 px-6 py-4">
+          <div className="h-64 w-full min-h-[200px] px-6 py-4">
             {loading ? (
               <div className="flex h-full items-center justify-center text-[#5a5a5a]">جاري التحميل…</div>
             ) : timelineData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-[#5a5a5a]">لا توجد بيانات</div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={256} minHeight={200}>
                 <AreaChart data={timelineData}>
                   <defs>
                     <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">

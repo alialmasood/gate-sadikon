@@ -35,10 +35,8 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
       >
         <div className="flex h-16 min-h-[44px] items-center justify-between gap-2 border-b border-[#d4cfc8] bg-[#1e3a5f] px-3 pt-[env(safe-area-inset-top)]">
           <Link href="/member" className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-              </svg>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+              <img src="/gatmark.png" alt="عضو مجلس النواب" className="h-full w-full object-contain" />
             </span>
             <span className="truncate text-[15px] font-bold text-white">عضو مجلس النواب</span>
           </Link>
