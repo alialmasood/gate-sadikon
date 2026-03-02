@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { getSeenTransactionIds } from "@/lib/authorized-seen";
 
 const POLL_INTERVAL_MS = 4000;
@@ -39,6 +40,8 @@ function formatDate(s: string | null): string {
 }
 
 export default function AuthorizedDashboard() {
+  const { data: session } = useSession();
+  const serialNumber = (session?.user as { serialNumber?: string } | undefined)?.serialNumber;
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,9 +106,16 @@ export default function AuthorizedDashboard() {
 
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6" dir="rtl">
-      <div>
-        <h2 className="text-base font-semibold text-[#1B1B1B] sm:text-lg">مرحباً، المخول</h2>
-        <p className="mt-1 text-sm text-[#5a5a5a]">لوحة تحكم المعاملات المستلمة</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-[#1B1B1B] sm:text-lg">مرحباً، المخول</h2>
+          <p className="mt-1 text-sm text-[#5a5a5a]">لوحة تحكم المعاملات المستلمة</p>
+        </div>
+        {serialNumber && (
+          <span className="font-mono text-sm font-medium text-[#5a5a5a]" dir="ltr">
+            {serialNumber}
+          </span>
+        )}
       </div>
 
       {/* إحصائيات */}

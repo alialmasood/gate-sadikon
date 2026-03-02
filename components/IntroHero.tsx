@@ -134,7 +134,7 @@ export default function IntroHero() {
       }}
     >
       {/* نمط هندسي إسلامي خلفية — دوائر، سداسيات، مربعات، خطوط (بدون نجوم) */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.09]" aria-hidden>
+      <div className="pointer-events-none absolute inset-0 opacity-[0.09] max-md:opacity-[0.05]" aria-hidden>
         <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern id="islamic-circles" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
@@ -156,7 +156,7 @@ export default function IntroHero() {
       </div>
 
       {/* زخارف إسلامية في الزوايا — زخرفة أرابيسك بسيطة */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.08]" aria-hidden>
+      <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.08] max-md:opacity-[0.04]" aria-hidden>
         <svg className="absolute -top-20 -right-20 h-80 w-80" viewBox="0 0 160 160" fill="none">
           <path d="M0 80 Q40 40 80 80 Q120 120 160 80" stroke="#8C6A12" strokeWidth="0.8" fill="none" />
           <path d="M20 80 Q60 50 100 80 Q140 110 160 80" stroke="#B88A1A" strokeWidth="0.5" fill="none" opacity="0.8" />
@@ -176,7 +176,7 @@ export default function IntroHero() {
 
       {/* شبكة خفيفة — إحساس بالتناظر الهندسي */}
       <div
-        className="pointer-events-none absolute inset-6 rounded-2xl opacity-[0.03]"
+        className="pointer-events-none absolute inset-6 max-md:inset-3 rounded-2xl opacity-[0.03]"
         style={{
           backgroundImage: `
             linear-gradient(rgba(140, 106, 18, 0.5) 1px, transparent 1px),
@@ -189,7 +189,7 @@ export default function IntroHero() {
 
       {/* إطار مزدوج: ذهبي خارجي + ماروني (أحمر رسمي) داخلي */}
       <div
-        className="pointer-events-none absolute inset-6 rounded-2xl"
+        className="pointer-events-none absolute inset-6 max-md:inset-3 rounded-2xl max-md:rounded-xl"
         style={{
           border: "2px solid rgba(184, 138, 26, 0.85)",
           boxShadow: [
@@ -209,8 +209,8 @@ export default function IntroHero() {
         ].map((pos, i) => (
           <svg
             key={i}
-            className="absolute h-16 w-16 md:h-20 md:w-20"
-            style={{ ...pos, margin: 8 }}
+            className="absolute h-16 w-16 max-md:h-10 max-md:w-10 max-md:m-1 md:h-20 md:w-20 md:m-2"
+            style={pos}
             viewBox="0 0 64 64"
             fill="none"
             aria-hidden
@@ -254,16 +254,16 @@ export default function IntroHero() {
             router.push("/login");
           }
         }}
-        className="relative z-10 flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-6 py-4"
+        className="relative z-10 flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-6 py-4 max-md:px-4 max-md:py-3 max-md:min-h-0"
       >
         {/* Header: شعاران على نفس الـ baseline — أحجام متوازنة، gap أقل */}
-        <header className="flex shrink-0 flex-col items-center pt-8 md:pt-10">
-          <div className="flex items-end gap-6 md:gap-8">
+        <header className="flex shrink-0 flex-col items-center pt-8 max-md:pt-5 md:pt-10">
+          <div className="flex items-end gap-6 max-md:gap-4 md:gap-8">
             <motion.div
               variants={logoVariants}
               initial="initial"
               animate="animate"
-              className="flex h-20 shrink-0 items-end md:h-24 lg:h-28"
+              className="flex h-20 max-md:h-14 shrink-0 items-end md:h-24 lg:h-28"
             >
               <Image
                 src="/iraq.png"
@@ -279,7 +279,7 @@ export default function IntroHero() {
               variants={logoVariants}
               initial="initial"
               animate="animate"
-              className="flex h-20 shrink-0 items-end md:h-24 lg:h-28"
+              className="flex h-20 max-md:h-14 shrink-0 items-end md:h-24 lg:h-28"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -293,7 +293,7 @@ export default function IntroHero() {
             </motion.div>
           </div>
           {/* شريط ذهبي معدني — تدرج + خط سفلي داكن + glow خفيف */}
-          <div className="relative mt-4 w-56 shrink-0 md:mt-5 md:w-72 lg:w-80">
+          <div className="relative mt-4 w-56 max-md:mt-3 max-md:w-40 shrink-0 md:mt-5 md:w-72 lg:w-80">
             {/* الشريط الرئيسي: 4px تدرج + ظل + توهج خفيف في المنتصف */}
             <div
               className="relative h-[4px] w-full rounded-full"
@@ -314,9 +314,9 @@ export default function IntroHero() {
         </header>
 
         {/* عنوان + وصف + زر — فراغ معقول بدون إفراغ */}
-        <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-4 text-center sm:mt-10 sm:gap-5">
+        <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-4 text-center max-md:mt-5 max-md:gap-3 sm:mt-10 sm:gap-5">
           <h1
-            className="flex max-w-3xl shrink-0 flex-wrap justify-center gap-x-2 gap-y-0 text-center text-5xl font-bold leading-tight tracking-tight text-[#1B1B1B] lg:text-6xl"
+            className="flex max-w-3xl shrink-0 flex-wrap justify-center gap-x-2 gap-y-0 text-center text-5xl font-bold leading-tight tracking-tight text-[#1B1B1B] max-md:text-3xl max-md:leading-snug lg:text-6xl"
           >
             {TITLE_WORDS.map((word, i) => (
               <motion.span
@@ -335,7 +335,7 @@ export default function IntroHero() {
             variants={descVariants}
             initial="initial"
             animate="animate"
-            className="max-w-xl shrink-0 leading-relaxed text-neutral-600"
+            className="max-w-xl shrink-0 leading-relaxed text-neutral-600 max-md:leading-snug max-md:px-2"
             style={{ fontSize: "clamp(0.8125rem, 1.5vw + 0.5rem, 1.125rem)" }}
           >
             منصة إلكترونية لإدارة الطلبات والخدمات والمتابعة المركزية
@@ -351,7 +351,7 @@ export default function IntroHero() {
               type="button"
               onClick={handleEnter}
               disabled={isLeaving}
-              className="relative inline-flex w-full min-w-[220px] items-center justify-center overflow-hidden rounded-2xl border border-[#B88A1A]/70 px-16 py-[18px] font-semibold tracking-wide text-white md:px-20 md:py-5 sm:w-auto"
+              className="relative inline-flex w-full min-w-[220px] items-center justify-center overflow-hidden rounded-2xl border border-[#B88A1A]/70 px-16 py-[18px] font-semibold tracking-wide text-white max-md:min-w-0 max-md:py-4 max-md:text-base md:px-20 md:py-5 sm:w-auto"
               style={{
                 background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 38%), linear-gradient(180deg, #2F7A3F 0%, #236434 100%)",
                 boxShadow: "0 18px 42px rgba(0,0,0,0.14)",
@@ -386,7 +386,7 @@ export default function IntroHero() {
 
       {/* التاريخ والوقت — أسفل الصفحة، أقصى اليسار، مع مسافة عن الإطار */}
       <p
-        className="absolute bottom-8 left-6 z-10 tabular-nums text-sm font-medium text-[#6E5310]"
+        className="absolute bottom-8 left-6 z-10 tabular-nums text-sm font-medium text-[#6E5310] max-md:bottom-4 max-md:left-4 max-md:text-xs"
         aria-label="التاريخ والوقت"
         suppressHydrationWarning
       >

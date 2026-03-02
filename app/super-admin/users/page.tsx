@@ -768,6 +768,249 @@ function DelegateModal({
   );
 }
 
+type FormationOption = { id: string; name: string; type: string };
+type SubDeptOption = { id: string; name: string; formationId: string };
+
+type AssignmentItem = {
+  id: string;
+  delegateId: string;
+  delegateName: string | null;
+  userId: string | null;
+  userEmail: string | null;
+  serialNumber: string | null;
+  formationId: string;
+  formationName: string;
+  formationType: string;
+  subDeptId: string | null;
+  subDeptName: string | null;
+  createdAt: string;
+};
+
+function AssignmentModal({
+  open,
+  onClose,
+  delegate,
+  formations,
+  onFormationChange,
+  subDepts,
+  loadingSubDepts,
+  onSubmit,
+  submitting,
+  error,
+  onErrorClear,
+}: {
+  open: boolean;
+  onClose: () => void;
+  delegate: DelegateUser | null;
+  formations: FormationOption[];
+  onFormationChange: (formationId: string) => void;
+  subDepts: SubDeptOption[];
+  loadingSubDepts: boolean;
+  onSubmit: (formationId: string, subDeptId: string | null) => Promise<boolean>;
+  submitting: boolean;
+  error: string;
+  onErrorClear: () => void;
+}) {
+  const [formationId, setFormationId] = useState("");
+  const [subDeptId, setSubDeptId] = useState("");
+
+  const prevOpenRef = useRef(false);
+  useEffect(() => {
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (justOpened) {
+      setFormationId("");
+      setSubDeptId("");
+      onFormationChange("");
+      onErrorClear();
+    }
+  }, [open, onErrorClear, onFormationChange]);
+
+  useEffect(() => {
+    if (formationId) onFormationChange(formationId);
+    else onFormationChange("");
+    setSubDeptId("");
+  }, [formationId, onFormationChange]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    onErrorClear();
+    if (!formationId) return;
+    const ok = await onSubmit(formationId, subDeptId || null);
+    if (ok) {
+      setFormationId("");
+      setSubDeptId("");
+      onFormationChange("");
+    }
+  }
+
+  if (!open || !delegate) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
+      <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl">
+        <h3 className="text-lg font-semibold text-[#1B1B1B]">تكليف المخول</h3>
+        <div className="mt-4 space-y-4">
+          <div className="rounded-xl border border-[#d4cfc8]/60 bg-[#f6f3ed]/30 p-4">
+            <p className="text-xs font-medium text-[#5a5a5a]">اسم المخول المرتبط بالحساب</p>
+            <p className="mt-0.5 font-medium text-[#1B1B1B]">{delegate.name || delegate.email}</p>
+            <p className="mt-2 text-xs font-medium text-[#5a5a5a]">الرقم التسلسلي</p>
+            <p className="mt-0.5 font-mono text-[#1B1B1B]" dir="ltr">{delegate.serialNumber || "—"}</p>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">الوزارة / التشكيل *</label>
+              <select
+                required
+                value={formationId}
+                onChange={(e) => setFormationId(e.target.value)}
+                className={INPUT_CLASS}
+              >
+                <option value="">اختر الوزارة أو التشكيل</option>
+                {formations.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">الدائرة الفرعية</label>
+              <select
+                value={subDeptId}
+                onChange={(e) => setSubDeptId(e.target.value)}
+                className={INPUT_CLASS}
+                disabled={!formationId || loadingSubDepts}
+              >
+                <option value="">{!formationId ? "اختر الوزارة أولاً" : loadingSubDepts ? "جاري التحميل…" : "اختياري — التشكيل كاملاً"}</option>
+                {subDepts.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
+            <p className="text-xs text-[#5a5a5a]">يمكنك إضافة أكثر من تكليف — بعد كل حفظ يُفرغ النموذج للإضافة مرة أخرى</p>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="submit"
+                disabled={submitting || !formationId}
+                className={`${BORDER_RADIUS} flex-1 bg-[#1E6B3A] px-4 py-2.5 font-medium text-white transition hover:bg-[#175a2e] disabled:opacity-70`}
+              >
+                {submitting ? "جاري الحفظ…" : "حفظ وإضافة تكليف"}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className={`${BORDER_RADIUS} border border-[#d4cfc8] px-4 py-2.5 font-medium text-[#1B1B1B] hover:bg-[#f6f3ed]`}
+              >
+                إنهاء
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditAssignmentModal({
+  open,
+  onClose,
+  assignment,
+  formations,
+  onFormationChange,
+  subDepts,
+  loadingSubDepts,
+  onSubmit,
+  submitting,
+  error,
+  onErrorClear,
+}: {
+  open: boolean;
+  onClose: () => void;
+  assignment: AssignmentItem | null;
+  formations: FormationOption[];
+  onFormationChange: (formationId: string) => void;
+  subDepts: SubDeptOption[];
+  loadingSubDepts: boolean;
+  onSubmit: (assignmentId: string, formationId: string, subDeptId: string | null) => Promise<void>;
+  submitting: boolean;
+  error: string;
+  onErrorClear: () => void;
+}) {
+  const [formationId, setFormationId] = useState("");
+  const [subDeptId, setSubDeptId] = useState("");
+  const prevOpenRef = useRef(false);
+
+  useEffect(() => {
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (open && assignment) {
+      setFormationId(assignment.formationId);
+      setSubDeptId(assignment.subDeptId || "");
+      if (justOpened) onFormationChange(assignment.formationId);
+      onErrorClear();
+    }
+  }, [open, assignment, onFormationChange, onErrorClear]);
+
+  useEffect(() => {
+    if (formationId) onFormationChange(formationId);
+  }, [formationId, onFormationChange]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    onErrorClear();
+    if (!assignment || !formationId) return;
+    await onSubmit(assignment.id, formationId, subDeptId || null);
+  }
+
+  if (!open || !assignment) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
+      <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-xl">
+        <h3 className="text-lg font-semibold text-[#1B1B1B]">تعديل التكليف</h3>
+        <div className="mt-4 space-y-4">
+          <div className="rounded-xl border border-[#d4cfc8]/60 bg-[#f6f3ed]/30 p-4">
+            <p className="text-xs font-medium text-[#5a5a5a]">المخول</p>
+            <p className="mt-0.5 font-medium text-[#1B1B1B]">{assignment.delegateName || assignment.userEmail || "—"}</p>
+            <p className="mt-1 text-sm text-[#5a5a5a]" dir="ltr">{assignment.serialNumber || assignment.userEmail || "—"}</p>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">الوزارة / التشكيل *</label>
+              <select required value={formationId} onChange={(e) => setFormationId(e.target.value)} className={INPUT_CLASS}>
+                <option value="">اختر الوزارة أو التشكيل</option>
+                {formations.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">الدائرة الفرعية</label>
+              <select value={subDeptId} onChange={(e) => setSubDeptId(e.target.value)} className={INPUT_CLASS} disabled={!formationId || loadingSubDepts}>
+                <option value="">{!formationId ? "اختر الوزارة أولاً" : loadingSubDepts ? "جاري التحميل…" : "اختياري"}</option>
+                {subDepts.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
+            <div className="flex gap-2 pt-2">
+              <button type="submit" disabled={submitting || !formationId} className={`${BORDER_RADIUS} flex-1 bg-[#1E6B3A] px-4 py-2.5 font-medium text-white transition hover:bg-[#175a2e] disabled:opacity-70`}>
+                {submitting ? "جاري الحفظ…" : "حفظ التعديل"}
+              </button>
+              <button type="button" onClick={onClose} className={`${BORDER_RADIUS} border border-[#d4cfc8] px-4 py-2.5 font-medium text-[#1B1B1B] hover:bg-[#f6f3ed]`}>
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailItem({ label, value, dir }: { label: string; value: string | null | undefined; dir?: "ltr" | "rtl" }) {
   if (value == null || value === "") return null;
   return (
@@ -973,6 +1216,25 @@ export default function SuperAdminUsersPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [viewingUser, setViewingUser] = useState<CreatedAccountUser | DelegateUser | null>(null);
+  const [assignDelegate, setAssignDelegate] = useState<DelegateUser | null>(null);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
+  const [assignError, setAssignError] = useState("");
+  const [assignFormations, setAssignFormations] = useState<FormationOption[]>([]);
+  const [assignSubDepts, setAssignSubDepts] = useState<SubDeptOption[]>([]);
+  const [assignFormationId, setAssignFormationId] = useState("");
+  const [loadingAssignSubDepts, setLoadingAssignSubDepts] = useState(false);
+  const [assignmentsList, setAssignmentsList] = useState<AssignmentItem[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<AssignmentItem | null>(null);
+  const [editAssignModalOpen, setEditAssignModalOpen] = useState(false);
+  const [editAssignFormations, setEditAssignFormations] = useState<FormationOption[]>([]);
+  const [editAssignSubDepts, setEditAssignSubDepts] = useState<SubDeptOption[]>([]);
+  const [editAssignFormationId, setEditAssignFormationId] = useState("");
+  const [loadingEditAssignSubDepts, setLoadingEditAssignSubDepts] = useState(false);
+  const [editAssignSubmitting, setEditAssignSubmitting] = useState(false);
+  const [editAssignError, setEditAssignError] = useState("");
+  const [deletingAssignId, setDeletingAssignId] = useState<string | null>(null);
 
   const createdAccounts = users.filter(
     (u) =>
@@ -1031,6 +1293,137 @@ export default function SuperAdminUsersPage() {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  useEffect(() => {
+    if (assignModalOpen) {
+      fetch("/api/formations")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setAssignFormations(Array.isArray(data) ? data : []))
+        .catch(() => setAssignFormations([]));
+      setAssignFormationId("");
+      setAssignSubDepts([]);
+    }
+  }, [assignModalOpen]);
+
+  useEffect(() => {
+    if (!assignFormationId) {
+      setAssignSubDepts([]);
+      setLoadingAssignSubDepts(false);
+      return;
+    }
+    setLoadingAssignSubDepts(true);
+    fetch(`/api/formations/subdepts?formationId=${encodeURIComponent(assignFormationId)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setAssignSubDepts(Array.isArray(data) ? data : []))
+      .catch(() => setAssignSubDepts([]))
+      .finally(() => setLoadingAssignSubDepts(false));
+  }, [assignFormationId]);
+
+  const loadAssignments = useCallback(async () => {
+    setLoadingAssignments(true);
+    try {
+      const res = await fetch("/api/super-admin/delegate-assignments");
+      const data = res.ok ? await res.json() : [];
+      setAssignmentsList(Array.isArray(data) ? data : []);
+    } catch {
+      setAssignmentsList([]);
+    } finally {
+      setLoadingAssignments(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAssignments();
+  }, [loadAssignments]);
+
+  useEffect(() => {
+    if (editAssignModalOpen) {
+      fetch("/api/formations")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setEditAssignFormations(Array.isArray(data) ? data : []))
+        .catch(() => setEditAssignFormations([]));
+      if (editingAssignment) setEditAssignFormationId(editingAssignment.formationId);
+      setEditAssignSubDepts([]);
+    }
+  }, [editAssignModalOpen, editingAssignment]);
+
+  useEffect(() => {
+    if (!editAssignFormationId) {
+      setEditAssignSubDepts([]);
+      setLoadingEditAssignSubDepts(false);
+      return;
+    }
+    setLoadingEditAssignSubDepts(true);
+    fetch(`/api/formations/subdepts?formationId=${encodeURIComponent(editAssignFormationId)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setEditAssignSubDepts(Array.isArray(data) ? data : []))
+      .catch(() => setEditAssignSubDepts([]))
+      .finally(() => setLoadingEditAssignSubDepts(false));
+  }, [editAssignFormationId]);
+
+  async function handleEditAssignSubmit(assignmentId: string, formationId: string, subDeptId: string | null): Promise<void> {
+    setEditAssignSubmitting(true);
+    setEditAssignError("");
+    try {
+      const res = await fetch(`/api/super-admin/delegate-assignments/${assignmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formationId, subDeptId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEditAssignModalOpen(false);
+        setEditingAssignment(null);
+        loadAssignments();
+      } else {
+        setEditAssignError(data.error || "فشل التعديل");
+      }
+    } catch {
+      setEditAssignError("خطأ في الاتصال");
+    } finally {
+      setEditAssignSubmitting(false);
+    }
+  }
+
+  async function handleDeleteAssignment(a: AssignmentItem) {
+    if (!confirm(`حذف تكليف "${a.formationName}${a.subDeptName ? ` — ${a.subDeptName}` : ""}" للمخول "${a.delegateName || a.userEmail}"؟`)) return;
+    setDeletingAssignId(a.id);
+    try {
+      const res = await fetch(`/api/super-admin/delegate-assignments/${a.id}`, { method: "DELETE" });
+      if (res.ok) loadAssignments();
+    } finally {
+      setDeletingAssignId(null);
+    }
+  }
+
+  async function handleAssignSubmit(formationId: string, subDeptId: string | null): Promise<boolean> {
+    if (!assignDelegate) return false;
+    setAssignSubmitting(true);
+    setAssignError("");
+    try {
+      const res = await fetch("/api/super-admin/delegate-assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: assignDelegate.id,
+          formationId,
+          subDeptId: subDeptId || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        loadAssignments();
+        return true;
+      }
+      setAssignError(data.error || "فشل حفظ التكليف");
+      return false;
+    } catch {
+      setAssignError("خطأ في الاتصال");
+      return false;
+    } finally {
+      setAssignSubmitting(false);
+    }
+  }
 
   async function handleCreateAccountSubmit(data: {
     name: string;
@@ -1606,6 +1999,13 @@ export default function SuperAdminUsersPage() {
                     </td>
                     <td className="py-3 pl-2 print:hidden">
                       <div className="flex flex-wrap gap-1">
+                        <button
+                          type="button"
+                          onClick={() => { setAssignDelegate(d); setAssignModalOpen(true); }}
+                          className="rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-2 py-1 text-xs font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
+                        >
+                          التكليف
+                        </button>
                         <button type="button" onClick={() => setViewingUser(d)} className="rounded-lg border border-[#d4cfc8] bg-white px-2 py-1 text-xs font-medium text-[#B08D57] hover:bg-[#f6f3ed]">عرض</button>
                         <button type="button" onClick={() => { setEditingDelegate(d); setDelegateModalOpen(true); }} className="rounded-lg border border-[#d4cfc8] bg-white px-2 py-1 text-xs font-medium text-[#B08D57] hover:bg-[#f6f3ed]">تعديل</button>
                         <button type="button" onClick={() => toggleEnabled(d)} disabled={togglingId === d.id} className="rounded-lg border border-[#d4cfc8] bg-white px-2 py-1 text-xs font-medium text-[#B08D57] hover:bg-[#f6f3ed] disabled:opacity-60">{togglingId === d.id ? "…" : d.enabled ? "تعطيل" : "تفعيل"}</button>
@@ -1620,7 +2020,115 @@ export default function SuperAdminUsersPage() {
         )}
       </article>
 
+      <AssignmentModal
+        open={assignModalOpen}
+        onClose={() => { setAssignModalOpen(false); setAssignDelegate(null); setAssignError(""); }}
+        delegate={assignDelegate}
+        formations={assignFormations}
+        onFormationChange={setAssignFormationId}
+        subDepts={assignSubDepts}
+        loadingSubDepts={loadingAssignSubDepts}
+        onSubmit={handleAssignSubmit}
+        submitting={assignSubmitting}
+        error={assignError}
+        onErrorClear={() => setAssignError("")}
+      />
+      <EditAssignmentModal
+        open={editAssignModalOpen}
+        onClose={() => { setEditAssignModalOpen(false); setEditingAssignment(null); setEditAssignError(""); }}
+        assignment={editingAssignment}
+        formations={editAssignFormations}
+        onFormationChange={setEditAssignFormationId}
+        subDepts={editAssignSubDepts}
+        loadingSubDepts={loadingEditAssignSubDepts}
+        onSubmit={handleEditAssignSubmit}
+        submitting={editAssignSubmitting}
+        error={editAssignError}
+        onErrorClear={() => setEditAssignError("")}
+      />
       <UserViewModal open={!!viewingUser} onClose={() => setViewingUser(null)} user={viewingUser} />
+
+      {/* إدارة التكليفات */}
+      <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
+        <div>
+          <h2 className="text-lg font-semibold text-[#1B1B1B]">إدارة التكليفات</h2>
+          <p className="mt-1 text-sm text-[#5a5a5a]">عرض وتعديل وحذف تكليفات المخولين (الوزارة والدائرة المرتبطة بكل حساب مخول)</p>
+        </div>
+        {loadingAssignments ? (
+          <p className="mt-4 text-[#5a5a5a]">جاري التحميل...</p>
+        ) : assignmentsList.length === 0 ? (
+          <p className="mt-4 text-sm text-[#5a5a5a]">لا توجد تكليفات مسجلة.</p>
+        ) : (
+          <>
+            <div className="mt-4 flex flex-wrap gap-4">
+              <div className="rounded-xl border border-[#d4cfc8]/60 bg-[#1E6B3A]/5 px-4 py-2">
+                <span className="text-sm text-[#5a5a5a]">إجمالي التكليفات</span>
+                <p className="text-xl font-bold text-[#1E6B3A]">{assignmentsList.length}</p>
+              </div>
+              <div className="rounded-xl border border-[#d4cfc8]/60 bg-[#5B7C99]/5 px-4 py-2">
+                <span className="text-sm text-[#5a5a5a]">أنواع التشكيلات</span>
+                <p className="text-xl font-bold text-[#5B7C99]">
+                  {new Set(assignmentsList.map((a) => a.formationType)).size}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#d4cfc8]/60 bg-[#B08D57]/10 px-4 py-2">
+                <span className="text-sm text-[#5a5a5a]">حسابات المخولين المرتبطة</span>
+                <p className="text-xl font-bold text-[#9C7B49]">
+                  {new Set(assignmentsList.map((a) => a.delegateId)).size}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[800px] text-right text-sm">
+                <thead>
+                  <tr className="border-b border-[#d4cfc8] font-medium text-[#5a5a5a]">
+                    <th className="py-3 pr-2">م</th>
+                    <th className="py-3 pr-2">الوزارة/التشكيل</th>
+                    <th className="py-3 pr-2">نوع التشكيل</th>
+                    <th className="py-3 pr-2">الدائرة</th>
+                    <th className="py-3 pr-2">اسم المخول</th>
+                    <th className="py-3 pr-2">الرقم التسلسلي</th>
+                    <th className="py-3 pr-2">الحساب</th>
+                    <th className="py-3 pl-2">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assignmentsList.map((a, idx) => (
+                    <tr key={a.id} className="border-b border-[#d4cfc8]/80">
+                      <td className="py-3 pr-2 text-[#5a5a5a]">{idx + 1}</td>
+                      <td className="py-3 pr-2 font-medium text-[#1B1B1B]">{a.formationName}</td>
+                      <td className="py-3 pr-2 text-[#5a5a5a]">{a.formationType}</td>
+                      <td className="py-3 pr-2 text-[#5a5a5a]">{a.subDeptName || "—"}</td>
+                      <td className="py-3 pr-2 text-[#1B1B1B]">{a.delegateName || "—"}</td>
+                      <td className="py-3 pr-2 font-mono text-[#1B1B1B]" dir="ltr">{a.serialNumber || "—"}</td>
+                      <td className="py-3 pr-2 text-[#5a5a5a]" dir="ltr">{a.userEmail || "—"}</td>
+                      <td className="py-3 pl-2">
+                        <div className="flex flex-wrap gap-1">
+                          <button
+                            type="button"
+                            onClick={() => { setEditingAssignment(a); setEditAssignModalOpen(true); }}
+                            className="rounded-lg border border-[#B08D57]/50 bg-[#B08D57]/10 px-2 py-1 text-xs font-medium text-[#9C7B49] hover:bg-[#B08D57]/20"
+                          >
+                            تعديل
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAssignment(a)}
+                            disabled={deletingAssignId === a.id}
+                            className="rounded-lg border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            {deletingAssignId === a.id ? "…" : "حذف"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </article>
     </div>
   );
 }

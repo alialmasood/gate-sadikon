@@ -75,6 +75,19 @@ model Delegate {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   transactions  Transaction[]
+  assignments   DelegateFormationAssignment[]
+}
+
+model DelegateFormationAssignment {
+  id          String   @id @default(cuid())
+  delegateId  String
+  formationId String
+  subDeptId   String?
+  createdAt   DateTime @default(now())
+  delegate    Delegate @relation(fields: [delegateId], references: [id], onDelete: Cascade)
+  formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  subDept     FormationSubDept? @relation(fields: [subDeptId], references: [id], onDelete: Cascade)
+  @@unique([delegateId, formationId, subDeptId])
 }
 
 model Formation {
@@ -86,6 +99,7 @@ model Formation {
   updatedAt       DateTime @updatedAt
   subDepartments  FormationSubDept[]
   transactions    Transaction[]
+  delegateAssignments DelegateFormationAssignment[]
 }
 
 model FormationSubDept {
@@ -96,6 +110,7 @@ model FormationSubDept {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  delegateAssignments DelegateFormationAssignment[]
 }
 
 model Transaction {
