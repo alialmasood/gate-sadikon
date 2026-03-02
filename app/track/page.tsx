@@ -237,9 +237,13 @@ function TrackPageContent() {
   return (
     <div className="flex min-h-screen flex-col bg-[#FAFAF9] px-4 py-6 sm:py-12" dir="rtl">
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center">
-        <div className="mb-6 flex items-end gap-6">
-          <Image src="/iraq.png" alt="شعار العراق" width={64} height={64} className="object-contain sm:w-20 sm:h-20" />
-          <Image src="/sadiqoon.png" alt="كتلة الصادقون" width={64} height={64} className="object-contain sm:w-20 sm:h-20" />
+        <div className="mb-6 flex items-center gap-6">
+          <div className="relative h-16 w-16 shrink-0 sm:h-20 sm:w-20">
+            <Image src="/iraq.png" alt="شعار العراق" fill className="object-contain object-center" sizes="80px" />
+          </div>
+          <div className="relative h-16 w-16 shrink-0 sm:h-20 sm:w-20">
+            <Image src="/sadiqoon.png" alt="كتلة الصادقون" fill className="object-contain object-center" sizes="80px" />
+          </div>
         </div>
         <h1 className="text-xl font-bold text-[#1B1B1B] sm:text-2xl">متابعة المعاملة</h1>
         <p className="mt-2 text-center text-sm text-[#5a5a5a]">
