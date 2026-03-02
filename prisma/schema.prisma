@@ -27,6 +27,24 @@ model User {
   updatedAt DateTime @updatedAt
   office       Office?  @relation(fields: [officeId], references: [id], onDelete: SetNull)
   managedOffices Office[] @relation("OfficeManager")
+  evaluationsAsEvaluator Evaluation[] @relation("EvaluationEvaluator")
+}
+
+model Evaluation {
+  id            String   @id @default(cuid())
+  entityType    String   // OFFICE | DELEGATE | USER
+  entityId      String
+  period        String   // YYYY-MM تقييم شهري
+  rating        Int?     // 1-5 تقييم يدوي
+  notes         String?  @db.Text
+  evaluatedById String
+  evaluatedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  evaluatedBy   User     @relation("EvaluationEvaluator", fields: [evaluatedById], references: [id], onDelete: Cascade)
+
+  @@unique([entityType, entityId, period])
 }
 
 model Office {

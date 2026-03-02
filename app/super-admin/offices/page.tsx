@@ -1003,6 +1003,66 @@ export default function OfficesPage() {
     }
   }
 
+  function formatDateShort(s: string | null): string {
+    if (!s) return "";
+    try {
+      return new Intl.DateTimeFormat("ar-IQ", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        numberingSystem: "arab",
+      }).format(new Date(s));
+    } catch {
+      return s;
+    }
+  }
+
+  function escapeCsv(val: string): string {
+    const s = String(val ?? "").replace(/"/g, '""');
+    return /[",\n\r]/.test(s) ? `"${s}"` : s;
+  }
+
+  const exportToExcel = () => {
+    const headers = [
+      "م",
+      "اسم المكتب",
+      "نوع المكتب",
+      "مدير المكتب",
+      "رقم الهاتف",
+      "تاريخ التكليف",
+      "العنوان",
+      "عدد المستخدمين",
+      "عدد المعاملات",
+      "الحالة",
+    ];
+    const rows = offices.map((o, i) =>
+      [
+        i + 1,
+        o.name || "",
+        o.type || "",
+        o.manager?.name || o.managerName || "",
+        o.managerPhone || "",
+        o.assignmentDate ? formatDateShort(o.assignmentDate) : "",
+        o.location || "",
+        String(o.userCount ?? 0),
+        String(o.transactionCount ?? 0),
+        o.status === "ACTIVE" ? "مفعّل" : "معطّل",
+      ].map((v) => escapeCsv(String(v)))
+    );
+    const csv = "\uFEFF" + [headers.map(escapeCsv).join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `جدول_المكاتب_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   const totalCount = offices.length;
   const activeCount = offices.filter((o) => o.status === "ACTIVE").length;
   const inactiveCount = offices.filter((o) => o.status === "INACTIVE").length;
@@ -1045,18 +1105,62 @@ export default function OfficesPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print\\:hidden { display: none !important; }
+          .print-table-wrap { box-shadow: none !important; border: 1px solid #1e3a5f !important; overflow: visible !important; }
+          .print-table-wrap .overflow-x-auto { overflow: visible !important; }
+          .print-table-wrap table { width: 100% !important; min-width: 0 !important; border-collapse: collapse; font-size: 8pt; table-layout: fixed; }
+          .print-table-wrap th, .print-table-wrap td { border: 1px solid #1e3a5f; padding: 3px 4px; text-align: right; overflow: hidden; word-break: break-word; }
+          .print-table-wrap thead th { background: #1e3a5f !important; color: white !important; font-weight: bold; }
+          .print-header { margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #1e3a5f; }
+          .print-header h2 { font-size: 14pt; margin: 0; color: #1e3a5f; }
+          .print-header p { font-size: 9pt; margin: 4px 0 0; color: #5a6c7d; }
+        }
+      `}</style>
+      {/* ترويسة الطباعة — تظهر عند الطباعة فقط */}
+      <div className="hidden print:block print-header">
+        <h2>جدول المكاتب — بوابة الصادقون</h2>
+        <p>تاريخ الطباعة: {formatDate(new Date().toISOString())}</p>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
         <h1 className="text-2xl font-bold text-[#1B1B1B]">إدارة المكاتب</h1>
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="rounded-xl bg-[#1E6B3A] px-4 py-2.5 font-medium text-white transition hover:bg-[#175a2e]"
-        >
-          إضافة مكتب
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={exportToExcel}
+            disabled={loading || offices.length === 0}
+            className="flex items-center gap-2 rounded-xl border border-[#5B7C99] bg-[#5B7C99] px-4 py-2.5 font-medium text-white transition hover:bg-[#4a6a85] disabled:opacity-50 print:hidden"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            تصدير إكسل
+          </button>
+          <button
+            type="button"
+            onClick={handlePrint}
+            disabled={loading || offices.length === 0}
+            className="flex items-center gap-2 rounded-xl border border-[#1e3a5f] bg-[#1e3a5f] px-4 py-2.5 font-medium text-white transition hover:bg-[#152a45] disabled:opacity-50 print:hidden"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            طباعة
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="rounded-xl bg-[#1E6B3A] px-4 py-2.5 font-medium text-white transition hover:bg-[#175a2e] print:hidden"
+          >
+            إضافة مكتب
+          </button>
+        </div>
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 print:hidden">
         {statCards.map((card) => (
           <div
             key={card.label}
@@ -1071,40 +1175,63 @@ export default function OfficesPage() {
         ))}
       </section>
 
-      <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
+      <article className="print-table-wrap rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
         {loading ? (
           <p className="py-8 text-center text-[#5a5a5a]">جاري التحميل…</p>
         ) : offices.length === 0 ? (
           <p className="py-8 text-center text-[#5a5a5a]">لا توجد مكاتب مسجلة.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-right">
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full min-w-[900px] print:min-w-0 text-right">
               <thead>
-                <tr className="border-b border-[#d4cfc8] text-sm font-medium text-[#5a5a5a]">
-                  <th className="py-3 pr-2">اسم المكتب</th>
-                  <th className="py-3 pr-2">مدير المكتب</th>
-                  <th className="py-3 pr-2">الصورة</th>
+                <tr className="border-b border-[#d4cfc8] text-sm font-medium text-[#5a6c7d]">
+                  <th className="py-3 pr-2">م</th>
+                  <th className="py-3 pr-2">
+                    <span className="print:hidden">اسم المكتب</span>
+                    <span className="hidden print:inline">الاسم</span>
+                  </th>
+                  <th className="py-3 pr-2">
+                    <span className="print:hidden">نوع المكتب</span>
+                    <span className="hidden print:inline">النوع</span>
+                  </th>
+                  <th className="py-3 pr-2">
+                    <span className="print:hidden">مدير المكتب</span>
+                    <span className="hidden print:inline">المدير</span>
+                  </th>
+                  <th className="py-3 pr-2 print:hidden">الصورة</th>
                   <th className="py-3 pr-2">الهاتف</th>
-                  <th className="py-3 pr-2">تاريخ التكليف</th>
-                  <th className="py-3 pr-2">الحسابات المرتبطة</th>
+                  <th className="py-3 pr-2">
+                    <span className="print:hidden">تاريخ التكليف</span>
+                    <span className="hidden print:inline">التكليف</span>
+                  </th>
+                  <th className="py-3 pr-2">
+                    <span className="print:hidden">الحسابات المرتبطة</span>
+                    <span className="hidden print:inline">الحسابات</span>
+                  </th>
+                  <th className="py-3 pr-2">
+                    <span className="print:hidden">عدد المعاملات</span>
+                    <span className="hidden print:inline">المعاملات</span>
+                  </th>
                   <th className="py-3 pr-2">العنوان</th>
                   <th className="py-3 pr-2">الحالة</th>
-                  <th className="py-3 pl-2">إجراءات</th>
+                  <th className="py-3 pl-2 print:hidden">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
-                {offices.map((o) => (
+                {offices.map((o, idx) => (
                   <tr
                     key={o.id}
                     className="border-b border-[#d4cfc8]/80 last:border-0"
                   >
+                    <td className="py-3 pr-2 text-[#5a5a5a]">{idx + 1}</td>
                     <td className="py-3 pr-2 font-medium text-[#1B1B1B]">
                       {o.name || "—"}
                     </td>
+                    <td className="py-3 pr-2 text-[#5a5a5a]">{o.type || "—"}</td>
                     <td className="py-3 pr-2 text-[#1B1B1B]">
                       {o.manager?.name || o.managerName || "—"}
                     </td>
-                    <td className="py-3 pr-2">
+                    <td className="py-3 pr-2 print:hidden">
                       {o.managerAvatarUrl ? (
                         <img
                           src={o.managerAvatarUrl}
@@ -1122,8 +1249,14 @@ export default function OfficesPage() {
                       {formatDate(o.assignmentDate)}
                     </td>
                     <td className="py-3 pr-2">
-                      <LinkedAccountsCell office={o} />
+                      <span className="print:hidden">
+                        <LinkedAccountsCell office={o} />
+                      </span>
+                      <span className="hidden print:inline text-[#5a5a5a]">
+                        {(o.linkedUsers?.length ?? 0) > 0 ? o.linkedUsers!.length : "—"}
+                      </span>
                     </td>
+                    <td className="py-3 pr-2 text-[#5a5a5a]">{o.transactionCount ?? 0}</td>
                     <td
                       className="max-w-[160px] truncate py-3 pr-2 text-[#5a5a5a]"
                       title={o.location || undefined}
@@ -1141,7 +1274,7 @@ export default function OfficesPage() {
                         {o.status === "ACTIVE" ? "مفعّل" : "معطّل"}
                       </span>
                     </td>
-                    <td className="py-3 pl-2">
+                    <td className="py-3 pl-2 print:hidden">
                       <div className="flex flex-wrap gap-1">
                         <button
                           type="button"

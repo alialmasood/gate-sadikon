@@ -232,8 +232,8 @@ export default function OfficeAnalyticsPage() {
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1e3a5f]/50 border-t-transparent" />
               </div>
             ) : analytics?.officesChartData && analytics.officesChartData.length > 0 ? (
-              <div className="h-52 flex-1">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="min-h-[208px] w-full" style={{ minWidth: 0 }}>
+                <ResponsiveContainer width="100%" height={208} minHeight={208}>
                   <BarChart data={analytics.officesChartData} layout="vertical" margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="2 2" stroke="#f0f0f0" />
                     <XAxis type="number" tick={{ fontSize: 12, fill: "#555" }} />
@@ -258,9 +258,9 @@ export default function OfficeAnalyticsPage() {
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1e3a5f]/50 border-t-transparent" />
               </div>
             ) : analytics?.statusData && analytics.statusData.some((d) => d.value > 0) ? (
-              <div className="flex min-h-[200px] flex-1 flex-row items-center gap-4">
-                <div className="h-36 min-w-[140px] flex-1 shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
+              <div className="flex min-h-[200px] flex-1 flex-row items-center gap-4" style={{ minHeight: 0 }}>
+                <div className="h-36 min-h-[144px] min-w-[140px] flex-1 shrink-0" style={{ minWidth: 0 }}>
+                  <ResponsiveContainer width="100%" height={144} minHeight={144}>
                     <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
                       <Pie data={analytics.statusData} cx="50%" cy="50%" innerRadius={36} outerRadius={52} paddingAngle={1} dataKey="value">
                         {analytics.statusData.map((_, i) => (
@@ -297,8 +297,8 @@ export default function OfficeAnalyticsPage() {
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1e3a5f]/50 border-t-transparent" />
             </div>
           ) : analytics?.timelineData && analytics.timelineData.length > 0 ? (
-            <div className="h-44 flex-1">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="min-h-[176px] w-full" style={{ minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height={176} minHeight={176}>
                 <AreaChart data={analytics.timelineData}>
                   <defs>
                     <linearGradient id="officeAnalyticsAreaGrad" x1="0" y1="0" x2="0" y2="1">

@@ -153,7 +153,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   return (
     <div className="flex min-h-screen bg-[#FAFAF9]" dir="rtl">
       <aside
-        className={`fixed inset-y-0 right-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden border-l border-[#d4cfc8] bg-white shadow-lg transition-[width,transform] duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
+        className={`fixed inset-y-0 right-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden border-l border-[#d4cfc8] bg-white shadow-lg transition-[width,transform] duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 print:hidden ${
           sidebarOpen ? "translate-x-0" : "translate-x-full"
         } ${sidebarCollapsed ? "w-[72px]" : "w-64"}`}
       >
@@ -244,12 +244,15 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                           <span className="flex-1 truncate">{item.label}</span>
                           {badge != null && badge > 0 && (
                             <span
-                              title={item.badgeKey === "overdue" ? "معاملات متأخرة" : "معاملات اليوم"}
-                              className={`min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs font-semibold ${
+                              title={item.badgeKey === "overdue" ? "معاملات متأخرة" : "عدد المعاملات المُنشأة اليوم"}
+                              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                                 item.badgeKey === "overdue" ? "bg-red-100 text-red-700" : "bg-[#1E6B3A]/15 text-[#1E6B3A]"
                               }`}
                             >
                               {badge}
+                              <span className="text-[10px] font-normal opacity-90">
+                                {item.badgeKey === "overdue" ? "متأخرة" : "اليوم"}
+                              </span>
                             </span>
                           )}
                         </>
@@ -280,13 +283,13 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         <button
           type="button"
           aria-label="إغلاق"
-          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/30 lg:hidden print:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-[#d4cfc8] bg-white/95 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-[#d4cfc8] bg-white/95 px-4 backdrop-blur sm:px-6 print:hidden">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}

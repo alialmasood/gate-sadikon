@@ -202,10 +202,11 @@ export default function SuperAdminDashboard() {
   const [delegatesChartData, setDelegatesChartData] = useState<ComparisonPoint[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [chartsLoading, setChartsLoading] = useState(true);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/super-admin/stats");
+      const res = await fetch("/api/super-admin/stats", { credentials: "include" });
       if (res.ok) setStats(await res.json());
     } catch {
       //
@@ -214,7 +215,7 @@ export default function SuperAdminDashboard() {
 
   const loadOffices = useCallback(async () => {
     try {
-      const res = await fetch("/api/super-admin/offices");
+      const res = await fetch("/api/super-admin/offices", { credentials: "include" });
       if (res.ok) {
         const list = await res.json();
         setOffices(list);
@@ -226,15 +227,23 @@ export default function SuperAdminDashboard() {
 
   const loadCharts = useCallback(async () => {
     setChartsLoading(true);
+    setTimelineError(null);
+    const opts = { credentials: "include" as RequestCredentials };
     try {
       const [timelineRes, statusRes, activityRes, officesRes, delegatesRes] = await Promise.all([
-        fetch(`/api/super-admin/charts?chart=timeline&period=${period}${officeId ? `&officeId=${officeId}` : ""}`),
-        fetch(`/api/super-admin/charts?chart=status${officeId ? `&officeId=${officeId}` : ""}`),
-        fetch(`/api/super-admin/charts?chart=activity${officeId ? `&officeId=${officeId}` : ""}`),
-        fetch(`/api/super-admin/charts?chart=offices${officeId ? `&officeId=${officeId}` : ""}`),
-        fetch(`/api/super-admin/charts?chart=delegates&period=${period}${officeId ? `&officeId=${officeId}` : ""}`),
+        fetch(`/api/super-admin/charts?chart=timeline&period=${period}${officeId ? `&officeId=${officeId}` : ""}`, opts),
+        fetch(`/api/super-admin/charts?chart=status${officeId ? `&officeId=${officeId}` : ""}`, opts),
+        fetch(`/api/super-admin/charts?chart=activity${officeId ? `&officeId=${officeId}` : ""}`, opts),
+        fetch(`/api/super-admin/charts?chart=offices${officeId ? `&officeId=${officeId}` : ""}`, opts),
+        fetch(`/api/super-admin/charts?chart=delegates&period=${period}${officeId ? `&officeId=${officeId}` : ""}`, opts),
       ]);
-      if (timelineRes.ok) setTimelineData(await timelineRes.json());
+      if (timelineRes.ok) {
+        const data = await timelineRes.json();
+        setTimelineData(Array.isArray(data) ? data : []);
+      } else {
+        const err = await timelineRes.text().catch(() => "");
+        setTimelineError(`تحميل الفترة الزمنية فشل (${timelineRes.status})${err ? `: ${err.slice(0, 80)}` : ""}`);
+      }
       if (statusRes.ok) setStatusData(await statusRes.json());
       if (activityRes.ok) setActivity(await activityRes.json());
       if (officesRes.ok) setOfficesChartData(await officesRes.json());
@@ -612,8 +621,8 @@ export default function SuperAdminDashboard() {
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#B08D57]/50 border-t-transparent" />
             </div>
           ) : officesChartData.length > 0 ? (
-            <div className="h-52 flex-1">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="min-h-[208px] w-full" style={{ minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height={208} minHeight={208}>
                 <BarChart data={officesChartData} layout="vertical" margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="2 2" stroke="#f0f0f0" />
                   <XAxis type="number" tick={{ fontSize: 12, fill: "#555" }} />
@@ -644,8 +653,8 @@ export default function SuperAdminDashboard() {
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#B08D57]/50 border-t-transparent" />
             </div>
           ) : delegatesChartData.length > 0 ? (
-            <div className="h-52 flex-1">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="min-h-[208px] w-full" style={{ minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height={208} minHeight={208}>
                 <BarChart data={delegatesChartData} layout="vertical" margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="2 2" stroke="#f0f0f0" />
                   <XAxis type="number" tick={{ fontSize: 12, fill: "#555" }} />
@@ -754,13 +763,18 @@ export default function SuperAdminDashboard() {
               إجمالي المعاملات من جميع المكاتب — تجميع من صفحات الاستقبال والفرز
               {officeId ? ` (مكتب محدد)` : " (كل المكاتب)"}
             </p>
-            {chartsLoading ? (
+            {timelineError ? (
+              <div className="flex min-h-[150px] flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+                <p className="text-sm font-medium text-amber-800">{timelineError}</p>
+                <p className="text-xs text-amber-700">تأكد من تسجيل الدخول كمدير أعلى وتحديث الصفحة</p>
+              </div>
+            ) : chartsLoading ? (
               <div className="flex min-h-[150px] flex-1 items-center justify-center">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#B08D57]/50 border-t-transparent" />
               </div>
             ) : timelineData.length > 0 ? (
-              <div className="h-48 flex-1">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="min-h-[192px] w-full" style={{ minWidth: 0 }}>
+                <ResponsiveContainer width="100%" height={192} minHeight={192}>
                   <AreaChart data={timelineData} margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
                     <defs>
                       <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -770,7 +784,7 @@ export default function SuperAdminDashboard() {
                     </defs>
                     <CartesianGrid strokeDasharray="2 2" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tickFormatter={(v) => formatDate(v)} tick={{ fontSize: 12, fill: "#555" }} />
-                    <YAxis tick={{ fontSize: 12, fill: "#555" }} />
+                    <YAxis tick={{ fontSize: 12, fill: "#555" }} domain={(_min, max) => [0, Math.max(Number(max) ?? 0, 1)]} />
                     <Tooltip
                       contentStyle={{ borderRadius: 8, border: "1px solid #e5e5e5", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", fontSize: 14 }}
                       labelFormatter={(v) => formatDate(v)}
@@ -798,9 +812,9 @@ export default function SuperAdminDashboard() {
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#B08D57]/50 border-t-transparent" />
               </div>
             ) : statusData.length > 0 && statusData.some((d) => d.value > 0) ? (
-              <div className="flex min-h-[150px] flex-1 flex-row items-center gap-4">
-                <div className="h-36 min-w-[140px] flex-1 shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
+              <div className="flex min-h-[150px] flex-1 flex-row items-center gap-4" style={{ minHeight: 0 }}>
+                <div className="h-36 min-h-[144px] min-w-[140px] flex-1 shrink-0" style={{ minWidth: 0 }}>
+                  <ResponsiveContainer width="100%" height={144} minHeight={144}>
                     <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
                       <Pie data={statusData} cx="50%" cy="50%" innerRadius={36} outerRadius={52} paddingAngle={1} dataKey="value">
                         {statusData.map((_, i) => (

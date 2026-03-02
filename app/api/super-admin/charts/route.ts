@@ -26,7 +26,7 @@ function getDateRange(period: string): { gte: Date; lte: Date } {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireSuperAdmin();
+  const auth = await requireSuperAdmin(request);
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { searchParams } = request.nextUrl;
@@ -38,23 +38,28 @@ export async function GET(request: NextRequest) {
 
   if (chart === "timeline") {
     const numDays = 30;
-    const now = new Date();
-    const days: { date: string; count: number }[] = [];
-    for (let i = numDays - 1; i >= 0; i--) {
-      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
-      const count = await prisma.transaction.count({
-        where: {
-          ...baseWhere,
-          createdAt: { gte: dayStart, lt: dayEnd },
-        },
-      });
-      days.push({
-        date: dayStart.toISOString().slice(0, 10),
-        count,
-      });
+    const lte = new Date();
+    lte.setHours(23, 59, 59, 999);
+    const gte = new Date();
+    gte.setHours(0, 0, 0, 0);
+    gte.setDate(gte.getDate() - (numDays - 1));
+    const dayMap = new Map<string, number>();
+    for (let i = 0; i < numDays; i++) {
+      const d = new Date(lte);
+      d.setDate(d.getDate() - (numDays - 1 - i));
+      dayMap.set(d.toISOString().slice(0, 10), 0);
     }
+    const transactions = await prisma.transaction.findMany({
+      where: { ...baseWhere, createdAt: { gte, lte } },
+      select: { createdAt: true },
+    });
+    for (const t of transactions) {
+      const key = t.createdAt.toISOString().slice(0, 10);
+      if (dayMap.has(key)) dayMap.set(key, (dayMap.get(key) ?? 0) + 1);
+    }
+    const days = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }));
     return NextResponse.json(days);
   }
 

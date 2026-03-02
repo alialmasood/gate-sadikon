@@ -1215,9 +1215,119 @@ export default function SuperAdminUsersPage() {
     setCreateModalOpen(true);
   }
 
+  function formatDateShort(s: string | null): string {
+    if (!s) return "";
+    try {
+      return new Intl.DateTimeFormat("ar-IQ", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        numberingSystem: "arab",
+      }).format(new Date(s));
+    } catch {
+      return s;
+    }
+  }
+
+  function escapeCsv(val: string): string {
+    const s = String(val ?? "").replace(/"/g, '""');
+    return /[",\n\r]/.test(s) ? `"${s}"` : s;
+  }
+
+  const [printMode, setPrintMode] = useState<"admins" | "delegates" | null>(null);
+
+  const exportAdminsToExcel = () => {
+    const headers = ["م", "اسم صاحب الحساب", "الاسم المستخدم", "مكتب الارتباط", "وظيفة الحساب", "تاريخ الإنشاء", "رقم الهاتف", "الحالة"];
+    const rows = createdAccounts.map((a, i) =>
+      [
+        i + 1,
+        a.name || "",
+        a.email || "",
+        a.office?.name || "",
+        a.department || "",
+        a.assignmentDate ? formatDateShort(a.assignmentDate) : a.createdAt ? formatDateShort(a.createdAt) : "",
+        a.phone || "",
+        a.enabled ? "مفعّل" : "معطّل",
+      ].map((v) => escapeCsv(String(v)))
+    );
+    const csv = "\uFEFF" + [headers.map(escapeCsv).join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `جدول_حسابات_الإداريين_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportDelegatesToExcel = () => {
+    const headers = ["م", "الرقم التسلسلي", "الوزارة/الهيئة", "الاسم", "الهاتف", "الاسم المستخدم", "تاريخ التكليف", "الحالة"];
+    const rows = delegates.map((d, i) =>
+      [
+        i + 1,
+        d.serialNumber || "",
+        d.ministry || "",
+        d.name || d.email || "",
+        d.phone || "",
+        d.email || "",
+        d.assignmentDate ? formatDateShort(d.assignmentDate) : "",
+        d.enabled ? "مفعّل" : "معطّل",
+      ].map((v) => escapeCsv(String(v)))
+    );
+    const csv = "\uFEFF" + [headers.map(escapeCsv).join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `جدول_حسابات_المخولين_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrintAdmins = () => {
+    setPrintMode("admins");
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
+  const handlePrintDelegates = () => {
+    setPrintMode("delegates");
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
+  useEffect(() => {
+    const onAfterPrint = () => setPrintMode(null);
+    window.addEventListener("afterprint", onAfterPrint);
+    return () => window.removeEventListener("afterprint", onAfterPrint);
+  }, []);
+
   return (
-    <div className="space-y-6" dir="rtl">
-      <div>
+    <div className={`space-y-6 ${printMode === "admins" ? "print-admins-active" : ""} ${printMode === "delegates" ? "print-delegates-active" : ""}`} dir="rtl">
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print\\:hidden { display: none !important; }
+          .print-admins-active .users-page-header,
+          .print-admins-active .users-stat-cards,
+          .print-admins-active .delegates-article { display: none !important; }
+          .print-delegates-active .users-page-header,
+          .print-delegates-active .users-stat-cards,
+          .print-delegates-active .admins-article { display: none !important; }
+          .users-print-table-wrap { box-shadow: none !important; border: 1px solid #1e3a5f !important; overflow: visible !important; }
+          .users-print-table-wrap .overflow-x-auto { overflow: visible !important; }
+          .users-print-table-wrap table { width: 100% !important; min-width: 0 !important; border-collapse: collapse; font-size: 8pt; table-layout: fixed; }
+          .users-print-table-wrap th, .users-print-table-wrap td { border: 1px solid #1e3a5f; padding: 3px 4px; text-align: right; overflow: hidden; word-break: break-word; }
+          .users-print-table-wrap thead th { background: #1e3a5f !important; color: white !important; font-weight: bold; }
+          .users-print-header { margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #1e3a5f; }
+          .users-print-header h2 { font-size: 14pt; margin: 0; color: #1e3a5f; }
+          .users-print-header p { font-size: 9pt; margin: 4px 0 0; color: #5a6c7d; }
+        }
+      `}</style>
+      <div className="users-page-header print:hidden">
         <h1 className="text-2xl font-bold text-[#1B1B1B]">إدارة المستخدمين</h1>
         <p className="mt-1 text-sm text-[#5a5a5a]">
           إنشاء وإدارة حسابات الإداريين وحسابات المخولين. لا يظهر حساب الإدارة العليا هنا.
@@ -1225,12 +1335,12 @@ export default function SuperAdminUsersPage() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600" role="alert">
+        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600 print:hidden" role="alert">
           {error}
         </p>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="users-stat-cards grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => (
           <div
             key={card.label}
@@ -1262,22 +1372,50 @@ export default function SuperAdminUsersPage() {
       />
 
       {/* حسابات الإداريين */}
-      <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <article className="admins-article users-print-table-wrap rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
+        <div className="hidden print:block users-print-header">
+          <h2>جدول حسابات الإداريين — بوابة الصادقون</h2>
+          <p>تاريخ الطباعة: {new Intl.DateTimeFormat("ar-IQ", { dateStyle: "medium", numberingSystem: "arab" }).format(new Date())}</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
           <div>
             <h2 className="text-lg font-semibold text-[#1B1B1B]">حسابات الإداريين</h2>
             <p className="mt-1 text-sm text-[#5a5a5a]">إنشاء وإدارة الحسابات من هذه الصفحة (لا تشمل مدراء المكاتب من صفحة المكاتب).</p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setEditingAccount(null);
-              setCreateModalOpen(true);
-            }}
-            className={`${BORDER_RADIUS} bg-[#1E6B3A] px-4 py-2.5 font-medium text-white transition hover:bg-[#175a2e]`}
-          >
-            إنشاء حساب
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={exportAdminsToExcel}
+              disabled={loading || createdAccounts.length === 0}
+              className="flex items-center gap-2 rounded-xl border border-[#5B7C99] bg-[#5B7C99] px-4 py-2.5 font-medium text-white transition hover:bg-[#4a6a85] disabled:opacity-50"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              تصدير إكسل
+            </button>
+            <button
+              type="button"
+              onClick={handlePrintAdmins}
+              disabled={loading || createdAccounts.length === 0}
+              className="flex items-center gap-2 rounded-xl border border-[#1e3a5f] bg-[#1e3a5f] px-4 py-2.5 font-medium text-white transition hover:bg-[#152a45] disabled:opacity-50"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              طباعة
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingAccount(null);
+                setCreateModalOpen(true);
+              }}
+              className={`${BORDER_RADIUS} bg-[#1E6B3A] px-4 py-2.5 font-medium text-white transition hover:bg-[#175a2e]`}
+            >
+              إنشاء حساب
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -1285,24 +1423,26 @@ export default function SuperAdminUsersPage() {
         ) : createdAccounts.length === 0 ? (
           <p className="mt-4 text-sm text-[#5a5a5a]">لا توجد حسابات منشأة مسجلة.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[800px] text-right">
+          <div className="mt-4 overflow-x-auto print:overflow-visible">
+            <table className="w-full min-w-[800px] print:min-w-0 text-right">
               <thead>
                 <tr className="border-b border-[#d4cfc8] text-sm font-medium text-[#5a5a5a]">
+                  <th className="py-3 pr-2">م</th>
                   <th className="py-3 pr-2">اسم صاحب الحساب</th>
                   <th className="py-3 pr-2">الاسم المستخدم</th>
                   <th className="py-3 pr-2">مكتب الارتباط</th>
                   <th className="py-3 pr-2">وظيفة الحساب</th>
                   <th className="py-3 pr-2">تاريخ الإنشاء</th>
                   <th className="py-3 pr-2">رقم الهاتف</th>
-                  <th className="py-3 pr-2">الصورة</th>
+                  <th className="py-3 pr-2 print:hidden">الصورة</th>
                   <th className="py-3 pr-2">الحالة</th>
-                  <th className="py-3 pl-2">إجراءات</th>
+                  <th className="py-3 pl-2 print:hidden">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
-                {createdAccounts.map((a) => (
+                {createdAccounts.map((a, idx) => (
                   <tr key={a.id} className="border-b border-[#d4cfc8]/80">
+                    <td className="py-3 pr-2 text-[#5a5a5a]">{idx + 1}</td>
                     <td className="py-3 pr-2 font-medium text-[#1B1B1B]">{a.name || "—"}</td>
                     <td className="py-3 pr-2 text-[#1B1B1B]" dir="ltr">{a.email}</td>
                     <td className="py-3 pr-2 text-[#5a5a5a]">{a.office?.name || "—"}</td>
@@ -1315,7 +1455,7 @@ export default function SuperAdminUsersPage() {
                         : "—"}
                     </td>
                     <td className="py-3 pr-2 text-[#5a5a5a]">{a.phone || "—"}</td>
-                    <td className="py-3 pr-2">
+                    <td className="py-3 pr-2 print:hidden">
                       {a.avatarUrl ? (
                         <img src={a.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover border border-[#d4cfc8]" />
                       ) : (
@@ -1325,7 +1465,7 @@ export default function SuperAdminUsersPage() {
                     <td className="py-3 pr-2">
                       <span className={a.enabled ? "text-[#1E6B3A] font-medium" : "text-amber-600 font-medium"}>{a.enabled ? "مفعّل" : "معطّل"}</span>
                     </td>
-                    <td className="py-3 pl-2">
+                    <td className="py-3 pl-2 print:hidden">
                       <div className="flex flex-wrap gap-1">
                         <button
                           type="button"
@@ -1379,43 +1519,73 @@ export default function SuperAdminUsersPage() {
       />
 
       {/* جدول حسابات المخولين */}
-      <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <article className="delegates-article users-print-table-wrap rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
+        <div className="hidden print:block users-print-header">
+          <h2>جدول حسابات المخولين — بوابة الصادقون</h2>
+          <p>تاريخ الطباعة: {new Intl.DateTimeFormat("ar-IQ", { dateStyle: "medium", numberingSystem: "arab" }).format(new Date())}</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
           <div>
             <h2 className="text-lg font-semibold text-[#1B1B1B]">حسابات المخولين</h2>
             <p className="mt-1 text-sm text-[#5a5a5a]">إنشاء وإدارة حسابات المخولين المسؤولين عن تنفيذ المعاملات.</p>
           </div>
-          <button
-            type="button"
-            onClick={() => { setEditingDelegate(null); setDelegateModalOpen(true); }}
-            className={`${BORDER_RADIUS} bg-[#1E6B3A] px-4 py-2.5 font-medium text-white transition hover:bg-[#175a2e]`}
-          >
-            إنشاء مخول
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={exportDelegatesToExcel}
+              disabled={loading || delegates.length === 0}
+              className="flex items-center gap-2 rounded-xl border border-[#5B7C99] bg-[#5B7C99] px-4 py-2.5 font-medium text-white transition hover:bg-[#4a6a85] disabled:opacity-50"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              تصدير إكسل
+            </button>
+            <button
+              type="button"
+              onClick={handlePrintDelegates}
+              disabled={loading || delegates.length === 0}
+              className="flex items-center gap-2 rounded-xl border border-[#1e3a5f] bg-[#1e3a5f] px-4 py-2.5 font-medium text-white transition hover:bg-[#152a45] disabled:opacity-50"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              طباعة
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEditingDelegate(null); setDelegateModalOpen(true); }}
+              className={`${BORDER_RADIUS} bg-[#1E6B3A] px-4 py-2.5 font-medium text-white transition hover:bg-[#175a2e]`}
+            >
+              إنشاء مخول
+            </button>
+          </div>
         </div>
         {loading ? (
           <p className="mt-4 text-[#5a5a5a]">جاري التحميل...</p>
         ) : delegates.length === 0 ? (
           <p className="mt-4 text-sm text-[#5a5a5a]">لا يوجد مخولون مسجلون.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[900px] text-right">
+          <div className="mt-4 overflow-x-auto print:overflow-visible">
+            <table className="w-full min-w-[900px] print:min-w-0 text-right">
               <thead>
                 <tr className="border-b border-[#d4cfc8] text-sm font-medium text-[#5a5a5a]">
+                  <th className="py-3 pr-2">م</th>
                   <th className="py-3 pr-2">الرقم التسلسلي</th>
                   <th className="py-3 pr-2">الوزارة/الهيئة</th>
                   <th className="py-3 pr-2">الاسم</th>
                   <th className="py-3 pr-2">الهاتف</th>
                   <th className="py-3 pr-2">الاسم المستخدم</th>
                   <th className="py-3 pr-2">تاريخ التكليف</th>
-                  <th className="py-3 pr-2">الصورة</th>
+                  <th className="py-3 pr-2 print:hidden">الصورة</th>
                   <th className="py-3 pr-2">الحالة</th>
-                  <th className="py-3 pl-2">إجراءات</th>
+                  <th className="py-3 pl-2 print:hidden">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
-                {delegates.map((d) => (
+                {delegates.map((d, idx) => (
                   <tr key={d.id} className="border-b border-[#d4cfc8]/80">
+                    <td className="py-3 pr-2 text-[#5a5a5a]">{idx + 1}</td>
                     <td className="py-3 pr-2 font-medium text-[#1B1B1B]">{d.serialNumber || "—"}</td>
                     <td className="py-3 pr-2 text-[#5a5a5a]">{d.ministry || "—"}</td>
                     <td className="py-3 pr-2 text-[#1B1B1B]">{d.name || d.email}</td>
@@ -1424,7 +1594,7 @@ export default function SuperAdminUsersPage() {
                     <td className="py-3 pr-2 text-[#5a5a5a]">
                       {d.assignmentDate ? new Date(d.assignmentDate).toLocaleDateString("ar-IQ") : "—"}
                     </td>
-                    <td className="py-3 pr-2">
+                    <td className="py-3 pr-2 print:hidden">
                       {d.avatarUrl ? (
                         <img src={d.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover border border-[#d4cfc8]" />
                       ) : (
@@ -1434,7 +1604,7 @@ export default function SuperAdminUsersPage() {
                     <td className="py-3 pr-2">
                       <span className={d.enabled ? "text-[#1E6B3A] font-medium" : "text-amber-600 font-medium"}>{d.enabled ? "مفعّل" : "معطّل"}</span>
                     </td>
-                    <td className="py-3 pl-2">
+                    <td className="py-3 pl-2 print:hidden">
                       <div className="flex flex-wrap gap-1">
                         <button type="button" onClick={() => setViewingUser(d)} className="rounded-lg border border-[#d4cfc8] bg-white px-2 py-1 text-xs font-medium text-[#B08D57] hover:bg-[#f6f3ed]">عرض</button>
                         <button type="button" onClick={() => { setEditingDelegate(d); setDelegateModalOpen(true); }} className="rounded-lg border border-[#d4cfc8] bg-white px-2 py-1 text-xs font-medium text-[#B08D57] hover:bg-[#f6f3ed]">تعديل</button>

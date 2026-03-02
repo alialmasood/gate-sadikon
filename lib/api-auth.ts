@@ -114,15 +114,15 @@ export async function requireSuperAdminOrAdminOrReception() {
   return { session: result.session, role, officeId: result.user.officeId };
 }
 
-export async function requireSuperAdmin() {
-  const result = await getSessionWithDbValidation();
+export async function requireSuperAdmin(req?: NextRequest) {
+  const result = await getSessionWithDbValidation(req);
   if (!result) {
     return { error: "غير مصرح", status: 403 };
   }
   if (result.user.role !== "SUPER_ADMIN") {
     return { error: "غير مصرح", status: 403 };
   }
-  return { session: result.session };
+  return { session: result.session, userId: result.user.id };
 }
 
 /** عضو مجلس النواب — PARLIAMENT_MEMBER */
