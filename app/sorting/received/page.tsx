@@ -5,6 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
+const SOURCE_SECTION_LABELS: Record<string, string> = {
+  RECEPTION: "الاستعلامات والاستقبال",
+  COORDINATOR: "المتابعة",
+  DOCUMENTATION: "التوثيق",
+  ADMIN: "مدير المكتب",
+  SORTING: "الفرز",
+};
+
 type Transaction = {
   id: string;
   citizenName: string | null;
@@ -23,6 +31,7 @@ type Transaction = {
   completedByAdmin?: boolean;
   formationName?: string | null;
   officeName?: string | null;
+  sourceSection?: string | null;
 };
 
 type DelegateOption = {
@@ -113,10 +122,13 @@ export default function SortingReceivedPage() {
     return { total, pending, overdue };
   }, [transactions]);
 
-  const formationBreakdown = useMemo(() => {
+  const sourceSectionBreakdown = useMemo(() => {
     const map = new Map<string, number>();
     for (const t of transactions) {
-      const key = t.formationName || t.officeName || "وحدة الاستقبال";
+      const key =
+        (t.sourceSection && SOURCE_SECTION_LABELS[t.sourceSection]) ||
+        t.sourceSection ||
+        "غير محدد";
       map.set(key, (map.get(key) || 0) + 1);
     }
     return Array.from(map.entries())
@@ -341,11 +353,11 @@ export default function SortingReceivedPage() {
                 <p className="mt-2 text-2xl font-bold text-[#b91c1c]">{stats.overdue}</p>
               </div>
             </div>
-            {formationBreakdown.length > 0 && (
+            {sourceSectionBreakdown.length > 0 && (
               <div className="border-t border-[#d4cfc8] bg-[#f6f3ed]/30 px-6 py-4">
-                <p className="mb-3 text-sm font-medium text-[#5a5a5a]">حسب الجهة المصدرية (أعلى ٥)</p>
+                <p className="mb-3 text-sm font-medium text-[#5a5a5a]">حسب القسم المصدر (صفحة الاستقبال أو المتابعة أو التوثيق، إلخ) — أعلى ٥</p>
                 <div className="flex flex-wrap gap-3">
-                  {formationBreakdown.map((item, i) => (
+                  {sourceSectionBreakdown.map((item, i) => (
                     <span
                       key={i}
                       className="inline-flex items-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-3 py-1.5 text-sm"

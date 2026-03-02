@@ -18,6 +18,8 @@ function getRedirectByRole(role: string | undefined): string {
   switch (role) {
     case "SUPER_ADMIN":
       return "/super-admin";
+    case "PARLIAMENT_MEMBER":
+      return "/member";
     case "ADMIN":
       return "/admin";
     case "USER":

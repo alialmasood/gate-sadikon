@@ -61,21 +61,24 @@ export default function SortingOutgoingPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [resUrgent, resCannotComplete, resCompletedByAdmin] = await Promise.all([
+      const [resUrgent, resCannotComplete, resCompletedByAdmin, resDelegated] = await Promise.all([
         fetch("/api/transactions?limit=500&urgent=true", { credentials: "include" }),
         fetch("/api/transactions?limit=500&cannotComplete=true", { credentials: "include" }),
         fetch("/api/transactions?limit=500&completedByAdmin=true", { credentials: "include" }),
+        fetch("/api/transactions?limit=500&delegated=true", { credentials: "include" }),
       ]);
       const dataUrgent = await resUrgent.json().catch(() => ({}));
       const dataCannotComplete = await resCannotComplete.json().catch(() => ({}));
       const dataCompletedByAdmin = await resCompletedByAdmin.json().catch(() => ({}));
-      if (resUrgent.ok || resCannotComplete.ok || resCompletedByAdmin.ok) {
+      const dataDelegated = await resDelegated.json().catch(() => ({}));
+      if (resUrgent.ok || resCannotComplete.ok || resCompletedByAdmin.ok || resDelegated.ok) {
         const urgentList = dataUrgent.transactions || [];
         const cannotCompleteList = dataCannotComplete.transactions || [];
         const completedByAdminList = dataCompletedByAdmin.transactions || [];
+        const delegatedList = dataDelegated.transactions || [];
         const seen = new Set<string>();
         const merged: Transaction[] = [];
-        for (const t of [...urgentList, ...cannotCompleteList, ...completedByAdminList]) {
+        for (const t of [...urgentList, ...cannotCompleteList, ...completedByAdminList, ...delegatedList]) {
           if (!seen.has(t.id)) {
             seen.add(t.id);
             merged.push(t);
@@ -149,7 +152,7 @@ export default function SortingOutgoingPage() {
         <div>
           <h2 className="text-lg font-semibold text-[#1B1B1B]">المعاملات الصادرة</h2>
           <p className="mt-1 text-sm text-[#5a5a5a]">
-            المعاملات العاجلة، تعذر إنجازها، والمنجزة من المدير — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
+            المعاملات المحوّلة للمخولين، العاجلة، تعذر إنجازها، والمنجزة من المدير — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
             {lastUpdate && (
               <span className="mr-2 text-xs text-[#7C3AED]">(آخر تحديث: {formatDate(lastUpdate.toISOString())})</span>
             )}
@@ -191,6 +194,13 @@ export default function SortingOutgoingPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         لا يمكن الانجاز
+                      </span>
+                    ) : t.delegateName ? (
+                      <span className="flex items-center gap-1 rounded-full bg-[#1E6B3A]/15 px-2.5 py-0.5 text-xs font-medium text-[#1E6B3A]">
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        </svg>
+                        محوّلة للمخول
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">

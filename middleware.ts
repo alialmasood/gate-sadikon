@@ -6,7 +6,8 @@ const secret = process.env.NEXTAUTH_SECRET;
 
 // أي مسار مسموح لكل دور (SUPER_ADMIN يصل لجميع المسارات)
 const ROLE_ROUTES: Record<string, string[]> = {
-  SUPER_ADMIN: ["/super-admin", "/admin", "/user", "/authorized", "/coordinator", "/auditor", "/reception", "/sorting", "/documentation"],
+  SUPER_ADMIN: ["/super-admin", "/admin", "/user", "/authorized", "/coordinator", "/auditor", "/reception", "/sorting", "/documentation", "/member"],
+  PARLIAMENT_MEMBER: ["/member"],
   ADMIN: ["/admin"],
   USER: ["/user", "/authorized"],
   AUDITOR: ["/auditor"],
@@ -37,6 +38,8 @@ function getDefaultRoute(role: string | undefined, serialNumber?: string): strin
   switch (role) {
     case "SUPER_ADMIN":
       return "/super-admin";
+    case "PARLIAMENT_MEMBER":
+      return "/member";
     case "ADMIN":
       return "/admin";
     case "USER":
@@ -94,7 +97,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/auditor") ||
     pathname.startsWith("/reception") ||
     pathname.startsWith("/sorting") ||
-    pathname.startsWith("/documentation");
+    pathname.startsWith("/documentation") ||
+    pathname.startsWith("/member");
 
   if (isProtected && !isLoggedIn) {
     const login = new URL("/login", request.url);
@@ -123,6 +127,7 @@ export const config = {
     "/reception/:path*",
     "/sorting/:path*",
     "/documentation/:path*",
+    "/member/:path*",
     "/forbidden",
   ],
 };

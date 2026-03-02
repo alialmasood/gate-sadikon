@@ -77,7 +77,7 @@ async function generateUniqueSerial(): Promise<string> {
 export async function POST(request: NextRequest) {
   const auth = await requireAdminOrReception(request);
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  const { officeId, role } = auth;
 
   if (!officeId) {
     return NextResponse.json({ error: "الحساب غير مرتبط بمكتب — يرجى التواصل مع المدير لربط حسابك بمكتب" }, { status: 403 });
@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
       subDeptId,
       serialNumber,
       attachments: attachments ? (attachments as object) : undefined,
+      sourceSection: role === "RECEPTION" ? "RECEPTION" : role === "ADMIN" ? "ADMIN" : null,
     },
     include: {
       delegate: { select: { name: true } },

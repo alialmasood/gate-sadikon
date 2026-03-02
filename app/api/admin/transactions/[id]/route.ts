@@ -169,6 +169,7 @@ export async function PATCH(
         }
         adminData.delegateId = delegateId;
         adminData.assignedFromSection = "ADMIN";
+        adminData.sourceSection = "ADMIN";
         adminData.urgent = false;
         adminData.reachedSorting = true;
       } else {
@@ -218,7 +219,7 @@ export async function PATCH(
         }
         sortData.delegateId = delegateId;
         sortData.assignedFromSection = "SORTING";
-        sortData.urgent = true;
+        sortData.urgent = false;
         sortData.reachedSorting = true;
       } else {
         sortData.delegateId = null;
@@ -276,6 +277,10 @@ export async function PATCH(
     data.attachments = body.attachments
       .filter((a): a is { url: string; name?: string } => typeof a?.url === "string")
       .map((a) => ({ url: a.url, name: typeof a.name === "string" ? a.name : undefined })) as object;
+  }
+
+  if (role === "COORDINATOR" && Object.keys(data).length > 0) {
+    data.sourceSection = "COORDINATOR";
   }
 
   if (Object.keys(data).length === 0) {

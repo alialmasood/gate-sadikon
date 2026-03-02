@@ -67,7 +67,7 @@ export async function requireAdminOrReception(req?: NextRequest) {
     return { error: "غير مصرح", status: 403 };
   }
   const officeId = result.user.officeId ?? undefined;
-  return { session: result.session, officeId };
+  return { session: result.session, officeId, role: result.user.role };
 }
 
 /** مدير مكتب أو موظف استقبال أو قسم الفرز أو تنسيق ومتابعة — للقراءة وعرض تفاصيل المعاملات، SORTING يمكنه تعيين عاجل فقط */
@@ -123,6 +123,14 @@ export async function requireSuperAdmin() {
     return { error: "غير مصرح", status: 403 };
   }
   return { session: result.session };
+}
+
+/** عضو مجلس النواب — PARLIAMENT_MEMBER */
+export async function requireParliamentMember(req?: NextRequest) {
+  const result = await getSessionWithDbValidation(req);
+  if (!result) return { error: "غير مصرح", status: 403 };
+  if (result.user.role !== "PARLIAMENT_MEMBER") return { error: "غير مصرح", status: 403 };
+  return { session: result.session, userId: result.user.id };
 }
 
 /** المخول: USER مع delegate مرتبط بحسابه — يُرجع delegateId */

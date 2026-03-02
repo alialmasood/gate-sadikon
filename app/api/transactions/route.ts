@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
   const urgentOnly = searchParams.get("urgent") === "true";
   const cannotCompleteOnly = searchParams.get("cannotComplete") === "true";
   const completedByAdminOnly = searchParams.get("completedByAdmin") === "true";
+  const delegatedOnly = searchParams.get("delegated") === "true";
   const dateFrom = searchParams.get("dateFrom")?.trim();
   const dateTo = searchParams.get("dateTo")?.trim();
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 3000);
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
   if (urgentOnly) where.urgent = true;
   if (cannotCompleteOnly) where.cannotComplete = true;
   if (completedByAdminOnly) where.completedByAdmin = true;
+  if (delegatedOnly) where.delegateId = { not: null };
 
   if (dateFrom || dateTo) {
     const gte = dateFrom ? new Date(dateFrom + "T00:00:00") : undefined;
@@ -91,6 +93,7 @@ export async function GET(request: NextRequest) {
       reachedSorting: t.reachedSorting,
       formationName: t.formation?.name ?? null,
       officeName: t.office?.name ?? null,
+      sourceSection: t.sourceSection ?? null,
       updatedAt: t.updatedAt,
       completedByAdmin: t.completedByAdmin ?? false,
       delegateActions: t.delegateActions ?? [],

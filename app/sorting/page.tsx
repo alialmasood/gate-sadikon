@@ -17,6 +17,14 @@ import {
 
 const PIE_COLORS = ["#7C3AED", "#1E6B3A", "#B08D57", "#b91c1c", "#5B7C99", "#6b7280", "#0ea5e9"];
 
+const SOURCE_SECTION_LABELS: Record<string, string> = {
+  RECEPTION: "الاستعلامات والاستقبال",
+  COORDINATOR: "المتابعة",
+  DOCUMENTATION: "التوثيق",
+  ADMIN: "مدير المكتب",
+  SORTING: "الفرز",
+};
+
 type Transaction = {
   id: string;
   citizenName: string | null;
@@ -32,6 +40,7 @@ type Transaction = {
   delegateName?: string | null;
   formationName?: string | null;
   officeName?: string | null;
+  sourceSection?: string | null;
 };
 
 type DailyReport = {
@@ -237,10 +246,15 @@ export default function SortingDashboard() {
           ].filter((x) => x.value > 0)
         );
 
-        const pending = received;
+        const pending = all.filter(
+          (t) => !t.urgent && !t.cannotComplete && !t.delegateName && t.status !== "DONE"
+        );
         const grouped = new Map<string, AlertGroup>();
         for (const t of pending) {
-          const sourceName = t.formationName || t.officeName || "وحدة الاستقبال";
+          const sourceName =
+            (t.sourceSection && SOURCE_SECTION_LABELS[t.sourceSection]) ||
+            t.sourceSection ||
+            "غير محدد";
           const txType = t.transactionType || t.type || "—";
           const key = `${sourceName}|${txType}`;
           const existing = grouped.get(key);
@@ -381,7 +395,6 @@ export default function SortingDashboard() {
         <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
           <div className="border-b border-[#d4cfc8] bg-amber-50/50 px-6 py-3">
             <h2 className="text-base font-semibold text-[#1B1B1B]">تنبيهات المعاملات المستلمة</h2>
-            <p className="mt-0.5 text-sm text-[#5a5a5a]">معاملات واردة تحتاج إلى مراجعة وإجراء</p>
           </div>
           <div className="space-y-4 p-6">
           {alertGroups.map((g, i) => (
@@ -399,10 +412,10 @@ export default function SortingDashboard() {
                   </span>
                   <div>
                     <p className="font-medium text-amber-900">
-                      لديك <strong>{g.count}</strong> معاملة من قسم <strong>{g.sourceName}</strong>
+                      لديك <strong>{g.count}</strong> معاملة واردة من قسم <strong>{g.sourceName}</strong>
                     </p>
                     <p className="mt-0.5 text-sm text-amber-800">
-                      نوع المعاملة: <strong>{g.transactionType}</strong> — تاريخ استلام أحدث معاملة: {formatDate(g.latestReceiptDate)}
+                      نوع المعاملة: <strong>{g.transactionType}</strong> — تاريخ الاستلام: {formatDate(g.latestReceiptDate)}
                     </p>
                   </div>
                 </div>

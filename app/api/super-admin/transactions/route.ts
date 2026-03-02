@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   const status = typeof body.status === "string" ? body.status : "PENDING";
   const type = typeof body.type === "string" ? body.type.trim() || null : null;
   const transaction = await prisma.transaction.create({
-    data: { citizenName, officeId, status, type },
+    data: { citizenName, officeId, status, type, sourceSection: "ADMIN" },
     include: { office: { select: { id: true, name: true } } },
   });
   return NextResponse.json(transaction);

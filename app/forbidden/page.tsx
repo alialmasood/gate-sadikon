@@ -10,6 +10,8 @@ function getDashboardUrl(role: string | undefined, serialNumber?: string): strin
   switch (role) {
     case "SUPER_ADMIN":
       return "/super-admin";
+    case "PARLIAMENT_MEMBER":
+      return "/member";
     case "ADMIN":
       return "/admin";
     case "USER":

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 
 type LinkedUser = {
   id: string;
@@ -723,6 +724,114 @@ function DetailItem({
   );
 }
 
+function LinkedAccountsCell({ office }: { office: Office }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const linkedUsers = office.linkedUsers ?? [];
+  const count = linkedUsers.length;
+
+  const updatePosition = useCallback(() => {
+    const el = btnRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const popoverWidth = 320;
+    const spaceRight = rect.right;
+    const spaceLeft = window.innerWidth - rect.left;
+    const alignRight = spaceRight >= spaceLeft;
+    setPos({
+      top: rect.bottom + 4,
+      right: alignRight ? window.innerWidth - rect.right : window.innerWidth - rect.left,
+    });
+  }, []);
+
+  const handleToggle = useCallback(() => {
+    if (!open) {
+      updatePosition();
+    }
+    setOpen((o) => !o);
+  }, [open, updatePosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleScroll = () => updatePosition();
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open, updatePosition]);
+
+  if (count === 0) {
+    return <span className="text-[#5a5a5a]">—</span>;
+  }
+
+  const popoverContent = open && (
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-40"
+        onClick={() => setOpen(false)}
+        aria-label="إغلاق"
+      />
+      <div
+        className="fixed z-50 min-w-[280px] max-w-[340px] rounded-xl border border-[#d4cfc8] bg-white py-2 shadow-xl"
+        role="dialog"
+        aria-label="الحسابات المرتبطة"
+        style={{ top: pos.top, right: pos.right }}
+      >
+        <div className="border-b border-[#d4cfc8] px-4 py-2">
+          <p className="text-sm font-semibold text-[#1B1B1B]">الحسابات المرتبطة — {office.name}</p>
+        </div>
+        <div className="max-h-[280px] overflow-y-auto px-2 py-1">
+          {linkedUsers.map((u) => (
+            <div
+              key={u.id}
+              className="flex items-center gap-3 rounded-lg border border-[#d4cfc8]/50 bg-[#f6f3ed]/30 px-3 py-2.5"
+            >
+              {u.avatarUrl ? (
+                <img src={u.avatarUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover border border-[#d4cfc8]" />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#d4cfc8]/40 text-sm font-medium text-[#5a5a5a]">
+                  {(u.name || u.email).charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0 flex-1 text-right">
+                <p className="truncate font-medium text-[#1B1B1B]">{u.name || u.email}</p>
+                <p className="truncate text-xs text-[#5a5a5a]" dir="ltr">{u.email}</p>
+                {u.phone && <p className="text-xs text-[#5a5a5a]">{u.phone}</p>}
+                {u.department && <p className="text-xs text-[#5a5a5a]">وظيفة: {u.department}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+
+  const shouldRenderPortal = open && typeof document !== "undefined";
+
+  return (
+    <div className="relative inline-block">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={handleToggle}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-[#d4cfc8] bg-[#f6f3ed]/50 px-3 py-1.5 text-sm font-medium text-[#1B1B1B] transition hover:bg-[#f6f3ed] hover:border-[#B08D57]/50"
+        title="عرض الحسابات المرتبطة"
+      >
+        <svg className="h-4 w-4 text-[#5a5a5a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        عرض ({count})
+      </button>
+      {shouldRenderPortal && createPortal(popoverContent, document.body)}
+    </div>
+  );
+}
+
 export default function OfficesPage() {
   const [offices, setOffices] = useState<Office[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1013,45 +1122,7 @@ export default function OfficesPage() {
                       {formatDate(o.assignmentDate)}
                     </td>
                     <td className="py-3 pr-2">
-                      {o.linkedUsers && o.linkedUsers.length > 0 ? (
-                        <div className="space-y-2">
-                          {o.linkedUsers.map((u) => (
-                            <div
-                              key={u.id}
-                              className="flex items-center gap-2 rounded-lg border border-[#d4cfc8]/60 bg-[#f6f3ed]/50 px-2 py-1.5"
-                              title={`${u.name || u.email}\n${u.phone ? `هاتف: ${u.phone}` : ""}\n${u.department ? `وظيفة: ${u.department}` : ""}\n${u.address ? `عنوان: ${u.address}` : ""}`}
-                            >
-                              {u.avatarUrl ? (
-                                <img
-                                  src={u.avatarUrl}
-                                  alt=""
-                                  className="h-8 w-8 shrink-0 rounded-full object-cover border border-[#d4cfc8]"
-                                />
-                              ) : (
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#d4cfc8]/40 text-xs font-medium text-[#5a5a5a]">
-                                  {(u.name || u.email).charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <div className="min-w-0 flex-1 text-right">
-                                <p className="truncate text-sm font-medium text-[#1B1B1B]">
-                                  {u.name || u.email}
-                                </p>
-                                <p className="truncate text-xs text-[#5a5a5a]" dir="ltr">
-                                  {u.email}
-                                </p>
-                                {u.phone && (
-                                  <p className="text-xs text-[#5a5a5a]">{u.phone}</p>
-                                )}
-                                {u.department && (
-                                  <p className="text-xs text-[#5a5a5a]">وظيفة: {u.department}</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-[#5a5a5a]">—</span>
-                      )}
+                      <LinkedAccountsCell office={o} />
                     </td>
                     <td
                       className="max-w-[160px] truncate py-3 pr-2 text-[#5a5a5a]"

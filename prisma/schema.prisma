@@ -110,6 +110,7 @@ model Transaction {
   reachedSorting       Boolean   @default(false)
   completedByAdmin     Boolean   @default(false)
   assignedFromSection  String?   // SORTING | ADMIN | COORDINATOR | RECEPTION — القسم الذي سلّم المعاملة للمخول
+  sourceSection       String?   // RECEPTION | COORDINATOR | DOCUMENTATION | ADMIN — الصفحة/القسم الذي أرسل المعاملة (وليس الوزارة أو التشكيل)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   office           Office    @relation(fields: [officeId], references: [id], onDelete: Cascade)
