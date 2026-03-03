@@ -12,8 +12,15 @@ const tajawal = Tajawal({
 export const metadata: Metadata = {
   title: "بوابة الصادقون",
   description: "منصة إلكترونية لإدارة الطلبات والخدمات والمتابعة المركزية",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "بوابة الصادقون",
+  },
   icons: {
     icon: "/gat.png",
+    apple: "/sadiqooniqon.png",
   },
 };
 

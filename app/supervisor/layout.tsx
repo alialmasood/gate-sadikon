@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
@@ -103,6 +104,7 @@ export default function SupervisorLayout({ children }: { children: React.ReactNo
   }, []);
 
   return (
+    <PwaInstallPrompt>
     <div className="flex min-h-screen bg-[#FAFAF9]" dir="rtl">
       <aside
         className={`fixed inset-y-0 right-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden border-l border-[#d4cfc8] bg-white shadow-lg transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 print:hidden ${
@@ -325,5 +327,6 @@ export default function SupervisorLayout({ children }: { children: React.ReactNo
         </div>
       </div>
     </div>
+    </PwaInstallPrompt>
   );
 }
