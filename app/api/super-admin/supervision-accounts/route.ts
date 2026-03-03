@@ -82,8 +82,10 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[supervision-accounts POST]", err);
+    const showDetails =
+      process.env.NODE_ENV === "development" || process.env.DEBUG_SUPERVISION_API === "1";
     return NextResponse.json(
-      { error: process.env.NODE_ENV === "development" ? message : "حدث خطأ" },
+      { error: showDetails ? message : "حدث خطأ" },
       { status: 500 }
     );
   }
