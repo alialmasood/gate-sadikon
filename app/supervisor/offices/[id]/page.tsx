@@ -2,21 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: "قيد التنفيذ",
-  DONE: "منجزة",
-  OVERDUE: "متأخرة",
-};
-
-const SECTION_LABELS: Record<string, string> = {
-  SORTING: "قسم الفرز",
-  ADMIN: "مدير المكتب",
-  COORDINATOR: "المتابعة",
-  RECEPTION: "الاستقبال",
-  DOCUMENTATION: "التوثيق",
-};
+import { useCallback, useEffect, useState } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 type OfficeDetail = {
   office: {
@@ -35,48 +22,8 @@ type OfficeDetail = {
     pendingCount: number;
     doneCount: number;
     overdueCount: number;
-    delegatesCount: number;
-    formationsCount: number;
   };
-  delegates: {
-    id: string;
-    name: string;
-    serialNumber: string | null;
-    email: string | null;
-    ministry: string | null;
-    department: string | null;
-    assignments: { formationName: string; subDeptName: string | null }[];
-    pendingCount: number;
-    doneCount: number;
-  }[];
-  formations: { id: string; name: string; type: string; subDepts: { id: string; name: string }[] }[];
-  transactions: {
-    id: string;
-    citizenName: string | null;
-    serialNumber: string | null;
-    status: string;
-    formationName: string | null;
-    subDeptName: string | null;
-    delegateName: string | null;
-    reachedSorting: boolean;
-    completedAt: string | null;
-    createdAt: string;
-    assignedFromSection: string | null;
-  }[];
 };
-
-function getTransactionLocation(t: {
-  status: string;
-  reachedSorting: boolean;
-  delegateName: string | null;
-  assignedFromSection: string | null;
-}): string {
-  if (t.status === "DONE") return "منجزة";
-  if (t.delegateName) return `لدى المخول: ${t.delegateName}`;
-  if (t.reachedSorting) return "قسم الفرز — بانتظار التعيين";
-  const sec = t.assignedFromSection ? SECTION_LABELS[t.assignedFromSection] || t.assignedFromSection : "—";
-  return sec;
-}
 
 export default function SupervisorOfficeDetailPage() {
   const params = useParams();
@@ -85,17 +32,30 @@ export default function SupervisorOfficeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!id) return;
-    fetch(`/api/supervisor/offices/${id}`)
-      .then((r) => {
+  const loadOffice = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!id) return;
+      if (!opts?.silent) setLoading(true);
+      try {
+        const r = await fetch(`/api/supervisor/offices/${id}`);
         if (!r.ok) throw new Error("فشل التحميل");
-        return r.json();
-      })
-      .then(setData)
-      .catch(() => setError("تعذر تحميل بيانات المكتب"))
-      .finally(() => setLoading(false));
-  }, [id]);
+        const res = await r.json();
+        setData(res);
+        setError("");
+      } catch {
+        if (!opts?.silent) setError("تعذر تحميل بيانات المكتب");
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [id]
+  );
+
+  useEffect(() => {
+    loadOffice();
+  }, [loadOffice]);
+
+  useAutoRefresh(() => loadOffice({ silent: true }));
 
   if (loading) {
     return (
@@ -121,7 +81,7 @@ export default function SupervisorOfficeDetailPage() {
     );
   }
 
-  const { office, sections, stats, delegates, formations, transactions } = data;
+  const { office, sections, stats } = data;
 
   return (
     <div className="space-y-6 sm:space-y-8" dir="rtl">
@@ -203,90 +163,25 @@ export default function SupervisorOfficeDetailPage() {
           </div>
         </div>
 
-        {/* المخولون */}
-        <div className="rounded-xl border border-[#c9d6e3] bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold text-[#1e3a5f]">المخولون</h3>
-            <span className="text-sm text-[#5a6c7d]">عدد المخولين: <strong className="font-medium text-[#1B1B1B]">{stats.delegatesCount}</strong></span>
-          </div>
-          <div className="mt-4 space-y-4">
-            {delegates.length > 0 ? (
-              <div className="mt-2">
-                <div className="max-h-64 space-y-3 overflow-y-auto pr-1 sm:max-h-56">
-                  {delegates.map((d) => (
-                    <div key={d.id} className="rounded-lg border border-[#c9d6e3]/60 bg-[#f8fafc]/50 p-3">
-                      <div className="flex flex-col gap-1.5 sm:gap-1">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <p className="min-w-0 flex-1 font-medium text-[#1e3a5f]">{d.name}</p>
-                          {d.serialNumber && (
-                            <span className="shrink-0 text-xs text-[#5a6c7d]" dir="ltr">{d.serialNumber}</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#5a6c7d]">
-                          <span className="font-medium text-[#1B1B1B]">التكليفات:</span>{" "}
-                          {d.assignments.length === 0
-                            ? "—"
-                            : [...new Set(d.assignments.map((a) => (a.subDeptName ? `${a.formationName} / ${a.subDeptName}` : a.formationName)))].join("، ")}
-                        </p>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
-                          <span className="text-xs">قيد التنفيذ: <strong className="text-[#1e3a5f]">{d.pendingCount}</strong></span>
-                          <span className="text-xs">منجزة: <strong className="text-[#1E6B3A]">{d.doneCount}</strong></span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-[#5a6c7d]">لا يوجد مخولون مسجلون في النظام</p>
-            )}
-          </div>
-        </div>
-
-        {/* التشكيلات — من صفحات الوزارات والدوائر */}
-        <div className="rounded-xl border border-[#c9d6e3] bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold text-[#1e3a5f]">التشكيلات</h3>
-            <span className="text-sm text-[#5a6c7d]">العدد: <strong className="font-medium text-[#1B1B1B]">{stats.formationsCount}</strong></span>
-          </div>
-          {formations.length > 0 ? (
-            <div className="mt-4 max-h-56 overflow-y-auto pr-1">
-              <ul className="space-y-3 text-sm">
-                {formations.map((f) => (
-                  <li key={f.id} className="rounded-lg border border-[#c9d6e3]/60 bg-[#f8fafc]/50 p-2.5">
-                    <p className="font-medium text-[#1e3a5f]">{f.name}</p>
-                    {f.subDepts.length > 0 ? (
-                      <ul className="mt-1.5 mr-3 space-y-0.5 text-xs text-[#5a6c7d]">
-                        {f.subDepts.map((sd) => (
-                          <li key={sd.id} className="flex items-center gap-1.5">
-                            <span className="h-1 w-1 shrink-0 rounded-full bg-[#1E6B3A]/50" />
-                            {sd.name}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-[#5a6c7d]">لا توجد تشكيلات مسجلة</p>
-          )}
-        </div>
-
         {/* الأقسام والموظفون */}
-        <div className="rounded-xl border border-[#c9d6e3] bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-[#c9d6e3] bg-white p-4 shadow-sm sm:p-5">
           <h3 className="font-semibold text-[#1e3a5f]">أقسام المكتب والموظفون</h3>
           {sections.length === 0 ? (
             <p className="mt-4 text-sm text-[#5a6c7d]">لا يوجد أقسام مسجلة</p>
           ) : (
-            <div className="mt-4 space-y-3 max-h-40 overflow-y-auto">
+            <div className="mt-4 space-y-3">
               {sections.map((sec) => (
-                <div key={sec.name}>
-                  <p className="text-xs font-medium text-[#5a6c7d]">{sec.name}</p>
-                  <ul className="mt-1 space-y-0.5 text-sm text-[#1B1B1B]">
+                <div
+                  key={sec.name}
+                  className="rounded-lg border border-[#c9d6e3]/60 bg-[#f8fafc]/50 p-3 sm:border-0 sm:bg-transparent sm:p-0"
+                >
+                  <p className="mb-2 text-xs font-semibold text-[#1e3a5f] sm:mb-1 sm:text-[#5a6c7d] sm:font-medium">{sec.name}</p>
+                  <ul className="space-y-1.5 text-sm text-[#1B1B1B] sm:mt-1 sm:space-y-0.5">
                     {sec.users.map((u) => (
-                      <li key={u.id}>• {u.name || u.email}</li>
+                      <li key={u.id} className="flex items-center gap-2 sm:gap-0">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E6B3A]/50 sm:hidden" />
+                        <span>{u.name || u.email}</span>
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -296,56 +191,19 @@ export default function SupervisorOfficeDetailPage() {
         </div>
       </div>
 
-      {/* قائمة المعاملات */}
-      <div className="overflow-hidden rounded-xl border border-[#c9d6e3] bg-white shadow-sm">
-        <div className="border-b border-[#c9d6e3] bg-gradient-to-br from-[#1E6B3A]/5 to-transparent px-5 py-4">
-          <h3 className="font-semibold text-[#1e3a5f]">المعاملات (آخر ٥٠)</h3>
-          <p className="mt-1 text-sm text-[#5a6c7d]">حالة كل معاملة وأين وصلت</p>
-        </div>
-        {transactions.length === 0 ? (
-          <div className="p-8 text-center text-[#5a6c7d]">لا توجد معاملات</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-right">
-              <thead>
-                <tr className="border-b border-[#c9d6e3] bg-[#f8fafc] text-sm font-medium text-[#5a6c7d]">
-                  <th className="py-3 pr-2">م</th>
-                  <th className="py-3 pr-2">المواطن</th>
-                  <th className="py-3 pr-2">الرقم</th>
-                  <th className="py-3 pr-2">الحالة</th>
-                  <th className="py-3 pr-2">مكان المعاملة</th>
-                  <th className="py-3 pr-2">التاريخ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((t, i) => (
-                  <tr key={t.id} className="border-b border-[#c9d6e3]/50">
-                    <td className="py-3 pr-2 text-[#5a6c7d]">{i + 1}</td>
-                    <td className="py-3 pr-2 font-medium text-[#1B1B1B]">{t.citizenName || "—"}</td>
-                    <td className="py-3 pr-2 text-[#1B1B1B]" dir="ltr">{t.serialNumber || "—"}</td>
-                    <td className="py-3 pr-2">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          t.status === "DONE"
-                            ? "bg-green-100 text-green-800"
-                            : t.status === "OVERDUE"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {STATUS_LABELS[t.status] || t.status}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-2 text-sm text-[#1B1B1B]">{getTransactionLocation(t)}</td>
-                    <td className="py-3 pr-2 text-sm text-[#5a6c7d]">
-                      {new Date(t.createdAt).toLocaleDateString("ar-IQ", { dateStyle: "short", numberingSystem: "arab" })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* رابط المعاملات */}
+      <div className="rounded-xl border border-[#c9d6e3] bg-white p-5 shadow-sm">
+        <h3 className="font-semibold text-[#1e3a5f]">المعاملات</h3>
+        <p className="mt-1 text-sm text-[#5a6c7d]">عرض جميع معاملات هذا المكتب والبحث والفلترة</p>
+        <Link
+          href={`/supervisor/transactions?officeId=${office.id}`}
+          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#1E6B3A] px-4 py-2 text-sm font-medium text-white hover:bg-[#175a2e]"
+        >
+          عرض المعاملات
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </Link>
       </div>
 
       {/* روابط العودة */}

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 type Office = {
   id: string;
@@ -14,13 +15,24 @@ export default function SupervisorOfficesPage() {
   const [offices, setOffices] = useState<Office[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/supervisor/offices")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setOffices(Array.isArray(data) ? data : []))
-      .catch(() => setOffices([]))
-      .finally(() => setLoading(false));
+  const loadOffices = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
+    try {
+      const r = await fetch("/api/supervisor/offices");
+      const data = r.ok ? await r.json() : [];
+      setOffices(Array.isArray(data) ? data : []);
+    } catch {
+      setOffices([]);
+    } finally {
+      if (!opts?.silent) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadOffices();
+  }, [loadOffices]);
+
+  useAutoRefresh(() => loadOffices({ silent: true }));
 
   return (
     <div className="space-y-6 sm:space-y-8" dir="rtl">

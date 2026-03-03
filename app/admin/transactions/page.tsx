@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
@@ -121,6 +122,7 @@ export default function AdminTransactionsPage() {
         setTransactions((prev) => [t, ...prev]);
         setModalOpen(false);
         setNewCitizenName("");
+        broadcastDataUpdate();
       } else {
         const body = await res.json();
         alert(body.error || "فشل الإضافة");
@@ -144,6 +146,7 @@ export default function AdminTransactionsPage() {
         const updated = await res.json();
         setTransactions((prev) => prev.map((t) => (t.id === id ? updated : t)));
         loadData();
+        broadcastDataUpdate();
       } else {
         const body = await res.json();
         alert(body.error || "فشل التحديث");
@@ -177,6 +180,7 @@ export default function AdminTransactionsPage() {
         setTransactions((prev) => prev.filter((t) => t.id !== id));
         setDeleteId(null);
         loadData();
+        broadcastDataUpdate();
       } else {
         const body = await res.json();
         alert(body.error || "فشل الحذف");

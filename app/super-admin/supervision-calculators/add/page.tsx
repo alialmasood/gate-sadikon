@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 
 const BORDER_RADIUS = "rounded-xl";
 const INPUT_CLASS =
@@ -73,6 +74,7 @@ export default function AddSupervisionAccountPage() {
         setError(typeof data.error === "string" ? data.error : "حدث خطأ");
         return;
       }
+      broadcastDataUpdate();
       router.push("/super-admin/supervision-calculators");
       router.refresh();
     } finally {

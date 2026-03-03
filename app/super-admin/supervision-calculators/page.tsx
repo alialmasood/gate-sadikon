@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import Link from "next/link";
 
 type SupervisionAccount = {
@@ -279,6 +280,7 @@ export default function SuperAdminSupervisionCalculatorsPage() {
       }
       setEditModal(null);
       fetchAccounts();
+      broadcastDataUpdate();
     } finally {
       setEditSubmitting(false);
     }
@@ -292,7 +294,10 @@ export default function SuperAdminSupervisionCalculatorsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: !a.enabled }),
       });
-      if (res.ok) fetchAccounts();
+      if (res.ok) {
+        fetchAccounts();
+        broadcastDataUpdate();
+      }
     } finally {
       setTogglingId(null);
     }
@@ -303,7 +308,10 @@ export default function SuperAdminSupervisionCalculatorsPage() {
     setDeletingId(a.id);
     try {
       const res = await fetch(`/api/super-admin/supervision-accounts/${a.id}`, { method: "DELETE" });
-      if (res.ok) fetchAccounts();
+      if (res.ok) {
+        fetchAccounts();
+        broadcastDataUpdate();
+      }
     } finally {
       setDeletingId(null);
     }

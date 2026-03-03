@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 
 type ParliamentMember = {
   id: string;
@@ -285,6 +286,7 @@ export default function ParliamentMembersPage() {
         setMembers((prev) => prev.map((m) => (m.id === editingMember.id ? patchData : m)));
         setModalOpen(false);
         setEditingMember(null);
+        broadcastDataUpdate();
       } else {
         const res = await fetch("/api/super-admin/parliament-members", {
           method: "POST",
@@ -303,6 +305,7 @@ export default function ParliamentMembersPage() {
         }
         setMembers((prev) => [createData, ...prev]);
         setModalOpen(false);
+        broadcastDataUpdate();
       }
     } catch {
       setSubmitError("خطأ في الاتصال");
@@ -316,7 +319,10 @@ export default function ParliamentMembersPage() {
     setDeletingId(m.id);
     try {
       const res = await fetch(`/api/super-admin/parliament-members/${m.id}`, { method: "DELETE" });
-      if (res.ok) setMembers((prev) => prev.filter((x) => x.id !== m.id));
+      if (res.ok) {
+        setMembers((prev) => prev.filter((x) => x.id !== m.id));
+        broadcastDataUpdate();
+      }
     } finally {
       setDeletingId(null);
     }
@@ -333,6 +339,7 @@ export default function ParliamentMembersPage() {
       if (res.ok) {
         const patchData = await res.json();
         setMembers((prev) => prev.map((x) => (x.id === m.id ? patchData : x)));
+        broadcastDataUpdate();
       }
     } finally {
       setTogglingId(null);

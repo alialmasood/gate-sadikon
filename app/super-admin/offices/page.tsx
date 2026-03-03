@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { createPortal } from "react-dom";
 
 type LinkedUser = {
@@ -907,6 +908,7 @@ export default function OfficesPage() {
         setOffices((prev) =>
           prev.map((o) => (o.id === editingOffice.id ? body : o))
         );
+        broadcastDataUpdate();
       } else {
         const res = await fetch("/api/super-admin/offices", {
           method: "POST",
@@ -923,6 +925,7 @@ export default function OfficesPage() {
           return;
         }
         setOffices((prev) => [body, ...prev]);
+        broadcastDataUpdate();
       }
       setModalOpen(false);
       setEditingOffice(null);
@@ -942,6 +945,7 @@ export default function OfficesPage() {
       });
       if (res.ok) {
         setOffices((prev) => prev.filter((o) => o.id !== office.id));
+        broadcastDataUpdate();
       } else {
         const text = await res.text();
         let body: { error?: string } = {};
@@ -973,6 +977,7 @@ export default function OfficesPage() {
         setOffices((prev) =>
           prev.map((o) => (o.id === office.id ? body : o))
         );
+        broadcastDataUpdate();
       } else {
         alert(body.error || "فشل التحديث");
       }

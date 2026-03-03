@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { useRouter } from "next/navigation";
 
 const TRANSACTION_TYPES = [
@@ -220,6 +221,7 @@ export default function AddTransactionModal({
         if (text.trim()) data = JSON.parse(text) as ReceiptData & { error?: string };
       } catch { /* ignore */ }
       if (res.ok) {
+        broadcastDataUpdate();
         setReceipt({
           citizenName: data.citizenName,
           citizenPhone: data.citizenPhone,

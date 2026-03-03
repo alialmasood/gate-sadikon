@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 
 type FormationOption = { id: string; name: string; type: string };
 
@@ -336,6 +337,7 @@ export default function MinistriesPage() {
       setModalOpen(false);
       setEditingRow(null);
       loadData();
+      broadcastDataUpdate();
     } catch {
       setSubmitError("حدث خطأ غير متوقع");
     } finally {
@@ -353,6 +355,7 @@ export default function MinistriesPage() {
       if (res.ok) {
         setRows((prev) => prev.filter((r) => r.id !== row.id));
         loadData();
+        broadcastDataUpdate();
       } else {
         const body = await res.json();
         alert(body.error || "فشل الحذف");
@@ -374,6 +377,7 @@ export default function MinistriesPage() {
       if (res.ok) {
         const body = await res.json();
         setRows((prev) => prev.map((r) => (r.id === row.id ? body : r)));
+        broadcastDataUpdate();
       } else {
         const body = await res.json();
         alert(body.error || "فشل التحديث");

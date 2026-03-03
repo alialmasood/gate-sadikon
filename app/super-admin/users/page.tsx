@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 
 type Office = { id: string; name: string };
 
@@ -1375,6 +1376,7 @@ export default function SuperAdminUsersPage() {
         setEditAssignModalOpen(false);
         setEditingAssignment(null);
         loadAssignments();
+        broadcastDataUpdate();
       } else {
         setEditAssignError(data.error || "فشل التعديل");
       }
@@ -1390,7 +1392,10 @@ export default function SuperAdminUsersPage() {
     setDeletingAssignId(a.id);
     try {
       const res = await fetch(`/api/super-admin/delegate-assignments/${a.id}`, { method: "DELETE" });
-      if (res.ok) loadAssignments();
+      if (res.ok) {
+        loadAssignments();
+        broadcastDataUpdate();
+      }
     } finally {
       setDeletingAssignId(null);
     }
@@ -1413,6 +1418,7 @@ export default function SuperAdminUsersPage() {
       const data = await res.json();
       if (res.ok) {
         loadAssignments();
+        broadcastDataUpdate();
         return true;
       }
       setAssignError(data.error || "فشل حفظ التكليف");
@@ -1465,6 +1471,7 @@ export default function SuperAdminUsersPage() {
         setUsers((prev) => prev.map((u) => (u.id === editingAccount.id ? { ...u, ...patchData } : u)));
         setCreateModalOpen(false);
         setEditingAccount(null);
+        broadcastDataUpdate();
       } else {
         const res = await fetch("/api/users/created-account", {
           method: "POST",
@@ -1489,6 +1496,7 @@ export default function SuperAdminUsersPage() {
         }
         setUsers((prev) => [createData, ...prev]);
         setCreateModalOpen(false);
+        broadcastDataUpdate();
       }
     } catch {
       setCreateSubmitError("خطأ في الاتصال");
@@ -1535,6 +1543,7 @@ export default function SuperAdminUsersPage() {
         setUsers((prev) => prev.map((u) => (u.id === editingDelegate.id ? { ...u, ...patchData } : u)));
         setDelegateModalOpen(false);
         setEditingDelegate(null);
+        broadcastDataUpdate();
       } else {
         const res = await fetch("/api/users", {
           method: "POST",
@@ -1560,6 +1569,7 @@ export default function SuperAdminUsersPage() {
         }
         setUsers((prev) => [createData, ...prev]);
         setDelegateModalOpen(false);
+        broadcastDataUpdate();
       }
     } catch {
       setDelegateSubmitError("خطأ في الاتصال");
@@ -1575,6 +1585,7 @@ export default function SuperAdminUsersPage() {
       const res = await fetch(`/api/users/${d.id}`, { method: "DELETE" });
       if (!res.ok) return;
       setUsers((prev) => prev.filter((u) => u.id !== d.id));
+      broadcastDataUpdate();
     } finally {
       setDeletingDelegateId(null);
     }
@@ -1586,6 +1597,7 @@ export default function SuperAdminUsersPage() {
       const res = await fetch(`/api/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !user.enabled }) });
       if (!res.ok) return;
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, enabled: !u.enabled } : u)));
+      broadcastDataUpdate();
     } finally {
       setTogglingId(null);
     }
@@ -1598,6 +1610,7 @@ export default function SuperAdminUsersPage() {
       const res = await fetch(`/api/users/${acc.id}`, { method: "DELETE" });
       if (!res.ok) return;
       setUsers((prev) => prev.filter((u) => u.id !== acc.id));
+      broadcastDataUpdate();
     } finally {
       setDeletingId(null);
     }
