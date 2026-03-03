@@ -24,6 +24,8 @@ function getDashboardUrl(role: string | undefined, serialNumber?: string): strin
       return "/reception";
     case "SORTING":
       return "/sorting";
+    case "SUPERVISION":
+      return "/supervisor";
     default:
       return "/";
   }

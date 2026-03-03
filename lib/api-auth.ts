@@ -125,6 +125,14 @@ export async function requireSuperAdmin(req?: NextRequest) {
   return { session: result.session, userId: result.user.id };
 }
 
+/** المشرف — SUPERVISION (حاسبات الإشراف والمراقبة) */
+export async function requireSupervision(req?: NextRequest) {
+  const result = await getSessionWithDbValidation(req);
+  if (!result) return { error: "غير مصرح", status: 403 };
+  if (result.user.role !== "SUPERVISION") return { error: "غير مصرح", status: 403 };
+  return { session: result.session, userId: result.user.id };
+}
+
 /** عضو مجلس النواب — PARLIAMENT_MEMBER */
 export async function requireParliamentMember(req?: NextRequest) {
   const result = await getSessionWithDbValidation(req);

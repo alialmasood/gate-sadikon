@@ -161,4 +161,5 @@ enum Role {
   SORTING       // قسم الفرز
   DOCUMENTATION // قسم التوثيق
   PARLIAMENT_MEMBER
+  SUPERVISION   // حاسبات الإشراف والمراقبة
 }

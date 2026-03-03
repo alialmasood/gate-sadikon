@@ -34,6 +34,8 @@ function getRedirectByRole(role: string | undefined): string {
       return "/sorting";
     case "DOCUMENTATION":
       return "/documentation";
+    case "SUPERVISION":
+      return "/supervisor";
     default:
       return "/";
   }
