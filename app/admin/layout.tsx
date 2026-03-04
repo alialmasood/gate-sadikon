@@ -96,7 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen bg-[#FAFAF9]" dir="rtl">
       <aside
-        className={`fixed inset-y-0 right-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden border-l border-[#d4cfc8] bg-[#e8f5ed] shadow-lg transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 lg:bg-white ${
+        className={`fixed inset-y-0 right-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden border-l border-[#d4cfc8] bg-[#e8f5ed] shadow-lg transition-all duration-300 ease-in-out print:hidden lg:sticky lg:top-0 lg:translate-x-0 lg:bg-white ${
           sidebarOpen ? "translate-x-0" : "translate-x-full"
         } ${sidebarCollapsed ? "w-[72px]" : "w-64"}`}
       >
@@ -198,13 +198,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <button
           type="button"
           aria-label="إغلاق"
-          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/30 print:hidden lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-[#d4cfc8] bg-white/95 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-[#d4cfc8] bg-white/95 px-4 backdrop-blur print:hidden sm:px-6">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}

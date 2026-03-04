@@ -23,3 +23,13 @@ body {
   color: var(--foreground);
   font-family: var(--font-tajawal), "Segoe UI", Tahoma, sans-serif;
 }
+
+@media print {
+  body {
+    background: white !important;
+  }
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+}

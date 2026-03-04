@@ -223,42 +223,43 @@ export default function AdminCitizensPage() {
             <h2 className="text-lg font-semibold text-[#1B1B1B]">جدول المعاملات — شؤون المواطنين</h2>
             <p className="mt-1 text-sm text-[#5a5a5a]">جميع المعاملات المسجلة مع حالة كل معاملة</p>
           </div>
-          <div className="mt-4 space-y-3 md:mt-4 md:space-y-0">
+          <div className="mt-4 space-y-0 md:mt-4 md:space-y-0">
             <label htmlFor="admin-search" className="mb-2 block text-sm font-medium text-[#1B1B1B]">
               بحث وفلترة
             </label>
-            <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end md:gap-3">
+            <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end md:gap-3">
               <input
                 id="admin-search"
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ابحث بالاسم، الهاتف، الرقم التسلسلي، أو نوع المعاملة"
-                className="w-full rounded-lg border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm text-[#1B1B1B] placeholder:text-[#8a8a8a] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A] md:min-w-[200px] md:flex-1"
+                placeholder="ابحث…"
+                className="w-full rounded-lg border border-[#d4cfc8] bg-white px-3 py-2 text-sm text-[#1B1B1B] placeholder:text-[#8a8a8a] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A] md:min-w-[200px] md:flex-1 md:px-4 md:py-2.5"
                 aria-label="بحث في المعاملات"
               />
-              <div className="flex flex-wrap items-center gap-2">
-                <label htmlFor="date-from" className="text-sm font-medium text-[#5a5a5a]">من تاريخ</label>
+              <div className="flex w-full items-center gap-2 md:w-auto md:shrink-0">
+                <label htmlFor="date-from" className="shrink-0 text-xs font-medium text-[#5a5a5a] md:text-sm">من</label>
                 <input
                   id="date-from"
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="rounded-lg border border-[#d4cfc8] bg-white px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]"
+                  className="min-w-0 flex-1 rounded-lg border border-[#d4cfc8] bg-white px-2 py-2 text-xs text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A] md:w-auto md:flex-none md:px-3 md:py-2.5 md:text-sm"
                   aria-label="من تاريخ المعاملة"
                 />
-                <label htmlFor="date-to" className="text-sm font-medium text-[#5a5a5a]">إلى تاريخ</label>
+                <label htmlFor="date-to" className="shrink-0 text-xs font-medium text-[#5a5a5a] md:text-sm">إلى</label>
                 <input
                   id="date-to"
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="rounded-lg border border-[#d4cfc8] bg-white px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]"
+                  className="min-w-0 flex-1 rounded-lg border border-[#d4cfc8] bg-white px-2 py-2 text-xs text-[#1B1B1B] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A] md:w-auto md:flex-none md:px-3 md:py-2.5 md:text-sm"
                   aria-label="إلى تاريخ المعاملة"
                 />
               </div>
-              <span className="flex items-center rounded-lg border border-[#d4cfc8] bg-white px-3 py-2.5 text-sm text-[#5a5a5a]">
-                {filteredTransactions.length} معاملة
+              <span className="flex shrink-0 items-center rounded-lg border border-[#d4cfc8] bg-white px-2.5 py-2 text-xs text-[#5a5a5a] md:px-3 md:py-2.5 md:text-sm">
+                <span className="md:hidden">عدد المعاملات المسجلة <strong className="font-bold text-[#1E6B3A]">{filteredTransactions.length}</strong> معاملة</span>
+                <span className="hidden md:inline">{filteredTransactions.length} معاملة</span>
               </span>
             </div>
           </div>
