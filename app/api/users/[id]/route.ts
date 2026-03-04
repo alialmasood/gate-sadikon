@@ -94,6 +94,9 @@ export async function DELETE(
   if (targetUser.role === "SUPER_ADMIN") {
     return NextResponse.json({ error: "لا يمكن حذف مدير أعلى" }, { status: 403 });
   }
-  await prisma.user.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.delegate.deleteMany({ where: { userId: id } });
+    await tx.user.delete({ where: { id } });
+  });
   return NextResponse.json({ ok: true });
 }

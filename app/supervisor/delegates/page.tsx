@@ -20,10 +20,13 @@ export default function SupervisorDelegatesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadDelegates = useCallback(async (opts?: { silent?: boolean }) => {
+  const loadDelegates = useCallback(async (opts?: { silent?: boolean; bypassCache?: boolean }) => {
     if (!opts?.silent) setLoading(true);
     try {
-      const r = await fetch("/api/supervisor/delegates");
+      const url = opts?.bypassCache
+        ? `/api/supervisor/delegates?t=${Date.now()}`
+        : "/api/supervisor/delegates";
+      const r = await fetch(url, { cache: "no-store" });
       if (!r.ok) throw new Error("فشل التحميل");
       const data = await r.json();
       setDelegates(data.delegates ?? []);
@@ -39,7 +42,7 @@ export default function SupervisorDelegatesPage() {
     loadDelegates();
   }, [loadDelegates]);
 
-  useAutoRefresh(() => loadDelegates({ silent: true }));
+  useAutoRefresh(() => loadDelegates({ silent: true, bypassCache: true }));
 
   if (loading) {
     return (

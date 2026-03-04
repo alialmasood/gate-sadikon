@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSupervision } from "@/lib/api-auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const auth = await requireSupervision();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -27,8 +29,10 @@ export async function GET() {
         })
       : [];
   const userById = Object.fromEntries(delegateUsers.map((u) => [u.id, u]));
+  // استبعاد المخولين اليتامى (سجل Delegate موجود لكن المستخدم محذوف)
+  const validDelegates = delegates.filter((d) => d.userId && userById[d.userId]);
   const userByDelegateId = Object.fromEntries(
-    delegates.filter((d) => d.userId && userById[d.userId]).map((d) => [d.id, userById[d.userId!]])
+    validDelegates.map((d) => [d.id, userById[d.userId!]])
   );
 
   const delegateIds = delegates.map((d) => d.id);
@@ -55,7 +59,7 @@ export async function GET() {
     (doneByDelegate as { delegateId: string; _count: { id: number } }[]).map((x) => [x.delegateId, x._count.id])
   );
 
-  const list = delegates.map((d) => {
+  const list = validDelegates.map((d) => {
     const u = userByDelegateId[d.id];
     return {
       id: d.id,
