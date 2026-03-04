@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 import {
   AreaChart,
@@ -83,6 +84,8 @@ function formatDate(d: string) {
 }
 
 export default function AdminDashboard() {
+  const { data: session } = useSession();
+  const managerName = (session?.user as { name?: string | null } | undefined)?.name;
   const [stats, setStats] = useState<Stats | null>(null);
   const [timelineData, setTimelineData] = useState<TimelinePoint[]>([]);
   const [statusData, setStatusData] = useState<StatusPoint[]>([]);
@@ -97,6 +100,7 @@ export default function AdminDashboard() {
   const [selectedDelegateId, setSelectedDelegateId] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
 
   const closeActionModal = useCallback(() => {
     setActionTx(null);
@@ -161,10 +165,20 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6" dir="rtl">
       <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-4">
-          <div>
-            <h1 className="text-xl font-bold text-[#1B1B1B]">لوحة تحكم مدير المكتب</h1>
-            <p className="mt-1 text-sm text-[#5a5a5a]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-4 lg:bg-[#f6f3ed]/50">
+          <div className="relative pr-4 lg:pr-0">
+            <div
+              className="absolute right-0 top-0 hidden h-full w-1 rounded-full bg-gradient-to-b from-[#1E6B3A] to-[#175a2e] lg:hidden"
+              aria-hidden
+            />
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#1E6B3A]/90 lg:hidden">
+              مدير المكتب
+            </p>
+            <h1 className="text-lg font-bold text-[#1B1B1B] lg:text-xl">لوحة تحكم مدير المكتب</h1>
+            <p className="mt-2 border-r-2 border-[#1E6B3A]/40 py-1.5 pr-3 text-sm font-medium leading-relaxed text-[#1e3a5f] lg:mt-1 lg:border-0 lg:py-0 lg:pr-0 lg:font-normal lg:text-[#5a5a5a]">
+              مرحباً بك {managerName ? `${managerName}، ` : ""}{stats?.officeName ?? "مدير المكتب"} — نظرة عامة على نشاط المكتب
+            </p>
+            <p className="mt-1 hidden text-sm text-[#5a5a5a] lg:block">
               مرحباً، {stats?.officeName ?? "مدير المكتب"} — نظرة عامة على نشاط المكتب
             </p>
           </div>
@@ -172,7 +186,7 @@ export default function AdminDashboard() {
             type="button"
             onClick={loadData}
             disabled={loading}
-            className="flex items-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B] transition hover:bg-[#f6f3ed] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A] disabled:opacity-60"
+            className="hidden items-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B] transition hover:bg-[#f6f3ed] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A] disabled:opacity-60 lg:flex"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -232,16 +246,14 @@ export default function AdminDashboard() {
 
       {/* نسبة الإنجاز */}
       <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
-        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-4 py-3 lg:px-6">
           <h2 className="text-base font-semibold text-[#1B1B1B]">نسبة الإنجاز</h2>
           <p className="mt-0.5 text-sm text-[#5a5a5a]">نسبة إنجاز المعاملات بالنسبة لإجمالي المعاملات</p>
         </div>
-        <div className="flex items-center justify-between px-6 py-6">
-          <div>
-            <p className="text-3xl font-bold text-[#1E6B3A]">{(stats?.completionRate ?? 0)}%</p>
-          </div>
-          <div className="relative h-20 w-20">
-            <svg className="h-20 w-20 -rotate-90" viewBox="0 0 36 36">
+        <div className="flex flex-col items-center justify-center gap-4 px-4 py-6 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+          <p className="text-2xl font-bold text-[#1E6B3A] lg:text-3xl">{(stats?.completionRate ?? 0)}%</p>
+          <div className="relative h-16 w-16 shrink-0 lg:h-20 lg:w-20">
+            <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
               <circle cx="18" cy="18" r="14" stroke="#e5e5e5" strokeWidth="3" fill="none" />
               <circle
                 cx="18"
@@ -265,7 +277,7 @@ export default function AdminDashboard() {
           <h2 className="text-base font-semibold text-[#1B1B1B]">إحصائيات المعاملات</h2>
           <p className="mt-0.5 text-sm text-[#5a5a5a]">ملخص إحصائي لنشاط المعاملات في المكتب</p>
         </div>
-        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 p-6 lg:grid-cols-4">
           {loading && !stats
             ? Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="h-28 animate-pulse rounded-xl border border-[#d4cfc8] bg-[#f6f3ed]" />
@@ -283,10 +295,10 @@ export default function AdminDashboard() {
       </article>
 
       {/* نبذة عن عمل وإنجاز الأقسام التابعة للمكتب */}
-      <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
-        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+      <article className="-mx-4 overflow-hidden rounded-none border-x-0 border-[#d4cfc8] bg-white shadow-sm lg:mx-0 lg:rounded-2xl lg:border-x">
+        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-4 py-3 lg:px-6">
           <h2 className="text-base font-semibold text-[#1B1B1B]">نبذة عن عمل وإنجاز الأقسام التابعة للمكتب</h2>
-          <p className="mt-0.5 text-sm text-[#5a5a5a]">الحسابات المرتبطة بالمكتب — ما أنجز كل حساب من إجمالي المعاملات المعينة له</p>
+          <p className="mt-0.5 text-xs leading-tight text-[#5a5a5a] lg:text-sm lg:leading-normal">الحسابات المرتبطة بالمكتب — ما أنجز كل حساب من إجمالي المعاملات المعينة له</p>
         </div>
         <div className="p-6">
           {loading ? (
@@ -296,11 +308,17 @@ export default function AdminDashboard() {
               {sectionsData?.sectionStats && sectionsData.sectionStats.length > 0 && (
                 <div>
                   <h3 className="mb-3 text-sm font-semibold text-[#1B1B1B]">إنجازات الأقسام</h3>
-                  <ul className="space-y-2 rounded-lg border border-[#d4cfc8] bg-[#f6f3ed]/30 p-4">
+                  <ul className="space-y-3 border-0 bg-transparent p-0 lg:space-y-2 lg:rounded-lg lg:border lg:border-[#d4cfc8] lg:bg-[#f6f3ed]/30 lg:p-4">
                     {sectionsData.sectionStats.map((s, i) => (
-                      <li key={i} className="flex flex-wrap items-baseline gap-2 text-sm">
-                        <span className="font-medium text-[#1B1B1B]">{s.section}:</span>
-                        <span className="text-[#5a5a5a]">{s.summary}</span>
+                      <li
+                        key={i}
+                        className="flex flex-col gap-1.5 rounded-xl border border-[#d4cfc8]/50 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] lg:flex-row lg:flex-wrap lg:items-baseline lg:gap-2 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+                      >
+                        <span className="flex items-center gap-2 font-semibold text-[#1B1B1B] lg:font-medium">
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E6B3A] lg:hidden" aria-hidden />
+                          {s.section}
+                        </span>
+                        <span className="text-sm leading-relaxed text-[#5a5a5a]">{s.summary}</span>
                       </li>
                     ))}
                   </ul>
@@ -311,60 +329,138 @@ export default function AdminDashboard() {
                 {!sectionsData?.users?.length ? (
                   <p className="text-sm text-[#5a5a5a]">لا توجد حسابات مرتبطة بالمكتب</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[400px] text-right text-sm">
-                      <thead>
-                        <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
-                          <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">الاسم</th>
-                          <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">البريد</th>
-                          <th className="py-2 px-3 font-medium text-[#5a5a5a]">الدور / القسم</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sectionsData.users.map((u) => (
-                          <tr key={u.id} className="border-b border-[#d4cfc8]/80">
-                            <td className="border-l border-[#d4cfc8]/60 py-2 px-3 font-medium text-[#1B1B1B]">{u.name}</td>
-                            <td className="border-l border-[#d4cfc8]/60 py-2 px-3 text-[#5a5a5a]">{u.email}</td>
-                            <td className="py-2 px-3 text-[#1B1B1B]">{u.roleLabel}</td>
+                  <>
+                    <div className="space-y-0 lg:hidden">
+                      {sectionsData.users.map((u, i) => (
+                        <div
+                          key={u.id}
+                          className="border-b border-[#d4cfc8]/60 last:border-b-0"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setExpandedAccountId((id) => (id === u.id ? null : u.id))}
+                            className="flex w-full items-center justify-between gap-3 py-3 pr-0 text-right"
+                          >
+                            <span className="shrink-0 text-sm font-medium text-[#5a5a5a]">{i + 1}</span>
+                            <span className="min-w-0 flex-1 truncate font-medium text-[#1B1B1B]">{u.name}</span>
+                            <svg
+                              className={`h-5 w-5 shrink-0 text-[#5a5a5a] transition-transform ${expandedAccountId === u.id ? "rotate-180" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {expandedAccountId === u.id && (
+                            <div className="space-y-2 border-t border-[#d4cfc8]/40 bg-[#f8fafc]/80 px-0 pb-3 pt-2">
+                              <div className="flex justify-between gap-4 border-b border-[#d4cfc8]/30 py-2">
+                                <span className="text-sm text-[#5a5a5a]">الاسم</span>
+                                <span className="text-sm font-medium text-[#1B1B1B]">{u.name}</span>
+                              </div>
+                              <div className="flex justify-between gap-4 border-b border-[#d4cfc8]/30 py-2">
+                                <span className="text-sm text-[#5a5a5a]">البريد</span>
+                                <span className="text-sm text-[#1B1B1B]">{u.email}</span>
+                              </div>
+                              <div className="flex justify-between gap-4 py-2">
+                                <span className="text-sm text-[#5a5a5a]">الدور / القسم</span>
+                                <span className="text-sm text-[#1B1B1B]">{u.roleLabel}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden overflow-x-auto lg:block">
+                      <table className="w-full min-w-[400px] text-right text-sm">
+                        <thead>
+                          <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
+                            <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">الاسم</th>
+                            <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">البريد</th>
+                            <th className="py-2 px-3 font-medium text-[#5a5a5a]">الدور / القسم</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {sectionsData.users.map((u) => (
+                            <tr key={u.id} className="border-b border-[#d4cfc8]/80">
+                              <td className="border-l border-[#d4cfc8]/60 py-2 px-3 font-medium text-[#1B1B1B]">{u.name}</td>
+                              <td className="border-l border-[#d4cfc8]/60 py-2 px-3 text-[#5a5a5a]">{u.email}</td>
+                              <td className="py-2 px-3 text-[#1B1B1B]">{u.roleLabel}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-[#1B1B1B]">إنجاز المخولين</h3>
-                <p className="mb-3 text-xs text-[#5a5a5a]">المخولون الذين تُعيّن لهم المعاملات — إجمالي المعاملات المعينة لكل مخول وعدد ما أُنْجِز منها</p>
+              <div className="rounded-xl border border-[#1E6B3A]/25 bg-[#175a2e]/10 p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0">
+                <div className="mb-3">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#1E6B3A]/90 lg:hidden">
+                    إنجاز المخولين
+                  </p>
+                  <h3 className="mb-1 text-sm font-semibold text-[#1B1B1B]">إنجاز المخولين</h3>
+                  <p className="mb-3 text-xs text-[#5a5a5a]">المخولون الذين تُعيّن لهم المعاملات — إجمالي المعاملات المعينة لكل مخول وعدد ما أُنْجِز منها</p>
+                </div>
                 {!sectionsData?.delegates?.length ? (
-                  <p className="text-sm text-[#5a5a5a]">لا يوجد مخولون مسجلون أو لا توجد معاملات معينة</p>
+                  <p className="rounded-lg bg-[#175a2e]/10 py-4 text-center text-sm font-medium text-[#1e3a5f] lg:bg-transparent lg:py-0 lg:font-normal lg:text-[#5a5a5a]">لا يوجد مخولون مسجلون أو لا توجد معاملات معينة</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[400px] text-right text-sm">
-                      <thead>
-                        <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
-                          <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">المخول</th>
-                          <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">إجمالي المعاملات</th>
-                          <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">المنجزة</th>
-                          <th className="py-2 px-3 font-medium text-[#5a5a5a]">نسبة الإنجاز</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sectionsData.delegates.map((d) => (
-                          <tr key={d.id} className="border-b border-[#d4cfc8]/80">
-                            <td className="border-l border-[#d4cfc8]/60 py-2 px-3 font-medium text-[#1B1B1B]">{d.name}</td>
-                            <td className="border-l border-[#d4cfc8]/60 py-2 px-3 text-[#1B1B1B]">{d.total}</td>
-                            <td className="border-l border-[#d4cfc8]/60 py-2 px-3 text-[#1E6B3A] font-medium">{d.done}</td>
-                            <td className="py-2 px-3">
-                              <span className="inline-block rounded-full bg-[#1E6B3A]/10 px-2 py-0.5 text-xs font-medium text-[#1E6B3A]">
-                                {d.rate}%
-                              </span>
-                            </td>
+                  <>
+                    <div className="space-y-3 lg:hidden">
+                      {sectionsData.delegates.map((d, i) => (
+                        <div
+                          key={d.id}
+                          className="overflow-hidden rounded-xl border border-[#d4cfc8]/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
+                        >
+                          <div className="flex items-center gap-2 border-r-2 border-[#1E6B3A]/50 bg-[#fafbfc] px-4 py-3">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1E6B3A]/15 text-xs font-bold text-[#1E6B3A]">
+                              {i + 1}
+                            </span>
+                            <span className="flex-1 font-semibold text-[#1e3a5f]">{d.name}</span>
+                            <span className="rounded-full bg-[#1E6B3A]/15 px-2.5 py-1 text-xs font-semibold text-[#1E6B3A]">
+                              {d.rate}%
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 border-t border-[#d4cfc8]/40 p-3">
+                            <div className="flex justify-between gap-2 rounded-lg bg-[#f8fafc] px-3 py-2">
+                              <span className="text-xs font-medium text-[#5a5a5a]">إجمالي المعاملات</span>
+                              <span className="text-sm font-semibold text-[#1B1B1B]">{d.total}</span>
+                            </div>
+                            <div className="flex justify-between gap-2 rounded-lg bg-[#e8f5ed]/50 px-3 py-2">
+                              <span className="text-xs font-medium text-[#5a5a5a]">المنجزة</span>
+                              <span className="text-sm font-semibold text-[#1E6B3A]">{d.done}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden overflow-x-auto lg:block">
+                      <table className="w-full min-w-[400px] text-right text-sm">
+                        <thead>
+                          <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
+                            <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">المخول</th>
+                            <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">إجمالي المعاملات</th>
+                            <th className="border-l border-[#d4cfc8] py-2 px-3 font-medium text-[#5a5a5a]">المنجزة</th>
+                            <th className="py-2 px-3 font-medium text-[#5a5a5a]">نسبة الإنجاز</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {sectionsData.delegates.map((d) => (
+                            <tr key={d.id} className="border-b border-[#d4cfc8]/80">
+                              <td className="border-l border-[#d4cfc8]/60 py-2 px-3 font-medium text-[#1B1B1B]">{d.name}</td>
+                              <td className="border-l border-[#d4cfc8]/60 py-2 px-3 text-[#1B1B1B]">{d.total}</td>
+                              <td className="border-l border-[#d4cfc8]/60 py-2 px-3 text-[#1E6B3A] font-medium">{d.done}</td>
+                              <td className="py-2 px-3">
+                                <span className="inline-block rounded-full bg-[#1E6B3A]/10 px-2 py-0.5 text-xs font-medium text-[#1E6B3A]">
+                                  {d.rate}%
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -374,18 +470,18 @@ export default function AdminDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* رسم المعاملات */}
-        <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
-          <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+        <article className="-mx-4 overflow-hidden rounded-none border-x-0 border-[#d4cfc8] bg-white shadow-sm lg:mx-0 lg:rounded-2xl lg:border-x">
+          <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-4 py-3 lg:px-6">
             <h2 className="text-base font-semibold text-[#1B1B1B]">المعاملات خلال 30 يوم</h2>
             <p className="mt-0.5 text-sm text-[#5a5a5a]">رسم بياني لتوزيع المعاملات خلال الشهر الماضي</p>
           </div>
-          <div className="h-64 w-full min-h-[200px] px-6 py-4">
+          <div className="h-56 w-full min-h-[180px] px-3 py-3 lg:h-64 lg:min-h-[200px] lg:px-6 lg:py-4">
             {loading ? (
               <div className="flex h-full items-center justify-center text-[#5a5a5a]">جاري التحميل…</div>
             ) : timelineData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-[#5a5a5a]">لا توجد بيانات</div>
             ) : (
-              <ResponsiveContainer width="100%" height={256} minHeight={200}>
+              <ResponsiveContainer width="100%" height="100%" minHeight={180}>
                 <AreaChart data={timelineData}>
                   <defs>
                     <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -409,7 +505,7 @@ export default function AdminDashboard() {
         </article>
 
         {/* توزيع الحالة */}
-        <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+        <article className="-mx-4 overflow-hidden rounded-none border-x-0 border-[#d4cfc8] bg-white shadow-sm lg:mx-0 lg:rounded-2xl lg:border-x">
           <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
             <h2 className="text-base font-semibold text-[#1B1B1B]">توزيع المعاملات حسب الحالة</h2>
             <p className="mt-0.5 text-sm text-[#5a5a5a]">توزيع المعاملات بين قيد التنفيذ والمنجزة والمتأخرة</p>
@@ -438,7 +534,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* آخر النشاط */}
-      <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+      <article className="-mx-4 overflow-hidden rounded-none border-x-0 border-[#d4cfc8] bg-white shadow-sm lg:mx-0 lg:rounded-2xl lg:border-x">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
           <div>
             <h2 className="text-base font-semibold text-[#1B1B1B]">آخر المعاملات</h2>

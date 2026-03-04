@@ -96,11 +96,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen bg-[#FAFAF9]" dir="rtl">
       <aside
-        className={`fixed inset-y-0 right-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden border-l border-[#d4cfc8] bg-white shadow-lg transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
+        className={`fixed inset-y-0 right-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden border-l border-[#d4cfc8] bg-[#e8f5ed] shadow-lg transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 lg:bg-white ${
           sidebarOpen ? "translate-x-0" : "translate-x-full"
         } ${sidebarCollapsed ? "w-[72px]" : "w-64"}`}
       >
-        <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] px-3">
+        <div className="flex h-16 items-center justify-between gap-2 border-b border-[#1E6B3A]/20 px-3 lg:border-[#d4cfc8]">
           {!sidebarCollapsed ? (
             <Link href="/admin" className="flex min-w-0 flex-1 items-center gap-2">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
@@ -147,18 +147,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 onClick={() => setSidebarOpen(false)}
                 title={sidebarCollapsed ? item.label : undefined}
                 className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-all duration-200 ${
-                  isActive ? "bg-[#e8f0eb] text-[#1E6B3A]" : "text-[#1B1B1B] hover:bg-[#f6f3ed] hover:text-[#B08D57]"
+                  isActive ? "bg-[#1E6B3A] text-white lg:bg-[#e8f0eb] lg:text-[#1E6B3A]" : "text-[#1B1B1B] hover:bg-[#1E6B3A]/15 hover:text-[#1E6B3A] lg:hover:bg-[#f6f3ed] lg:hover:text-[#B08D57]"
                 }`}
               >
                 {isActive && (
                   <>
-                    <span className="absolute right-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-l-full bg-[#B08D57] shadow-sm" aria-hidden />
+                    <span className="absolute right-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-l-full bg-white/40 shadow-sm lg:bg-[#B08D57]" aria-hidden />
                     {sidebarCollapsed && (
-                      <span className="absolute left-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[#1E6B3A] ring-2 ring-white" aria-hidden />
+                      <span className="absolute left-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-white ring-2 ring-[#1E6B3A] lg:bg-[#1E6B3A] lg:ring-white" aria-hidden />
                     )}
                   </>
                 )}
-                <span className={isActive ? "text-[#1E6B3A]" : "text-[#5a5a5a] group-hover:text-[#B08D57]"}>
+                <span className={isActive ? "text-white lg:text-[#1E6B3A]" : "text-[#5a5a5a] group-hover:text-[#1E6B3A] lg:group-hover:text-[#B08D57]"}>
                   {NAV_ICONS[item.href]}
                 </span>
                 {!sidebarCollapsed && <span className="flex-1 truncate">{item.label}</span>}
@@ -166,18 +166,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
-        <div className="mt-auto border-t border-[#d4cfc8] p-3">
+        <div className="mt-auto border-t border-[#1E6B3A]/20 p-3 lg:border-[#d4cfc8]">
           <Link
             href="/"
             onClick={() => setSidebarOpen(false)}
             title={sidebarCollapsed ? "العودة للمنصة الرئيسية" : undefined}
-            className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-[#5a5a5a] transition-all duration-200 hover:bg-[#f6f3ed] hover:text-[#B08D57] ${sidebarCollapsed ? "justify-center" : ""}`}
+            className={`group hidden items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-[#5a5a5a] transition-all duration-200 hover:bg-[#f6f3ed] hover:text-[#B08D57] lg:flex ${sidebarCollapsed ? "justify-center" : ""}`}
           >
             <svg className="h-5 w-5 shrink-0 text-[#5a5a5a] group-hover:text-[#B08D57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             {!sidebarCollapsed && <span>العودة للمنصة الرئيسية</span>}
           </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setSidebarOpen(false);
+              signOut({ callbackUrl: "/login" });
+            }}
+            className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-[#5a5a5a] transition-all duration-200 hover:bg-[#1E6B3A]/15 hover:text-[#1E6B3A] lg:hidden ${sidebarCollapsed ? "w-full justify-center" : ""}`}
+          >
+            <svg className="h-5 w-5 shrink-0 text-[#5a5a5a] group-hover:text-[#1E6B3A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            {!sidebarCollapsed && <span>تسجيل الخروج</span>}
+          </button>
         </div>
       </aside>
 
@@ -216,7 +229,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {formatDateTime(time)}
               </p>
               <div className="h-4 w-px bg-[#d4cfc8]" />
-              <div className="relative">
+              <div className="relative hidden lg:block">
                 <button
                   type="button"
                   onClick={() => signOut({ callbackUrl: "/login" })}
@@ -233,17 +246,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         <main className="relative flex-1 p-4 sm:p-6">{children}</main>
-
-        {/* زر عائم — لمنطقة قيد البرمجة لاحقاً */}
-        <button
-          type="button"
-          className="fixed bottom-6 left-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#B08D57] text-white shadow-lg shadow-[#B08D57]/30 transition hover:bg-[#9C7B49] hover:shadow-xl hover:shadow-[#B08D57]/40 focus:outline-none focus:ring-2 focus:ring-[#B08D57] focus:ring-offset-2"
-          aria-label="إجراء سريع"
-        >
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-        </button>
       </div>
     </div>
   );

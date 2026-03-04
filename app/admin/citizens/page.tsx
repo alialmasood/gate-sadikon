@@ -69,6 +69,8 @@ export default function AdminCitizensPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [expandedRowData, setExpandedRowData] = useState<FullTransaction | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -145,6 +147,26 @@ export default function AdminCitizensPage() {
     }
   }, []);
 
+  const toggleExpandRow = useCallback(async (t: Transaction) => {
+    if (expandedRowId === t.id) {
+      setExpandedRowId(null);
+      setExpandedRowData(null);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/transactions/${t.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setExpandedRowId(t.id);
+        setExpandedRowData(data);
+      } else {
+        alert("فشل تحميل تفاصيل المعاملة");
+      }
+    } catch {
+      alert("حدث خطأ غير متوقع");
+    }
+  }, [expandedRowId]);
+
   const handleAddSuccess = useCallback(() => {
     loadData();
   }, [loadData]);
@@ -152,22 +174,24 @@ export default function AdminCitizensPage() {
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-[#1B1B1B]">شؤون المواطنين</h1>
-        <button
-          type="button"
-          onClick={() => setAddModalOpen(true)}
-          className="rounded-xl border border-[#1E6B3A] bg-[#1E6B3A] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#175a2e]"
-        >
-          إضافة معاملة
-        </button>
+        {/* الموبايل فقط: تنسيق رسمي */}
+        <div className="w-full rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#1E6B3A] bg-[#f6f3ed]/60 px-4 py-3 shadow-sm md:hidden">
+          <h1 className="text-lg font-bold text-[#1B1B1B]">شؤون المواطنين</h1>
+          <p className="mt-0.5 text-xs text-[#5a5a5a]">إدارة ومتابعة معاملات المواطنين</p>
+        </div>
+        {/* اللابتوب: العنوان البسيط دون تغيير */}
+        <h1 className="hidden text-2xl font-bold text-[#1B1B1B] md:block">شؤون المواطنين</h1>
       </div>
 
-      <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
-        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+      {/* حالة المتابعة — موبايل: تنسيق رسمي + بطاقات بسطرين دون بطاقة رئيسية. ديسكتوب: دون تغيير */}
+      <article className="space-y-0 border-0 bg-transparent shadow-none md:overflow-hidden md:rounded-2xl md:border md:border-[#d4cfc8] md:bg-white md:shadow-sm">
+        {/* رأس القسم — موبايل: بطاقة رسمية ضمن حدود الشاشة. ديسكتوب: الرأس الأصلي */}
+        <div className="rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#1E6B3A] bg-[#f6f3ed]/60 px-4 py-3 shadow-sm md:rounded-none md:border-r-0 md:border-b md:border-[#d4cfc8] md:bg-[#f6f3ed]/50 md:px-6 md:py-3 md:shadow-none">
           <h2 className="text-base font-semibold text-[#1B1B1B]">حالة المتابعة</h2>
-          <p className="mt-0.5 text-sm text-[#5a5a5a]">ملخص إحصائي لحالة المعاملات في المكتب</p>
+          <p className="mt-0.5 text-xs text-[#5a5a5a] md:text-sm">ملخص إحصائي لحالة المعاملات في المكتب</p>
         </div>
-        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* البطاقات — موبايل: grid-cols-2 بدون إطار رئيسي. ديسكتوب: كما هو */}
+        <div className="grid grid-cols-2 gap-3 p-4 sm:gap-4 sm:p-6 md:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#5B7C99] bg-white p-4 shadow-sm">
             <p className="text-sm font-medium text-[#5a5a5a]">إجمالي المعاملات</p>
             <p className="mt-2 text-2xl font-bold text-[#1B1B1B]">{loading ? "—" : statusCounts.total}</p>
@@ -187,22 +211,30 @@ export default function AdminCitizensPage() {
         </div>
       </article>
 
+      {/* جدول المعاملات — موبايل: تنسيق رسمي + صفوف قابلة للتوسيع. ديسكتوب: دون تغيير */}
       <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
-        <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-4">
-          <h2 className="text-lg font-semibold text-[#1B1B1B]">جدول المعاملات — شؤون المواطنين</h2>
-          <p className="mt-1 text-sm text-[#5a5a5a]">جميع المعاملات المسجلة مع حالة كل معاملة</p>
-          <div className="mt-4">
+        {/* رأس القسم — موبايل: تنسيق رسمي + ترتيب عمودي. ديسكتوب: الأصلي */}
+        <div className="rounded-xl border-b-0 border-[#d4cfc8] bg-[#f6f3ed]/50 px-4 py-3 md:rounded-none md:border-b md:px-6 md:py-4">
+          <div className="mb-3 rounded-lg border border-[#d4cfc8] border-r-4 border-r-[#1E6B3A] bg-[#f6f3ed]/80 px-3 py-2.5 md:hidden">
+            <h2 className="text-base font-semibold text-[#1B1B1B]">جدول المعاملات — شؤون المواطنين</h2>
+            <p className="mt-0.5 text-xs text-[#5a5a5a]">جميع المعاملات المسجلة مع حالة كل معاملة</p>
+          </div>
+          <div className="hidden md:block">
+            <h2 className="text-lg font-semibold text-[#1B1B1B]">جدول المعاملات — شؤون المواطنين</h2>
+            <p className="mt-1 text-sm text-[#5a5a5a]">جميع المعاملات المسجلة مع حالة كل معاملة</p>
+          </div>
+          <div className="mt-4 space-y-3 md:mt-4 md:space-y-0">
             <label htmlFor="admin-search" className="mb-2 block text-sm font-medium text-[#1B1B1B]">
               بحث وفلترة
             </label>
-            <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end md:gap-3">
               <input
                 id="admin-search"
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ابحث بالاسم، الهاتف، الرقم التسلسلي، أو نوع المعاملة"
-                className="min-w-[200px] flex-1 rounded-lg border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm text-[#1B1B1B] placeholder:text-[#8a8a8a] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A]"
+                className="w-full rounded-lg border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm text-[#1B1B1B] placeholder:text-[#8a8a8a] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A] md:min-w-[200px] md:flex-1"
                 aria-label="بحث في المعاملات"
               />
               <div className="flex flex-wrap items-center gap-2">
@@ -238,60 +270,132 @@ export default function AdminCitizensPage() {
         ) : filteredTransactions.length === 0 ? (
           <p className="py-12 text-center text-[#5a5a5a]">لا توجد نتائج مطابقة لمعايير البحث.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] text-right text-sm">
-              <thead>
-                <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
-                  <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">رقم المعاملة</th>
-                  <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">اسم المواطن</th>
-                  <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">إجمالي المعاملات</th>
-                  <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">تاريخ تقديم المعاملة</th>
-                  <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">حالة المعاملة</th>
-                  <th className="py-3 px-3 font-medium text-[#5a5a5a]">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((t) => {
-                  const name = (t.citizenName || "—").trim() || "—";
-                  const total = citizenTotals[name] ?? 1;
-                  const status = getWorkflowStatus(t);
-                  return (
-                    <tr
-                      key={t.id}
-                      className="border-b border-[#d4cfc8]/80 transition hover:bg-[#f6f3ed]/50"
+          <>
+            {/* موبايل: قائمة بطاقات قابلة للتوسيع */}
+            <div className="space-y-0 divide-y divide-[#d4cfc8]/40 p-4 md:hidden">
+              {filteredTransactions.map((t, idx) => {
+                const name = (t.citizenName || "—").trim() || "—";
+                const status = getWorkflowStatus(t);
+                const isExpanded = expandedRowId === t.id;
+                const isEven = idx % 2 === 0;
+                return (
+                  <div
+                    key={t.id}
+                    className={`${isEven ? "bg-[#f6f3ed]/30" : "bg-white"} border-b border-[#d4cfc8]/30 last:border-b-0`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleExpandRow(t)}
+                      className="flex w-full items-center justify-between gap-3 py-3 text-right"
                     >
-                      <td className="border-l border-[#d4cfc8]/60 py-3 px-3 font-mono text-sm text-[#1B1B1B]">
-                        {t.serialNumber || "—"}
-                      </td>
-                      <td className="border-l border-[#d4cfc8]/60 py-3 px-3 font-medium text-[#1B1B1B]">
-                        {name}
-                      </td>
-                      <td className="border-l border-[#d4cfc8]/60 py-3 px-3 text-[#1B1B1B]">
-                        {total}
-                      </td>
-                      <td className="border-l border-[#d4cfc8]/60 py-3 px-3 text-[#1B1B1B]">
-                        {formatDate(t.submissionDate)}
-                      </td>
-                      <td className="border-l border-[#d4cfc8]/60 py-3 px-3">
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${status.className}`}>
-                          {status.label}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span className="shrink-0 w-7 text-center text-sm font-medium text-[#5a5a5a]">{(idx + 1).toLocaleString("ar-EG")}</span>
+                        <span className="min-w-0 truncate font-mono text-sm text-[#1B1B1B]">{t.serialNumber || "—"}</span>
+                        <span className="min-w-0 flex-1 truncate font-medium text-[#1B1B1B]">{name}</span>
+                      </div>
+                      <span
+                        className={`shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        aria-hidden
+                      >
+                        <svg className="h-5 w-5 text-[#5a5a5a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </span>
+                    </button>
+                    {isExpanded && expandedRowData && expandedRowData.id === t.id && (
+                      <div className="border-t border-[#d4cfc8]/50 bg-[#FAFAF9] px-3 py-4">
+                        <dl className="space-y-2.5 text-sm">
+                          <div className="flex justify-between gap-4">
+                            <dt className="shrink-0 font-medium text-[#5a5a5a]">رقم المعاملة</dt>
+                            <dd className="min-w-0 truncate font-mono text-[#1B1B1B] text-left">{expandedRowData.serialNumber || "—"}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="shrink-0 font-medium text-[#5a5a5a]">اسم المواطن</dt>
+                            <dd className="min-w-0 truncate text-[#1B1B1B] text-left">{(expandedRowData.citizenName || "—").trim() || "—"}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="shrink-0 font-medium text-[#5a5a5a]">الهاتف</dt>
+                            <dd className="min-w-0 truncate text-[#1B1B1B] text-left dir-ltr">{expandedRowData.citizenPhone || "—"}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="shrink-0 font-medium text-[#5a5a5a]">العنوان</dt>
+                            <dd className="min-w-0 truncate text-[#1B1B1B] text-left">{expandedRowData.citizenAddress || "—"}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="shrink-0 font-medium text-[#5a5a5a]">نوع المعاملة</dt>
+                            <dd className="min-w-0 truncate text-[#1B1B1B] text-left">{expandedRowData.transactionType || expandedRowData.type || "—"}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="shrink-0 font-medium text-[#5a5a5a]">الجهة/التشكيل</dt>
+                            <dd className="min-w-0 truncate text-[#1B1B1B] text-left">{expandedRowData.formationName || expandedRowData.officeName || "—"}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="shrink-0 font-medium text-[#5a5a5a]">تاريخ التقديم</dt>
+                            <dd className="min-w-0 text-[#1B1B1B] text-left">{formatDate(expandedRowData.submissionDate)}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="shrink-0 font-medium text-[#5a5a5a]">الحالة</dt>
+                            <dd>
+                              <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${status.className}`}>{status.label}</span>
+                            </dd>
+                          </div>
+                        </dl>
                         <button
                           type="button"
                           onClick={() => handleView(t)}
-                          className="rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-2 py-1 text-xs font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
+                          className="mt-3 w-full rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 py-2 text-sm font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
                         >
-                          عرض المعاملة
+                          عرض وصل المعاملة
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {/* ديسكتوب: الجدول الأصلي */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[850px] text-right text-sm">
+                <thead>
+                  <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
+                    <th className="border-l border-[#d4cfc8] px-3 py-3 font-medium text-[#5a5a5a]">رقم المعاملة</th>
+                    <th className="border-l border-[#d4cfc8] px-3 py-3 font-medium text-[#5a5a5a]">اسم المواطن</th>
+                    <th className="border-l border-[#d4cfc8] px-3 py-3 font-medium text-[#5a5a5a]">إجمالي المعاملات</th>
+                    <th className="border-l border-[#d4cfc8] px-3 py-3 font-medium text-[#5a5a5a]">تاريخ تقديم المعاملة</th>
+                    <th className="border-l border-[#d4cfc8] px-3 py-3 font-medium text-[#5a5a5a]">حالة المعاملة</th>
+                    <th className="px-3 py-3 font-medium text-[#5a5a5a]">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.map((t) => {
+                    const name = (t.citizenName || "—").trim() || "—";
+                    const total = citizenTotals[name] ?? 1;
+                    const status = getWorkflowStatus(t);
+                    return (
+                      <tr key={t.id} className="border-b border-[#d4cfc8]/80 transition hover:bg-[#f6f3ed]/50">
+                        <td className="border-l border-[#d4cfc8]/60 px-3 py-3 font-mono text-sm text-[#1B1B1B]">{t.serialNumber || "—"}</td>
+                        <td className="border-l border-[#d4cfc8]/60 px-3 py-3 font-medium text-[#1B1B1B]">{name}</td>
+                        <td className="border-l border-[#d4cfc8]/60 px-3 py-3 text-[#1B1B1B]">{total}</td>
+                        <td className="border-l border-[#d4cfc8]/60 px-3 py-3 text-[#1B1B1B]">{formatDate(t.submissionDate)}</td>
+                        <td className="border-l border-[#d4cfc8]/60 px-3 py-3">
+                          <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${status.className}`}>{status.label}</span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <button
+                            type="button"
+                            onClick={() => handleView(t)}
+                            className="rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-2 py-1 text-xs font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
+                          >
+                            عرض المعاملة
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </article>
 
