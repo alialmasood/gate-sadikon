@@ -13,6 +13,7 @@ type WorkflowTransaction = {
   cannotComplete?: boolean;
   cannotCompleteReason?: string | null;
   delegateName?: string | null;
+  hasDelegate?: boolean;
   reachedSorting?: boolean;
   completedByAdmin?: boolean;
   createdAt?: string | null;
@@ -34,7 +35,13 @@ function formatDate(s: string | null | undefined): string {
   }
 }
 
-export function TransactionWorkflowChain({ transaction }: { transaction: WorkflowTransaction }) {
+type Props = {
+  transaction: WorkflowTransaction;
+  /** إخفاء اسم المخول (مثلاً في صفحة التتبع العامة) */
+  hideDelegateName?: boolean;
+};
+
+export function TransactionWorkflowChain({ transaction, hideDelegateName }: Props) {
   const steps: { label: string; detail?: string; done: boolean }[] = [];
 
   steps.push({
@@ -57,9 +64,13 @@ export function TransactionWorkflowChain({ transaction }: { transaction: Workflo
       done: true,
     });
   }
-  if (transaction.delegateName) {
+  if (transaction.hasDelegate || transaction.delegateName) {
+    const label =
+      !hideDelegateName && transaction.delegateName
+        ? `محوّلة للمخول — ${transaction.delegateName}`
+        : "محوّلة للمخول";
     steps.push({
-      label: `محوّلة للمخول — ${transaction.delegateName}`,
+      label,
       detail: transaction.updatedAt ? `تاريخ الإحالة: ${formatDate(transaction.updatedAt)}` : undefined,
       done: true,
     });
@@ -88,7 +99,11 @@ export function TransactionWorkflowChain({ transaction }: { transaction: Workflo
     });
   }
   if (transaction.completedByAdmin || transaction.status === "DONE") {
-    const byWhom = transaction.completedByAdmin ? "المدير" : transaction.delegateName ? "المخول" : "—";
+    const byWhom = transaction.completedByAdmin
+      ? "المدير"
+      : transaction.delegateName || transaction.hasDelegate
+        ? "المخول"
+        : "—";
     steps.push({
       label: byWhom ? `منجزة — أُنجزت من قبل ${byWhom}` : "منجزة",
       detail: transaction.completedAt ? `تاريخ الإنجاز: ${formatDate(transaction.completedAt)}` : undefined,

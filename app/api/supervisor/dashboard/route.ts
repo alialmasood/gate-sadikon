@@ -40,7 +40,15 @@ export async function GET() {
     prisma.transaction.count({ where: { status: "DONE" } }),
     prisma.transaction.count({ where: { status: "PENDING" } }),
     prisma.transaction.count({ where: { cannotComplete: true } }),
-    prisma.delegate.count({ where: { status: "ACTIVE" } }),
+    prisma.delegate
+      .findMany({ where: { status: "ACTIVE", userId: { not: null } }, select: { userId: true } })
+      .then(async (list) => {
+        if (list.length === 0) return 0;
+        const ids = [...new Set(list.map((d) => d.userId!))];
+        const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true } });
+        const existing = new Set(users.map((u) => u.id));
+        return list.filter((d) => existing.has(d.userId!)).length;
+      }),
     prisma.formationSubDept
       .findMany({ where: { status: "ACTIVE" }, select: { formationId: true } })
       .then((subDepts) => new Set(subDepts.map((s) => s.formationId)).size),
@@ -72,22 +80,44 @@ export async function GET() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 12);
 
-  // مخولون وإنجازهم
+  // مخولون وإنجازهم — أعلى المخولين من حيث المعاملات المنجزة (مستبعداً اليتامى)
   const delegatesGrouped = await prisma.transaction.groupBy({
     by: ["delegateId"],
     where: { delegateId: { not: null }, status: "DONE" },
     _count: { id: true },
   });
   const delegateIds = delegatesGrouped.map((g) => g.delegateId).filter(Boolean) as string[];
-  const delegates = await prisma.delegate.findMany({
-    where: { id: { in: delegateIds } },
-    select: { id: true, name: true },
-  });
-  const delegateNameMap = Object.fromEntries(delegates.map((d) => [d.id, d.name || d.id.slice(-6)]));
+  const delegates =
+    delegateIds.length > 0
+      ? await prisma.delegate.findMany({
+          where: { id: { in: delegateIds } },
+          select: { id: true, name: true, userId: true },
+        })
+      : [];
+  const delegateUserIds = delegates.map((d) => d.userId).filter((id): id is string => !!id);
+  const delegateUsers =
+    delegateUserIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: delegateUserIds } },
+          select: { id: true, name: true, email: true },
+        })
+      : [];
+  const userById = Object.fromEntries(delegateUsers.map((u) => [u.id, u]));
+  const validDelegateIds = new Set(
+    delegates.filter((d) => d.userId && userById[d.userId]).map((d) => d.id)
+  );
+  const delegateNameMap = Object.fromEntries(
+    delegates
+      .filter((d) => validDelegateIds.has(d.id))
+      .map((d) => {
+        const u = d.userId ? userById[d.userId] : null;
+        return [d.id, d.name ?? u?.name ?? u?.email ?? "—"];
+      })
+  );
   const delegatesChartData = delegatesGrouped
-    .filter((g) => g.delegateId)
+    .filter((g) => g.delegateId && validDelegateIds.has(g.delegateId))
     .map((g) => ({
-      name: delegateNameMap[g.delegateId!] || "مخول",
+      name: delegateNameMap[g.delegateId!] ?? "مخول",
       value: g._count.id,
     }))
     .sort((a, b) => b.value - a.value)

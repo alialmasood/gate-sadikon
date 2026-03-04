@@ -26,9 +26,10 @@ export async function GET(request: NextRequest) {
     transactionFormationId = tx?.formationId ?? null;
   }
 
-  const delegates = await prisma.delegate.findMany({
+  const delegatesRaw = await prisma.delegate.findMany({
     where: {
       status: "ACTIVE",
+      userId: { not: null },
       OR: [{ officeId: null }, { officeId }],
     },
     orderBy: { name: "asc" },
@@ -36,8 +37,19 @@ export async function GET(request: NextRequest) {
       id: true,
       name: true,
       formationIds: true,
+      userId: true,
     },
   });
+  const userIds = [...new Set(delegatesRaw.map((d) => d.userId!).filter(Boolean))];
+  const existingUsers =
+    userIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true },
+        })
+      : [];
+  const userById = Object.fromEntries(existingUsers.map((u) => [u.id, u]));
+  const delegates = delegatesRaw.filter((d) => d.userId && userById[d.userId]);
 
   const formationIdsRaw = delegates
     .map((d) => d.formationIds)
@@ -59,9 +71,10 @@ export async function GET(request: NextRequest) {
       .map((id) => formationMap[id]?.name)
       .filter(Boolean) as string[];
     const isSuggested = !!transactionFormationId && ids.includes(transactionFormationId);
+    const u = d.userId ? userById[d.userId] : null;
     return {
       id: d.id,
-      name: d.name || "بدون اسم",
+      name: u?.name ?? u?.email ?? d.name ?? "بدون اسم",
       formationNames,
       formationIds: ids,
       isSuggested,

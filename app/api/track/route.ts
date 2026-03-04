@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
     include: {
       office: { select: { name: true } },
       formation: { select: { name: true } },
-      delegate: { select: { name: true } },
     },
   });
 
@@ -86,7 +85,7 @@ export async function GET(request: NextRequest) {
     urgent: t.urgent,
     cannotComplete: t.cannotComplete,
     cannotCompleteReason: t.cannotCompleteReason,
-    delegateName: t.delegate?.name ?? null,
+    hasDelegate: !!t.delegateId,
     reachedSorting: t.reachedSorting,
     completedByAdmin: t.completedByAdmin,
     createdAt: t.createdAt?.toISOString() ?? null,

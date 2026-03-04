@@ -191,7 +191,7 @@ function TrackPageContent() {
           </div>
 
           <div className="mt-4">
-            <TransactionWorkflowChain transaction={result.workflow!} />
+            <TransactionWorkflowChain transaction={result.workflow!} hideDelegateName />
           </div>
 
           {result.attachments && result.attachments.length > 0 && (
