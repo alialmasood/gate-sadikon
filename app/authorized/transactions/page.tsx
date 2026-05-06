@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 
 type AttachmentItem = { url: string; name?: string };
@@ -105,6 +106,8 @@ export default function AuthorizedTransactionsPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(loadData);
 
   return (
     <div className="min-h-0 space-y-6 pb-[env(safe-area-inset-bottom)]" dir="rtl">

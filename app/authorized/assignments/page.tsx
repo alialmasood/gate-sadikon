@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 type AssignmentItem = {
   id: string;
@@ -16,13 +17,20 @@ export default function AuthorizedAssignmentsPage() {
   const [myAssignments, setMyAssignments] = useState<AssignmentItem[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(true);
 
-  useEffect(() => {
+  const loadAssignments = useCallback(() => {
     fetch("/api/authorized/my-assignments")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setMyAssignments(Array.isArray(data) ? data : []))
       .catch(() => setMyAssignments([]))
       .finally(() => setLoadingAssignments(false));
   }, []);
+
+  useEffect(() => {
+    setLoadingAssignments(true);
+    loadAssignments();
+  }, [loadAssignments]);
+
+  useAutoRefresh(loadAssignments);
 
   return (
     <div className="min-w-0 space-y-6" dir="rtl">

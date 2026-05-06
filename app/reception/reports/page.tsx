@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import {
   BarChart,
@@ -105,8 +106,8 @@ export default function ReceptionReportsPage() {
     return `/api/transactions?${params}`;
   }, [dateFrom, dateTo]);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch(buildUrl(), { credentials: "include" });
       const data = await res.json().catch(() => ({}));
@@ -116,13 +117,15 @@ export default function ReceptionReportsPage() {
         setTransactions([]);
       }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [buildUrl]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(() => loadData({ silent: true }));
 
   const total = transactions.length;
   const pending = transactions.filter((t) => t.status === "PENDING").length;

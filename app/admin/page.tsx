@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { useSession } from "next-auth/react";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 import {
@@ -120,15 +122,16 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean; bypassCache?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
+      const t = opts?.bypassCache ? `_t=${Date.now()}` : "";
       const [statsRes, timelineRes, statusRes, activityRes, sectionsRes] = await Promise.all([
-        fetch("/api/admin/stats"),
-        fetch("/api/admin/charts?chart=timeline&period=months:30"),
-        fetch("/api/admin/charts?chart=status"),
-        fetch("/api/admin/charts?chart=activity"),
-        fetch("/api/admin/sections-summary"),
+        fetch(`/api/admin/stats${t ? `?${t}` : ""}`),
+        fetch(`/api/admin/charts?chart=timeline&period=months:30${t ? `&${t}` : ""}`),
+        fetch(`/api/admin/charts?chart=status${t ? `&${t}` : ""}`),
+        fetch(`/api/admin/charts?chart=activity${t ? `&${t}` : ""}`),
+        fetch(`/api/admin/sections-summary${t ? `?${t}` : ""}`),
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       loadUrgent();
@@ -139,13 +142,15 @@ export default function AdminDashboard() {
     } catch {
       //
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
-  }, []);
+  }, [loadUrgent]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(() => loadData({ silent: true, bypassCache: true }));
 
   useEffect(() => {
     loadUrgent();
@@ -607,6 +612,7 @@ export default function AdminDashboard() {
           setActionError={setActionError}
           onClose={closeActionModal}
           onSuccess={() => {
+            broadcastDataUpdate();
             closeActionModal();
             loadUrgent();
             loadData();

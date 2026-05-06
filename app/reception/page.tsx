@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import {
   BarChart,
@@ -46,8 +47,8 @@ export default function ReceptionDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch("/api/reception/dashboard", { credentials: "include" });
       if (res.ok) {
@@ -59,13 +60,15 @@ export default function ReceptionDashboard() {
     } catch {
       setData(null);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(() => loadData({ silent: true }));
 
   return (
     <div className="space-y-6" dir="rtl">

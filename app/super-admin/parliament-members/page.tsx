@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 
 type ParliamentMember = {
@@ -260,6 +261,8 @@ export default function ParliamentMembersPage() {
   useEffect(() => {
     loadMembers();
   }, [loadMembers]);
+
+  useAutoRefresh(loadMembers);
 
   async function handleSubmit(data: {
     name: string;

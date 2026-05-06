@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getSeenTransactionIds } from "@/lib/authorized-seen";
@@ -89,6 +90,11 @@ export default function AuthorizedDashboard() {
     }, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [loadData, loadStats]);
+
+  useAutoRefresh(() => {
+    loadData(true);
+    loadStats();
+  });
 
   const [seenIds, setSeenIds] = useState<Set<string>>(() => getSeenTransactionIds());
   useEffect(() => {

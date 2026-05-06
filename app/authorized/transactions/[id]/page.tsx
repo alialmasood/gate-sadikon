@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -74,6 +76,8 @@ export default function AuthorizedTransactionDetailPage() {
     setError(null);
     loadTransaction();
   }, [id, loadTransaction]);
+
+  useAutoRefresh(loadTransaction);
 
   useEffect(() => {
     if (id) markTransactionAsSeen(id);
@@ -235,10 +239,12 @@ export default function AuthorizedTransactionDetailPage() {
       });
       const data = await res.json();
       if (res.ok && data.delegateActions) {
+        broadcastDataUpdate();
         setActionText("");
         setActionFile(null);
         setTransaction((prev) => (prev ? { ...prev, delegateActions: data.delegateActions } : prev));
       } else if (res.ok) {
+        broadcastDataUpdate();
         setActionText("");
         setActionFile(null);
         loadTransaction();
@@ -262,6 +268,7 @@ export default function AuthorizedTransactionDetailPage() {
       });
       const data = await res.json();
       if (res.ok) {
+        broadcastDataUpdate();
         setTransaction((prev) => (prev ? { ...prev, status: "DONE" } : prev));
         router.push("/authorized/transactions");
       } else {

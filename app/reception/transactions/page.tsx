@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
@@ -113,8 +114,8 @@ export default function ReceptionTransactionsPage() {
     return true;
   });
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch("/api/transactions?limit=300", { credentials: "include" });
       const data = await res.json().catch(() => ({}));
@@ -122,13 +123,15 @@ export default function ReceptionTransactionsPage() {
         setTransactions(data.transactions || []);
       }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(() => loadData({ silent: true }));
 
   const handleView = useCallback(async (t: Transaction) => {
     try {

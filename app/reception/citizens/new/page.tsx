@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 
 const INPUT_CLASS =
   "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20";
@@ -564,6 +565,7 @@ function ReceptionNewTransactionContent() {
         if (text.trim()) data = JSON.parse(text);
       } catch {}
       if (res.ok) {
+        broadcastDataUpdate();
         saveNameToStorage(fullName.trim());
         if (citizenId.trim()) saveIdToStorage(citizenId.trim());
         const formationName = (data as { formationName?: string }).formationName

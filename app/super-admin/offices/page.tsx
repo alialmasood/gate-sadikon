@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { createPortal } from "react-dom";
 
@@ -866,6 +867,8 @@ export default function OfficesPage() {
   useEffect(() => {
     loadOffices();
   }, [loadOffices]);
+
+  useAutoRefresh(loadOffices);
 
   const handleSubmit = async (data: {
     name: string;

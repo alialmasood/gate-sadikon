@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
 const SOURCE_SECTION_LABELS: Record<string, string> = {
@@ -115,6 +117,8 @@ export default function SortingReceivedPage() {
     return () => clearInterval(id);
   }, [loadData]);
 
+  useAutoRefresh(loadData);
+
   const stats = useMemo(() => {
     const total = transactions.length;
     const pending = transactions.filter((t) => t.status === "PENDING").length;
@@ -163,6 +167,7 @@ export default function SortingReceivedPage() {
         });
         if (res.ok) {
           setTransactions((prev) => prev.filter((x) => x.id !== t.id));
+          broadcastDataUpdate();
           router.push("/sorting/outgoing");
         } else {
           const data = await res.json().catch(() => ({}));
@@ -222,6 +227,7 @@ export default function SortingReceivedPage() {
       });
       if (res.ok) {
         setTransactions((prev) => prev.filter((x) => x.id !== delegateModalTransaction.id));
+        broadcastDataUpdate();
         closeDelegateModal();
       } else {
         const data = await res.json().catch(() => ({}));
@@ -262,6 +268,7 @@ export default function SortingReceivedPage() {
       });
       if (res.ok) {
         setTransactions((prev) => prev.filter((x) => x.id !== cannotCompleteTransaction.id));
+        broadcastDataUpdate();
         closeCannotCompleteModal();
       } else {
         const data = await res.json().catch(() => ({}));

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
@@ -227,6 +228,8 @@ export default function CoordinatorCompletedPage() {
     const id = setInterval(load, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [load]);
+
+  useAutoRefresh(load);
 
   return (
     <div className="space-y-6" dir="rtl">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 
 type AdminDoneItem = {
@@ -32,6 +33,8 @@ export default function CoordinatorDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(load);
 
   const formatDate = (s: string | null) => {
     if (!s) return "—";

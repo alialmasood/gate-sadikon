@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
@@ -123,8 +124,8 @@ export default function AdminTransactionsPage() {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [expandedRowData, setExpandedRowData] = useState<FullTransaction | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const url = statusFilter ? `/api/admin/transactions?status=${statusFilter}&limit=200` : "/api/admin/transactions?limit=200";
       const res = await fetch(url);
@@ -134,13 +135,15 @@ export default function AdminTransactionsPage() {
         setOverdueCount(data.overdueCount ?? 0);
       }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [statusFilter]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(() => loadData({ silent: true }));
 
   const filteredTransactions = useMemo(() => {
     let list = transactions;

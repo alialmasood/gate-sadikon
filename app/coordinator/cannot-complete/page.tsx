@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 import { TransactionWorkflowChain } from "@/components/TransactionWorkflowChain";
@@ -285,6 +286,8 @@ export default function CoordinatorCannotCompletePage() {
     const id = setInterval(loadData, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [loadData]);
+
+  useAutoRefresh(loadData);
 
   const handleView = useCallback(async (t: Transaction) => {
     try {

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 
 type Transaction = {
   id: string;
@@ -114,8 +116,8 @@ export default function ReceptionCitizensPage() {
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch("/api/transactions?limit=200", { credentials: "include" });
       let data: { transactions?: Transaction[] } = {};
@@ -134,13 +136,15 @@ export default function ReceptionCitizensPage() {
         setStatusCounts({ pending, done, overdue, total: trans.length });
       }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(() => loadData({ silent: true }));
 
   const uniqueTypesFromData = Array.from(
     new Set(transactions.map((t) => t.transactionType || t.type).filter(Boolean) as string[])
@@ -197,6 +201,7 @@ export default function ReceptionCitizensPage() {
         setTransactions((prev) => prev.filter((t) => t.id !== id));
         setDeleteId(null);
         loadData();
+        broadcastDataUpdate();
       } else {
         const body = await res.json();
         alert(body.error || "فشل الحذف");

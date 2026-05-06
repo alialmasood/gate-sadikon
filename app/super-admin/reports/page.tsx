@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import {
   BarChart,
@@ -136,6 +137,8 @@ export default function ReportsPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(loadData);
 
   const handlePrint = useCallback(() => {
     window.print();

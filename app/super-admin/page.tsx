@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import {
   AreaChart,
@@ -273,6 +274,11 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     loadCharts();
   }, [loadCharts]);
+
+  useAutoRefresh(() => {
+    loadStats();
+    loadCharts();
+  });
 
   const formatDate = (d: string) => {
     const date = new Date(d);

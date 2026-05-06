@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 
 type Stats = {
@@ -45,6 +46,8 @@ export default function AuthorizedReportsPage() {
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  useAutoRefresh(loadStats);
 
   const handlePrint = useCallback(() => {
     if (!stats) return;

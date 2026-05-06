@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import AddTransactionModal from "./AddTransactionModal";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
@@ -72,8 +73,8 @@ export default function AdminCitizensPage() {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [expandedRowData, setExpandedRowData] = useState<FullTransaction | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch("/api/admin/transactions?limit=200");
       if (res.ok) {
@@ -92,13 +93,15 @@ export default function AdminCitizensPage() {
         setTransactions([]);
       }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(() => loadData({ silent: true }));
 
   const searchLower = searchQuery.trim().toLowerCase();
   const filteredTransactions = transactions.filter((t) => {

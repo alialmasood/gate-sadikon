@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 type StaffMember = {
   id: string;
@@ -58,8 +59,8 @@ export default function AdminStaffPage() {
   const [loading, setLoading] = useState(true);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch("/api/admin/staff");
       if (res.ok) {
@@ -69,13 +70,15 @@ export default function AdminStaffPage() {
         setStaff([]);
       }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(() => loadData({ silent: true }));
 
   const stats = useMemo(() => {
     const enabled = staff.filter((u) => u.enabled).length;

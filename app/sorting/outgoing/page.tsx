@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
 type Transaction = {
@@ -101,6 +102,8 @@ export default function SortingOutgoingPage() {
     const id = setInterval(loadData, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [loadData]);
+
+  useAutoRefresh(loadData);
 
   const handleView = useCallback(async (t: Transaction) => {
     try {

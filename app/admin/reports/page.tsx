@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import {
   AreaChart,
   Area,
@@ -55,8 +56,8 @@ export default function AdminReportsPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const [timelineRes, statusRes, statsRes, sectionsRes, staffRes] = await Promise.all([
         fetch(`/api/admin/charts?chart=timeline&period=${period}`),
@@ -87,13 +88,15 @@ export default function AdminReportsPage() {
     } catch {
       //
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [period]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(() => loadData({ silent: true }));
 
   const handlePrint = useCallback(() => {
     window.print();

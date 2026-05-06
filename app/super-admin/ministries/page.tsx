@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 
 type FormationOption = { id: string; name: string; type: string };
@@ -266,6 +267,8 @@ export default function MinistriesPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useAutoRefresh(loadData);
 
   const filteredRows = rows.filter((r) => {
     const matchSearch =

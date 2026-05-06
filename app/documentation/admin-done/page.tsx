@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
 type TxItem = {
@@ -45,6 +46,8 @@ export default function DocumentationAdminDonePage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(load);
 
   const formatDate = (s: string | null) => {
     if (!s) return "—";

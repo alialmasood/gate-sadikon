@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 
 type Office = { id: string; name: string };
@@ -1294,6 +1295,8 @@ export default function SuperAdminUsersPage() {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  useAutoRefresh(loadUsers);
 
   useEffect(() => {
     if (assignModalOpen) {

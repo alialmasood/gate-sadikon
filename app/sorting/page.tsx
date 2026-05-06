@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import {
   BarChart,
@@ -291,6 +292,8 @@ export default function SortingDashboard() {
     const id = setInterval(loadData, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [loadData]);
+
+  useAutoRefresh(loadData);
 
   return (
     <div className="space-y-6" dir="rtl">

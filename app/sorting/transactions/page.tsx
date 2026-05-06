@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
@@ -130,6 +131,8 @@ export default function SortingTransactionsPage() {
     const id = setInterval(loadData, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [loadData]);
+
+  useAutoRefresh(loadData);
 
   const stats = useMemo(() => ({
     total: transactions.length,

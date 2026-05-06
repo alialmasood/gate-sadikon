@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   motion,
   useReducedMotion,
@@ -28,17 +28,15 @@ function formatArabicDateTime(date: Date) {
 export default function IntroHero() {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
-  // استخدام قيمة ثابتة عند SSR وأول عرض على العميل لتجنب hydration mismatch
-  // لأن useReducedMotion يعتمد على window.matchMedia غير المتوفر على الخادم
-  const [reducedMotion, setReducedMotion] = useState(false);
-  useEffect(() => {
-    setReducedMotion(prefersReducedMotion ?? false);
-  }, [prefersReducedMotion]);
+  const reducedMotion = prefersReducedMotion ?? false;
   const [isLeaving, setLeaving] = useState(false);
   const dateTimeStr = formatArabicDateTime(new Date());
 
   const handleEnter = () => {
     setLeaving(true);
+  };
+  const handleComplaint = () => {
+    router.push("/complaints");
   };
 
   const cardExit = reducedMotion
@@ -72,17 +70,6 @@ export default function IntroHero() {
           opacity: 1,
           scale: 1,
           transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] },
-        },
-      };
-
-  const dividerVariants: Variants = reducedMotion
-    ? { initial: { opacity: 0 }, animate: { opacity: 1, transition: { delay: 0.7 } } }
-    : {
-        initial: { width: 0, opacity: 0.8 },
-        animate: {
-          width: 160,
-          opacity: 1,
-          transition: { duration: 0.55, delay: 0.85 },
         },
       };
 
@@ -345,7 +332,7 @@ export default function IntroHero() {
             variants={buttonVariants}
             initial="initial"
             animate="animate"
-            className="w-full shrink-0 sm:w-auto"
+            className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row"
           >
             <motion.button
               type="button"
@@ -379,6 +366,21 @@ export default function IntroHero() {
               ) : (
                 "دخول إلى النظام"
               )}
+            </motion.button>
+
+            <motion.button
+              type="button"
+              onClick={handleComplaint}
+              className="relative inline-flex w-full min-w-[220px] items-center justify-center overflow-hidden rounded-2xl border border-[#8C6A12]/70 px-10 py-[18px] font-semibold tracking-wide text-[#5A430F] max-md:min-w-0 max-md:py-4 max-md:text-base sm:w-auto"
+              style={{
+                background: "linear-gradient(180deg, rgba(255,255,255,0.9) 0%, #FFF8E9 100%)",
+                boxShadow: "0 14px 34px rgba(0,0,0,0.1)",
+              }}
+              whileHover={{ y: -2, filter: "brightness(1.02)" }}
+              whileTap={{ scale: 0.98 }}
+              transition={reducedTransition}
+            >
+              تقديم شكوى
             </motion.button>
           </motion.div>
         </div>

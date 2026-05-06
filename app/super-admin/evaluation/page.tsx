@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import {
   BarChart,
   Bar,
@@ -229,6 +231,8 @@ export default function EvaluationPage() {
     loadData();
   }, [loadData]);
 
+  useAutoRefresh(loadData);
+
   const handleSaveEvaluation = useCallback(
     async (entityType: "OFFICE" | "DELEGATE" | "USER", entityId: string, rating: number | null, notes: string) => {
       const key = `${entityType}:${entityId}`;
@@ -241,6 +245,7 @@ export default function EvaluationPage() {
           body: JSON.stringify({ entityType, entityId, period, rating, notes }),
         });
         if (res.ok) {
+          broadcastDataUpdate();
           await loadData();
         }
       } finally {

@@ -151,6 +151,18 @@ model Transaction {
   formation        Formation? @relation(fields: [formationId], references: [id], onDelete: SetNull)
 }
 
+model Complaint {
+  id          String        @id @default(cuid())
+  type        ComplaintType
+  name        String
+  address     String?
+  phone       String
+  details     String        @db.Text
+  attachments Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
 enum Role {
   SUPER_ADMIN
   ADMIN
@@ -162,4 +174,9 @@ enum Role {
   DOCUMENTATION // قسم التوثيق
   PARLIAMENT_MEMBER
   SUPERVISION   // حاسبات الإشراف والمراقبة
+}
+
+enum ComplaintType {
+  SECRET
+  PUBLIC
 }

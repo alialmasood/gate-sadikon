@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import Link from "next/link";
 
@@ -236,7 +237,7 @@ export default function SuperAdminSupervisionCalculatorsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function fetchAccounts() {
+  const fetchAccounts = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/super-admin/supervision-accounts");
@@ -245,11 +246,13 @@ export default function SuperAdminSupervisionCalculatorsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     fetchAccounts();
-  }, []);
+  }, [fetchAccounts]);
+
+  useAutoRefresh(fetchAccounts);
 
   async function handleEditSubmit(data: {
     name: string;
