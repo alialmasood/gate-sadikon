@@ -250,7 +250,7 @@ export default function SortingReportsPage() {
           </div>
           <button
             type="button"
-            onClick={loadData}
+            onClick={() => void loadData()}
             disabled={loading}
             className="rounded-lg border border-[#7C3AED] bg-[#7C3AED] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#6d28d9] disabled:opacity-60"
           >

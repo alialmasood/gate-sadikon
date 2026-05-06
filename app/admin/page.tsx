@@ -189,7 +189,7 @@ export default function AdminDashboard() {
           </div>
           <button
             type="button"
-            onClick={loadData}
+            onClick={() => void loadData()}
             disabled={loading}
             className="hidden items-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B] transition hover:bg-[#f6f3ed] focus:border-[#1E6B3A] focus:outline-none focus:ring-1 focus:ring-[#1E6B3A] disabled:opacity-60 lg:flex"
           >

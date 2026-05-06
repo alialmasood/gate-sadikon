@@ -248,7 +248,7 @@ export default function ReceptionReportsPage() {
           </div>
           <button
             type="button"
-            onClick={loadData}
+            onClick={() => void loadData()}
             disabled={loading}
             className="rounded-lg border border-[#1E6B3A] bg-[#1E6B3A] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#175a2e] disabled:opacity-60"
           >

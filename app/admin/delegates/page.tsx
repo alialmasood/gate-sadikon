@@ -119,7 +119,7 @@ export default function AdminDelegatesPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={loadData}
+            onClick={() => void loadData()}
             disabled={loading}
             className="rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B] transition hover:bg-[#f6f3ed] disabled:opacity-50"
           >
