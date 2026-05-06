@@ -18,6 +18,7 @@ function getBreadcrumb(pathname: string): string[] {
     "/admin": "لوحة التحكم",
     "/admin/citizens": "شؤون المواطنين",
     "/admin/transactions": "إدارة المعاملات",
+    "/admin/complaints": "متابعة الشكاوى",
     "/admin/reports": "التقارير",
     "/admin/staff": "الموظفين",
     "/admin/delegates": "المخولون",
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/admin", label: "لوحة التحكم" },
   { href: "/admin/citizens", label: "شؤون المواطنين" },
   { href: "/admin/transactions", label: "إدارة المعاملات" },
+  { href: "/admin/complaints", label: "متابعة الشكاوى" },
   { href: "/admin/delegates", label: "المخولون" },
   { href: "/admin/staff", label: "الموظفين" },
   { href: "/admin/reports", label: "التقارير" },
@@ -60,6 +62,11 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   "/admin/reports": (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  ),
+  "/admin/complaints": (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h8m-8 4h5m4 7l-4-4H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2v4z" />
     </svg>
   ),
   "/admin/delegates": (

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
 
@@ -43,26 +44,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "تفاصيل الشكوى مطلوبة." }, { status: 400 });
   }
 
-  const complaintId = randomUUID();
-  const now = new Date();
-  const attachmentsJson = attachments.length > 0 ? JSON.stringify(attachments) : null;
-  const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
-    `INSERT INTO "Complaint" ("id", "type", "name", "address", "phone", "details", "attachments", "createdAt", "updatedAt")
-     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
-     RETURNING "id"`,
-    complaintId,
-    type,
-    name,
-    address || null,
-    phone,
-    details,
-    attachmentsJson,
-    now,
-    now
-  );
+  try {
+    const complaintId = randomUUID();
+    const created = await prisma.complaint.create({
+      data: {
+        id: complaintId,
+        type,
+        name,
+        address: address || null,
+        phone,
+        details,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      },
+      select: { id: true },
+    });
 
-  return NextResponse.json({
-    message: "تم ارسال شكوتك بنجاح سيتم التعامل معها والتواصل معك",
-    id: rows[0]?.id ?? complaintId,
-  });
+    return NextResponse.json({
+      message: "تم ارسال شكوتك بنجاح سيتم التعامل معها والتواصل معك",
+      id: created.id ?? complaintId,
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2010" || error.code === "P2021")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "خدمة الشكاوى غير مهيأة في قاعدة البيانات الحالية. يرجى تنفيذ ترحيلات Prisma (migrations) ثم إعادة المحاولة.",
+        },
+        { status: 503 }
+      );
+    }
+    throw error;
+  }
 }
