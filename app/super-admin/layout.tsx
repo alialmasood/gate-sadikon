@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { safeSignOut } from "@/lib/client-safe-signout";
 
 function formatDateTime(date: Date) {
   return new Intl.DateTimeFormat("ar-IQ", {
@@ -352,7 +352,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                       <div className="absolute left-0 top-full z-20 mt-1 min-w-[140px] rounded-xl border border-[#d4cfc8] bg-white py-1 shadow-lg">
                         <button
                           type="button"
-                          onClick={() => signOut({ callbackUrl: "/login" })}
+                          onClick={() => void safeSignOut()}
                           className="w-full px-4 py-2 text-right text-sm text-[#1B1B1B] hover:bg-[#f6f3ed]"
                         >
                           خروج

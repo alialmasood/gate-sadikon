@@ -226,9 +226,11 @@ export default function SuperAdminDashboard() {
     }
   }, []);
 
-  const loadCharts = useCallback(async () => {
-    setChartsLoading(true);
-    setTimelineError(null);
+  const loadCharts = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) {
+      setChartsLoading(true);
+      setTimelineError(null);
+    }
     const opts = { credentials: "include" as RequestCredentials };
     try {
       const [timelineRes, statusRes, activityRes, officesRes, delegatesRes] = await Promise.all([
@@ -240,6 +242,7 @@ export default function SuperAdminDashboard() {
       ]);
       if (timelineRes.ok) {
         const data = await timelineRes.json();
+        setTimelineError(null);
         setTimelineData(Array.isArray(data) ? data : []);
       } else {
         const err = await timelineRes.text().catch(() => "");
@@ -252,7 +255,7 @@ export default function SuperAdminDashboard() {
     } catch {
       //
     } finally {
-      setChartsLoading(false);
+      if (!silent) setChartsLoading(false);
     }
   }, [period, officeId]);
 
@@ -277,7 +280,7 @@ export default function SuperAdminDashboard() {
 
   useAutoRefresh(() => {
     loadStats();
-    loadCharts();
+    loadCharts({ silent: true });
   });
 
   const formatDate = (d: string) => {

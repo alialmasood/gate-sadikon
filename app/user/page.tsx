@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { safeSignOut } from "@/lib/client-safe-signout";
 
 export default function UserPage() {
   return (
@@ -11,7 +11,7 @@ export default function UserPage() {
           <p className="text-[#4a4a4a]">مرحباً بك في لوحة المستخدم.</p>
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => void safeSignOut()}
             className="mt-6 rounded-xl border border-[#B08D57]/50 bg-[#B08D57] px-6 py-2.5 font-medium text-white hover:bg-[#9C7B49]"
           >
             تسجيل الخروج

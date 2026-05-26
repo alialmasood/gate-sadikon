@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { safeSignOut } from "@/lib/client-safe-signout";
 
 function formatDateTime(date: Date) {
   return new Intl.DateTimeFormat("ar-IQ", {
@@ -126,7 +126,7 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
               <div className="hidden h-4 w-px shrink-0 bg-[#d4cfc8] sm:block" aria-hidden />
               <button
                 type="button"
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={() => void safeSignOut()}
                 className="flex h-10 min-w-[44px] items-center justify-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-3 py-2 text-sm font-medium text-[#1B1B1B] hover:bg-[#f6f3ed] active:bg-[#ebe7e0]"
               >
                 <span className="hidden sm:inline">تسجيل الخروج</span>
