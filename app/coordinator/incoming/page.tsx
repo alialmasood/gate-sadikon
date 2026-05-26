@@ -29,6 +29,7 @@ type Transaction = {
   urgent?: boolean;
   cannotComplete?: boolean;
   cannotCompleteReason?: string | null;
+  sourceSection?: string | null;
   reachedSorting?: boolean;
   completedByAdmin?: boolean;
   formationName?: string | null;
@@ -248,7 +249,7 @@ export default function CoordinatorIncomingPage() {
     const periodLabel =
       reportPeriod === "day" ? "اليوم" : reportPeriod === "week" ? "آخر 7 أيام" : "آخر 30 يوم";
     return { completed, atDelegate, periodLabel, startDate };
-  }, [transactions, reportPeriod, lastUpdate]);
+  }, [transactions, reportPeriod]);
 
   return (
     <div className="space-y-6" dir="rtl">

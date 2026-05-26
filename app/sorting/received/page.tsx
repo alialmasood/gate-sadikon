@@ -3,17 +3,9 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
-
-const SOURCE_SECTION_LABELS: Record<string, string> = {
-  RECEPTION: "الاستعلامات والاستقبال",
-  COORDINATOR: "المتابعة",
-  DOCUMENTATION: "التوثيق",
-  ADMIN: "مدير المكتب",
-  SORTING: "الفرز",
-};
 
 type Transaction = {
   id: string;
@@ -41,6 +33,11 @@ type DelegateOption = {
   name: string;
   formationNames: string[];
   isSuggested: boolean;
+};
+
+type OfficeBreakdownItem = {
+  officeName: string;
+  count: number;
 };
 
 type FullTransaction = Transaction & {
@@ -79,8 +76,11 @@ function formatDate(s: string | null): string {
 
 export default function SortingReceivedPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [officeFilter, setOfficeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [delegateModalOpen, setDelegateModalOpen] = useState(false);
@@ -96,11 +96,20 @@ export default function SortingReceivedPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const res = await fetch("/api/transactions?limit=200", { credentials: "include" });
+      const res = await fetch("/api/transactions?limit=3000", { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         const all = data.transactions || [];
-        setTransactions(all.filter((x: Transaction) => !x.urgent && !x.cannotComplete && !x.completedByAdmin));
+        setTransactions(
+          all.filter(
+            (x: Transaction) =>
+              !x.urgent &&
+              !x.cannotComplete &&
+              !x.delegateName &&
+              !x.completedByAdmin &&
+              x.status !== "DONE"
+          )
+        );
         setLastUpdate(new Date());
       }
     } finally {
@@ -119,6 +128,11 @@ export default function SortingReceivedPage() {
 
   useAutoRefresh(loadData);
 
+  useEffect(() => {
+    setOfficeFilter(searchParams.get("office")?.trim() || "");
+    setTypeFilter(searchParams.get("type")?.trim() || "");
+  }, [searchParams]);
+
   const stats = useMemo(() => {
     const total = transactions.length;
     const pending = transactions.filter((t) => t.status === "PENDING").length;
@@ -126,20 +140,44 @@ export default function SortingReceivedPage() {
     return { total, pending, overdue };
   }, [transactions]);
 
-  const sourceSectionBreakdown = useMemo(() => {
+  const officeBreakdown = useMemo<OfficeBreakdownItem[]>(() => {
     const map = new Map<string, number>();
     for (const t of transactions) {
-      const key =
-        (t.sourceSection && SOURCE_SECTION_LABELS[t.sourceSection]) ||
-        t.sourceSection ||
-        "غير محدد";
-      map.set(key, (map.get(key) || 0) + 1);
+      const officeName = t.officeName?.trim() || "غير محدد";
+      map.set(officeName, (map.get(officeName) || 0) + 1);
     }
     return Array.from(map.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
+      .map(([officeName, count]) => ({ officeName, count }))
+      .sort((a, b) => (b.count !== a.count ? b.count - a.count : a.officeName.localeCompare(b.officeName, "ar")));
   }, [transactions]);
+
+  const transactionTypeOptions = useMemo(() => {
+    return Array.from(
+      new Set(transactions.map((t) => (t.transactionType || t.type || "").trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((t) => {
+      const officeName = t.officeName?.trim() || "غير محدد";
+      const txType = (t.transactionType || t.type || "").trim();
+      if (officeFilter && officeName !== officeFilter) return false;
+      if (typeFilter && txType !== typeFilter) return false;
+      return true;
+    });
+  }, [transactions, officeFilter, typeFilter]);
+
+  const groupedTransactions = useMemo(() => {
+    const map = new Map<string, Transaction[]>();
+    for (const t of filteredTransactions) {
+      const officeName = t.officeName?.trim() || "غير محدد";
+      if (!map.has(officeName)) map.set(officeName, []);
+      map.get(officeName)!.push(t);
+    }
+    return Array.from(map.entries())
+      .map(([officeName, items]) => ({ officeName, items }))
+      .sort((a, b) => (b.items.length !== a.items.length ? b.items.length - a.items.length : a.officeName.localeCompare(b.officeName, "ar")));
+  }, [filteredTransactions]);
 
   const handleView = useCallback(async (t: Transaction) => {
     try {
@@ -311,13 +349,113 @@ export default function SortingReceivedPage() {
     }
   }, []);
 
+  const renderTransactionCard = useCallback((t: Transaction) => (
+    <article
+      key={t.id}
+      className="relative flex flex-col overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm transition-shadow hover:shadow-md"
+    >
+      <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="font-mono text-sm font-bold text-[#7C3AED]" dir="ltr">
+              {t.serialNumber ? `2026-${t.serialNumber}` : "—"}
+            </span>
+            <span className="truncate rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-xs font-medium text-[#7C3AED]">
+              {t.transactionType || t.type || "—"}
+            </span>
+          </div>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              t.status === "DONE"
+                ? "bg-[#ccfbf1] text-[#0f766e]"
+                : t.status === "OVERDUE"
+                ? "bg-red-100 text-red-700"
+                : "bg-amber-100 text-amber-700"
+            }`}
+          >
+            {STATUS_LABELS[t.status] || t.status}
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-[#5a5a5a]">
+          <span className="inline-flex items-center rounded-full bg-[#7C3AED]/10 px-2.5 py-1 font-medium text-[#7C3AED]">
+            مكتب الارتباط: {t.officeName?.trim() || "غير محدد"}
+          </span>
+          <span className="hidden h-4 w-px bg-[#d4cfc8] sm:block" aria-hidden />
+          <span>تاريخ المعاملة: {formatDate(t.createdAt)}</span>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <h3 className="min-w-0 truncate font-semibold text-[#1B1B1B]">{t.citizenName || "—"}</h3>
+          <p className="shrink-0 text-sm text-[#5a5a5a]" dir="ltr">
+            {t.citizenPhone || "—"}
+          </p>
+        </div>
+
+        <div className="mt-4 grid grid-cols-5 gap-1.5 border-t border-[#d4cfc8] pt-4">
+          <button
+            type="button"
+            onClick={() => handleUrgent(t)}
+            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-red-500/50 bg-red-50 px-1 py-2 text-center text-[10px] font-medium leading-tight text-red-600 hover:bg-red-100 sm:text-[11px]"
+          >
+            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            عاجل
+          </button>
+          <button
+            type="button"
+            onClick={() => openDelegateModal(t)}
+            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-1 py-2 text-center text-[10px] font-medium leading-tight text-[#1E6B3A] hover:bg-[#1E6B3A]/20 sm:text-[11px]"
+          >
+            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            الى مخول
+          </button>
+          <button
+            type="button"
+            onClick={() => openCannotCompleteModal(t)}
+            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-slate-400/50 bg-slate-100 px-1 py-2 text-center text-[10px] font-medium leading-tight text-slate-600 hover:bg-slate-200 sm:text-[11px]"
+          >
+            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            لا يمكن الانجاز
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePrint(t)}
+            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-[#B08D57]/50 bg-[#B08D57]/10 px-1 py-2 text-center text-[10px] font-medium leading-tight text-[#9C7B49] hover:bg-[#B08D57]/20 sm:text-[11px]"
+          >
+            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2h-2m-4-1v8m0 0V5a2 2 0 012-2h6a2 2 0 012 2v8" />
+            </svg>
+            طباعة
+          </button>
+          <button
+            type="button"
+            onClick={() => handleView(t)}
+            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-1 py-2 text-center text-[10px] font-medium leading-tight text-[#7C3AED] hover:bg-[#7C3AED]/20 sm:text-[11px]"
+          >
+            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            عرض
+          </button>
+        </div>
+      </div>
+    </article>
+  ), [handlePrint, handleUrgent, handleView, openCannotCompleteModal, openDelegateModal]);
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] pb-4">
         <div>
           <h2 className="text-xl font-bold text-[#1B1B1B]">المعاملات المستلمة</h2>
           <p className="mt-1 text-sm text-[#5a5a5a]">
-            المعاملات الواردة من وحدة الاستقبال — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
+            المعاملات الواردة مركزيًا من حسابات وأقسام المكتب — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
             {lastUpdate && (
               <span className="mr-2 text-xs text-[#7C3AED]">(آخر تحديث: {formatDate(lastUpdate.toISOString())})</span>
             )}
@@ -346,7 +484,7 @@ export default function SortingReceivedPage() {
               <h2 className="text-base font-semibold text-[#1B1B1B]">ملخص إحصائي</h2>
               <p className="mt-0.5 text-sm text-[#5a5a5a]">عدد المعاملات المستلمة حسب الحالة</p>
             </div>
-            <div className="grid gap-4 p-6 sm:grid-cols-3">
+            <div className="grid gap-4 p-6 sm:grid-cols-2 xl:grid-cols-3">
               <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#7C3AED] bg-white p-4 shadow-sm">
                 <p className="text-sm font-medium text-[#5a5a5a]">إجمالي المعاملات المستلمة</p>
                 <p className="mt-2 text-2xl font-bold text-[#7C3AED]">{stats.total}</p>
@@ -360,24 +498,78 @@ export default function SortingReceivedPage() {
                 <p className="mt-2 text-2xl font-bold text-[#b91c1c]">{stats.overdue}</p>
               </div>
             </div>
-            {sourceSectionBreakdown.length > 0 && (
-              <div className="border-t border-[#d4cfc8] bg-[#f6f3ed]/30 px-6 py-4">
-                <p className="mb-3 text-sm font-medium text-[#5a5a5a]">حسب القسم المصدر (صفحة الاستقبال أو المتابعة أو التوثيق، إلخ) — أعلى ٥</p>
-                <div className="flex flex-wrap gap-3">
-                  {sourceSectionBreakdown.map((item, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-3 py-1.5 text-sm"
-                    >
-                      <span className="font-medium text-[#1B1B1B]">{item.name}</span>
-                      <span className="rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-xs font-bold text-[#7C3AED]">
-                        {item.value}
-                      </span>
-                    </span>
-                  ))}
+          </article>
+
+          <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+            <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+              <h2 className="text-base font-semibold text-[#1B1B1B]">فرز حسب مكتب الارتباط</h2>
+              <p className="mt-0.5 text-sm text-[#5a5a5a]">اختر مكتبًا محددًا أو اترك العرض على الكل مع التجميع التلقائي</p>
+            </div>
+            <div className="space-y-4 p-6">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-[240px]">
+                  <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">مكتب الارتباط</label>
+                  <select
+                    value={officeFilter}
+                    onChange={(e) => setOfficeFilter(e.target.value)}
+                    className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/30"
+                  >
+                    <option value="">كل المكاتب</option>
+                    {officeBreakdown.map((item) => (
+                      <option key={item.officeName} value={item.officeName}>
+                        {item.officeName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="min-w-[220px]">
+                  <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">نوع المعاملة</label>
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/30"
+                  >
+                    <option value="">كل الأنواع</option>
+                    {transactionTypeOptions.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="rounded-lg border border-[#d4cfc8] bg-white px-3 py-2 text-sm text-[#5a5a5a]">
+                  المعروض الآن: <span className="font-bold text-[#1B1B1B]">{filteredTransactions.length}</span> معاملة
                 </div>
               </div>
-            )}
+              {officeBreakdown.length > 0 && (
+                <div className="flex flex-wrap gap-3">
+                  {officeBreakdown.map((item) => (
+                    <button
+                      key={item.officeName}
+                      type="button"
+                      onClick={() => setOfficeFilter((prev) => (prev === item.officeName ? "" : item.officeName))}
+                      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                        officeFilter === item.officeName
+                          ? "border-[#7C3AED] bg-[#7C3AED]/10 text-[#7C3AED]"
+                          : "border-[#d4cfc8] bg-white text-[#1B1B1B] hover:bg-[#f6f3ed]"
+                      }`}
+                    >
+                      <span className="font-medium">{item.officeName}</span>
+                      <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs font-bold">{item.count}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {typeFilter && (
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter("")}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-3 py-1.5 text-sm text-[#1B1B1B] hover:bg-[#f6f3ed]"
+                >
+                  <span>إلغاء فلتر النوع</span>
+                </button>
+              )}
+            </div>
           </article>
 
           {transactions.length === 0 ? (
@@ -397,102 +589,45 @@ export default function SortingReceivedPage() {
                 </Link>
               </div>
             </article>
+          ) : filteredTransactions.length === 0 ? (
+            <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+              <div className="flex flex-col items-center justify-center gap-4 p-12">
+                <p className="text-center text-[#5a5a5a]">لا توجد معاملات مطابقة لمكتب الارتباط المحدد.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOfficeFilter("");
+                    setTypeFilter("");
+                  }}
+                  className="rounded-xl border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-4 py-2 text-sm font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
+                >
+                  عرض جميع النتائج
+                </button>
+              </div>
+            </article>
           ) : (
             <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
               <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
                 <h2 className="text-base font-semibold text-[#1B1B1B]">قائمة المعاملات</h2>
                 <p className="mt-0.5 text-sm text-[#5a5a5a]">إجراءات: عاجل — إرسال لمخول — تعذر الإنجاز — طباعة — عرض</p>
               </div>
-              <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
-          {transactions.map((t) => (
-            <article
-              key={t.id}
-              className="relative flex flex-col overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-4 py-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-sm font-bold text-[#7C3AED]" dir="ltr">
-                    {t.serialNumber ? `2026-${t.serialNumber}` : "—"}
-                  </span>
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      t.status === "DONE"
-                        ? "bg-[#ccfbf1] text-[#0f766e]"
-                        : t.status === "OVERDUE"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-amber-100 text-amber-700"
-                    }`}
-                  >
-                    {STATUS_LABELS[t.status] || t.status}
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-1 flex-col p-4">
-                <h3 className="truncate font-semibold text-[#1B1B1B]">{t.citizenName || "—"}</h3>
-                <p className="mt-1 text-sm text-[#5a5a5a]" dir="ltr">
-                  {t.citizenPhone || "—"}
-                </p>
-                <p className="mt-1 line-clamp-2 text-sm text-[#5a5a5a]">
-                  {t.transactionType || t.type || "—"}
-                </p>
-                <p className="mt-1 text-xs text-[#5a5a5a]">{formatDate(t.createdAt)}</p>
-
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-[#d4cfc8] pt-4">
-                  <button
-                    type="button"
-                    onClick={() => handleUrgent(t)}
-                    className="flex items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    عاجل
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openDelegateModal(t)}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-3 py-2 text-xs font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
-                    الى مخول
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openCannotCompleteModal(t)}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-400/50 bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    لا يمكن الانجاز
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePrint(t)}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#B08D57]/50 bg-[#B08D57]/10 px-3 py-2 text-xs font-medium text-[#9C7B49] hover:bg-[#B08D57]/20"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2h-2m-4-1v8m0 0V5a2 2 0 012-2h6a2 2 0 012 2v8" />
-                    </svg>
-                    طباعة
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleView(t)}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-3 py-2 text-xs font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    عرض
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
+              <div className="space-y-6 p-6">
+                {groupedTransactions.map((group) => (
+                  <section key={group.officeName} className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#d4cfc8] bg-[#f6f3ed]/40 px-4 py-3">
+                      <div>
+                        <h3 className="text-base font-semibold text-[#1B1B1B]">{group.officeName}</h3>
+                        <p className="mt-0.5 text-sm text-[#5a5a5a]">عدد المعاملات في هذا المكتب: {group.items.length}</p>
+                      </div>
+                      <span className="rounded-full bg-[#7C3AED]/10 px-3 py-1 text-sm font-bold text-[#7C3AED]">
+                        {group.items.length}
+                      </span>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {group.items.map((t) => renderTransactionCard(t))}
+                    </div>
+                  </section>
+                ))}
               </div>
             </article>
           )}

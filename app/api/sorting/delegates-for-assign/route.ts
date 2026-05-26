@@ -9,28 +9,33 @@ import { requireAdminOrReceptionOrSorting } from "@/lib/api-auth";
 export async function GET(request: NextRequest) {
   const auth = await requireAdminOrReceptionOrSorting();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
-
-  if (!officeId) {
-    return NextResponse.json({ delegates: [], suggestedIds: [] });
-  }
+  const { officeId, role } = auth;
 
   const transactionId = request.nextUrl.searchParams.get("transactionId")?.trim();
 
   let transactionFormationId: string | null = null;
+  let targetOfficeId: string | undefined = officeId;
   if (transactionId) {
     const tx = await prisma.transaction.findFirst({
-      where: { id: transactionId, officeId },
-      select: { formationId: true },
+      where:
+        role === "SORTING" || role === "COORDINATOR"
+          ? { id: transactionId }
+          : { id: transactionId, officeId },
+      select: { formationId: true, officeId: true },
     });
     transactionFormationId = tx?.formationId ?? null;
+    targetOfficeId = tx?.officeId ?? targetOfficeId;
+  }
+
+  if (!targetOfficeId) {
+    return NextResponse.json({ delegates: [], suggestedIds: [] });
   }
 
   const delegatesRaw = await prisma.delegate.findMany({
     where: {
       status: "ACTIVE",
       userId: { not: null },
-      OR: [{ officeId: null }, { officeId }],
+      OR: [{ officeId: null }, { officeId: targetOfficeId }],
     },
     orderBy: { name: "asc" },
     select: {

@@ -41,7 +41,7 @@ export async function requireAdmin() {
   if (!officeId) {
     return { error: "الحساب غير مرتبط بمكتب", status: 403 };
   }
-  return { session: result.session, officeId };
+  return { session: result.session, officeId, userId: result.user.id };
 }
 
 /** للقراءة فقط (مثل قائمة التشكيلات): ADMIN أو RECEPTION أو SUPER_ADMIN — لا يشترط officeId */
@@ -67,7 +67,7 @@ export async function requireAdminOrReception(req?: NextRequest) {
     return { error: "غير مصرح", status: 403 };
   }
   const officeId = result.user.officeId ?? undefined;
-  return { session: result.session, officeId, role: result.user.role };
+  return { session: result.session, officeId, role: result.user.role, userId: result.user.id };
 }
 
 /** مدير مكتب أو موظف استقبال أو قسم الفرز أو تنسيق ومتابعة — للقراءة وعرض تفاصيل المعاملات، SORTING يمكنه تعيين عاجل فقط */
@@ -81,7 +81,7 @@ export async function requireAdminOrReceptionOrSorting(req?: NextRequest) {
     return { error: "غير مصرح", status: 403 };
   }
   const officeId = result.user.officeId ?? undefined;
-  return { session: result.session, officeId, role };
+  return { session: result.session, officeId, role, userId: result.user.id };
 }
 
 /** مدير مكتب أو قسم التوثيق أو قسم المتابعة — للوصول لمعاملات المكتب */
@@ -93,8 +93,8 @@ export async function requireAdminOrDocumentationOrCoordinator(req?: NextRequest
     return { error: "غير مصرح", status: 403 };
   }
   const officeId = result.user.officeId ?? undefined;
-  if (!officeId) return { error: "الحساب غير مرتبط بمكتب", status: 403 };
-  return { session: result.session, officeId, role };
+  if (role !== "COORDINATOR" && !officeId) return { error: "الحساب غير مرتبط بمكتب", status: 403 };
+  return { session: result.session, officeId, role, userId: result.user.id };
 }
 
 /** سوبر أدمن أو مدير مكتب */

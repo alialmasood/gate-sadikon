@@ -12,6 +12,7 @@ type WorkflowTransaction = {
   urgent?: boolean;
   cannotComplete?: boolean;
   cannotCompleteReason?: string | null;
+  sourceSection?: string | null;
   delegateName?: string | null;
   hasDelegate?: boolean;
   reachedSorting?: boolean;
@@ -41,11 +42,27 @@ type Props = {
   hideDelegateName?: boolean;
 };
 
+const SOURCE_SECTION_LABELS: Record<string, string> = {
+  RECEPTION: "الاستقبال",
+  COORDINATOR: "التنسيق والمتابعة",
+  DOCUMENTATION: "التوثيق",
+  ADMIN: "مدير المكتب",
+  SORTING: "الفرز",
+};
+
+function getCreationStepLabel(sourceSection?: string | null): string {
+  const sourceLabel =
+    (sourceSection && SOURCE_SECTION_LABELS[sourceSection]) ||
+    sourceSection ||
+    "الاستقبال";
+  return `${sourceLabel} — تسجيل المعاملة`;
+}
+
 export function TransactionWorkflowChain({ transaction, hideDelegateName }: Props) {
   const steps: { label: string; detail?: string; done: boolean }[] = [];
 
   steps.push({
-    label: "الاستقبال — تسجيل المعاملة",
+    label: getCreationStepLabel(transaction.sourceSection),
     detail: transaction.createdAt ? formatDate(transaction.createdAt) : undefined,
     done: true,
   });

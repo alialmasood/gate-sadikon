@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 function formatDateTime(date: Date) {
   return new Intl.DateTimeFormat("ar-IQ", {
@@ -58,17 +58,18 @@ const SIDEBAR_COLLAPSED_KEY = "reception-sidebar-collapsed";
 
 export default function ReceptionLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
   const [time, setTime] = useState(() => new Date());
   const breadcrumb = useMemo(() => getBreadcrumb(pathname), [pathname]);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-      if (stored !== null) setSidebarCollapsed(stored === "true");
-    } catch {}
-  }, []);
+  const accountTitle = session?.user?.department?.trim() || session?.user?.name?.trim() || "الحساب";
 
   const toggleCollapsed = () => {
     setSidebarCollapsed((c) => {
@@ -195,6 +196,7 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
               <h1 className="text-lg font-bold text-[#1B1B1B] sm:text-xl">{breadcrumb[1]}</h1>
             </div>
             <div className="flex items-center gap-3">
+              <span className="hidden text-sm font-semibold text-[#1E6B3A] sm:inline">{accountTitle}</span>
               <p className="text-sm text-[#5a5a5a]" suppressHydrationWarning>
                 {formatDateTime(time)}
               </p>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Transaction = {
   id: string;
@@ -21,6 +22,7 @@ type Transaction = {
   cannotComplete?: boolean;
   cannotCompleteReason?: string | null;
   completedByAdmin?: boolean;
+  officeName?: string | null;
 };
 
 type FullTransaction = Transaction & {
@@ -34,10 +36,9 @@ type FullTransaction = Transaction & {
   followUpUrl?: string | null;
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: "قيد التنفيذ",
-  DONE: "منجزة",
-  OVERDUE: "متأخرة",
+type OfficeBreakdownItem = {
+  officeName: string;
+  count: number;
 };
 
 const POLL_INTERVAL_MS = 4000;
@@ -55,18 +56,22 @@ function formatDate(s: string | null): string {
 }
 
 export default function SortingOutgoingPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [officeFilter, setOfficeFilter] = useState("");
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const loadData = useCallback(async () => {
     try {
       const [resUrgent, resCannotComplete, resCompletedByAdmin, resDelegated] = await Promise.all([
-        fetch("/api/transactions?limit=500&urgent=true", { credentials: "include" }),
-        fetch("/api/transactions?limit=500&cannotComplete=true", { credentials: "include" }),
-        fetch("/api/transactions?limit=500&completedByAdmin=true", { credentials: "include" }),
-        fetch("/api/transactions?limit=500&delegated=true", { credentials: "include" }),
+        fetch("/api/transactions?limit=3000&urgent=true", { credentials: "include" }),
+        fetch("/api/transactions?limit=3000&cannotComplete=true", { credentials: "include" }),
+        fetch("/api/transactions?limit=3000&completedByAdmin=true", { credentials: "include" }),
+        fetch("/api/transactions?limit=3000&delegated=true", { credentials: "include" }),
       ]);
       const dataUrgent = await resUrgent.json().catch(() => ({}));
       const dataCannotComplete = await resCannotComplete.json().catch(() => ({}));
@@ -104,6 +109,19 @@ export default function SortingOutgoingPage() {
   }, [loadData]);
 
   useAutoRefresh(loadData);
+
+  useEffect(() => {
+    setOfficeFilter(searchParams.get("office")?.trim() || "");
+  }, [searchParams]);
+
+  const updateOfficeFilter = useCallback((nextOffice: string) => {
+    setOfficeFilter(nextOffice);
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextOffice) params.set("office", nextOffice);
+    else params.delete("office");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   const handleView = useCallback(async (t: Transaction) => {
     try {
@@ -149,6 +167,133 @@ export default function SortingOutgoingPage() {
     }
   }, []);
 
+  const officeBreakdown = useMemo<OfficeBreakdownItem[]>(() => {
+    const map = new Map<string, number>();
+    for (const t of transactions) {
+      const officeName = t.officeName?.trim() || "غير محدد";
+      map.set(officeName, (map.get(officeName) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([officeName, count]) => ({ officeName, count }))
+      .sort((a, b) => (b.count !== a.count ? b.count - a.count : a.officeName.localeCompare(b.officeName, "ar")));
+  }, [transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((t) => {
+      const officeName = t.officeName?.trim() || "غير محدد";
+      if (officeFilter && officeName !== officeFilter) return false;
+      return true;
+    });
+  }, [transactions, officeFilter]);
+
+  const groupedTransactions = useMemo(() => {
+    const map = new Map<string, Transaction[]>();
+    for (const t of filteredTransactions) {
+      const officeName = t.officeName?.trim() || "غير محدد";
+      if (!map.has(officeName)) map.set(officeName, []);
+      map.get(officeName)!.push(t);
+    }
+    return Array.from(map.entries())
+      .map(([officeName, items]) => ({ officeName, items }))
+      .sort((a, b) => (b.items.length !== a.items.length ? b.items.length - a.items.length : a.officeName.localeCompare(b.officeName, "ar")));
+  }, [filteredTransactions]);
+
+  const renderOutgoingCard = useCallback((t: Transaction) => (
+    <article
+      key={t.id}
+      className="relative flex flex-col overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm transition-shadow hover:shadow-md"
+    >
+      <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="font-mono text-sm font-bold text-[#7C3AED]" dir="ltr">
+              {t.serialNumber ? `2026-${t.serialNumber}` : "—"}
+            </span>
+            <span className="truncate rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-xs font-medium text-[#7C3AED]">
+              {t.transactionType || t.type || "—"}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {t.completedByAdmin ? (
+              <span className="flex items-center gap-1 rounded-full bg-[#ccfbf1] px-2.5 py-0.5 text-xs font-medium text-[#0f766e]">
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                منجزة
+              </span>
+            ) : t.cannotComplete ? (
+              <span className="flex items-center gap-1 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                لا يمكن الانجاز
+              </span>
+            ) : t.delegateName ? (
+              <span className="flex items-center gap-1 rounded-full bg-[#1E6B3A]/15 px-2.5 py-0.5 text-xs font-medium text-[#1E6B3A]">
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                محوّلة للمخول
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                عاجل
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-[#5a5a5a]">
+          <span className="inline-flex items-center rounded-full bg-[#7C3AED]/10 px-2.5 py-1 font-medium text-[#7C3AED]">
+            مكتب الارتباط: {t.officeName?.trim() || "غير محدد"}
+          </span>
+          <span className="hidden h-4 w-px bg-[#d4cfc8] sm:block" aria-hidden />
+          <span>تاريخ المعاملة: {formatDate(t.createdAt)}</span>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <h3 className="min-w-0 truncate font-semibold text-[#1B1B1B]">{t.citizenName || "—"}</h3>
+          <p className="shrink-0 text-sm text-[#5a5a5a]" dir="ltr">
+            {t.citizenPhone || "—"}
+          </p>
+        </div>
+        {t.cannotCompleteReason && (
+          <p className="mt-2 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700 line-clamp-2">
+            <span className="font-medium">سبب عدم الإنجاز: </span>
+            {t.cannotCompleteReason}
+          </p>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-[#d4cfc8] pt-4">
+          <button
+            type="button"
+            onClick={() => handlePrint(t)}
+            className="flex items-center gap-1.5 rounded-lg border border-[#B08D57]/50 bg-[#B08D57]/10 px-3 py-2 text-xs font-medium text-[#9C7B49] hover:bg-[#B08D57]/20"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2h-2m-4-1v8m0 0V5a2 2 0 012-2h6a2 2 0 012 2v8" />
+            </svg>
+            طباعة
+          </button>
+          <button
+            type="button"
+            onClick={() => handleView(t)}
+            className="flex items-center gap-1.5 rounded-lg border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-3 py-2 text-xs font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            عرض
+          </button>
+        </div>
+      </div>
+    </article>
+  ), [handlePrint, handleView]);
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -163,6 +308,56 @@ export default function SortingOutgoingPage() {
         </div>
       </div>
 
+      {!loading && (
+        <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+          <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+            <h2 className="text-base font-semibold text-[#1B1B1B]">فرز حسب مكتب الارتباط</h2>
+            <p className="mt-0.5 text-sm text-[#5a5a5a]">اختر مكتبًا محددًا أو اترك العرض على الكل مع التجميع التلقائي</p>
+          </div>
+          <div className="space-y-4 p-6">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[240px]">
+                <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">مكتب الارتباط</label>
+                <select
+                  value={officeFilter}
+                  onChange={(e) => updateOfficeFilter(e.target.value)}
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/30"
+                >
+                  <option value="">كل المكاتب</option>
+                  {officeBreakdown.map((item) => (
+                    <option key={item.officeName} value={item.officeName}>
+                      {item.officeName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="rounded-lg border border-[#d4cfc8] bg-white px-3 py-2 text-sm text-[#5a5a5a]">
+                المعروض الآن: <span className="font-bold text-[#1B1B1B]">{filteredTransactions.length}</span> معاملة
+              </div>
+            </div>
+            {officeBreakdown.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                {officeBreakdown.map((item) => (
+                  <button
+                    key={item.officeName}
+                    type="button"
+                    onClick={() => updateOfficeFilter(officeFilter === item.officeName ? "" : item.officeName)}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                      officeFilter === item.officeName
+                        ? "border-[#7C3AED] bg-[#7C3AED]/10 text-[#7C3AED]"
+                        : "border-[#d4cfc8] bg-white text-[#1B1B1B] hover:bg-[#f6f3ed]"
+                    }`}
+                  >
+                    <span className="font-medium">{item.officeName}</span>
+                    <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs font-bold">{item.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </article>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
@@ -171,92 +366,34 @@ export default function SortingOutgoingPage() {
         <div className="rounded-2xl border border-[#d4cfc8] bg-white p-12 text-center shadow-sm">
           <p className="text-[#5a5a5a]">لا توجد معاملات صادرة حالياً.</p>
         </div>
+      ) : filteredTransactions.length === 0 ? (
+        <div className="rounded-2xl border border-[#d4cfc8] bg-white p-12 text-center shadow-sm">
+          <p className="text-[#5a5a5a]">لا توجد معاملات صادرة مطابقة لمكتب الارتباط المحدد.</p>
+          <button
+            type="button"
+            onClick={() => updateOfficeFilter("")}
+            className="mt-4 rounded-xl border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-4 py-2 text-sm font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
+          >
+            عرض جميع النتائج
+          </button>
+        </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {transactions.map((t) => (
-            <article
-              key={t.id}
-              className="relative flex flex-col overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-4 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-mono text-sm font-bold text-[#7C3AED]" dir="ltr">
-                    {t.serialNumber ? `2026-${t.serialNumber}` : "—"}
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {t.completedByAdmin ? (
-                      <span className="flex items-center gap-1 rounded-full bg-[#ccfbf1] px-2.5 py-0.5 text-xs font-medium text-[#0f766e]">
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        منجزة
-                      </span>
-                    ) : t.cannotComplete ? (
-                      <span className="flex items-center gap-1 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        لا يمكن الانجاز
-                      </span>
-                    ) : t.delegateName ? (
-                      <span className="flex items-center gap-1 rounded-full bg-[#1E6B3A]/15 px-2.5 py-0.5 text-xs font-medium text-[#1E6B3A]">
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                        </svg>
-                        محوّلة للمخول
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        عاجل
-                      </span>
-                    )}
-                  </div>
+        <div className="space-y-6">
+          {groupedTransactions.map((group) => (
+            <section key={group.officeName} className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#d4cfc8] bg-[#f6f3ed]/40 px-4 py-3">
+                <div>
+                  <h3 className="text-base font-semibold text-[#1B1B1B]">{group.officeName}</h3>
+                  <p className="mt-0.5 text-sm text-[#5a5a5a]">عدد المعاملات الصادرة في هذا المكتب: {group.items.length}</p>
                 </div>
+                <span className="rounded-full bg-[#7C3AED]/10 px-3 py-1 text-sm font-bold text-[#7C3AED]">
+                  {group.items.length}
+                </span>
               </div>
-              <div className="flex flex-1 flex-col p-4">
-                <h3 className="truncate font-semibold text-[#1B1B1B]">{t.citizenName || "—"}</h3>
-                <p className="mt-1 text-sm text-[#5a5a5a]" dir="ltr">
-                  {t.citizenPhone || "—"}
-                </p>
-                <p className="mt-1 line-clamp-2 text-sm text-[#5a5a5a]">
-                  {t.transactionType || t.type || "—"}
-                </p>
-                {t.cannotCompleteReason && (
-                  <p className="mt-2 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700 line-clamp-2">
-                    <span className="font-medium">سبب عدم الإنجاز: </span>
-                    {t.cannotCompleteReason}
-                  </p>
-                )}
-                <p className="mt-1 text-xs text-[#5a5a5a]">{formatDate(t.createdAt)}</p>
-
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-[#d4cfc8] pt-4">
-                  <button
-                    type="button"
-                    onClick={() => handlePrint(t)}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#B08D57]/50 bg-[#B08D57]/10 px-3 py-2 text-xs font-medium text-[#9C7B49] hover:bg-[#B08D57]/20"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2h-2m-4-1v8m0 0V5a2 2 0 012-2h6a2 2 0 012 2v8" />
-                    </svg>
-                    طباعة
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleView(t)}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-3 py-2 text-xs font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    عرض
-                  </button>
-                </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {group.items.map((t) => renderOutgoingCard(t))}
               </div>
-            </article>
+            </section>
           ))}
         </div>
       )}

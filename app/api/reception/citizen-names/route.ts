@@ -9,14 +9,17 @@ import { requireAdminOrReception } from "@/lib/api-auth";
 export async function GET() {
   const auth = await requireAdminOrReception();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  const { officeId, role, userId } = auth;
 
   if (!officeId) {
     return NextResponse.json({ names: [], citizenIds: [] });
   }
 
+  const where: Record<string, unknown> = { officeId };
+  if (role === "RECEPTION") where.createdByUserId = userId;
+
   const transactions = await prisma.transaction.findMany({
-    where: { officeId },
+    where,
     select: { citizenName: true, citizenId: true },
     orderBy: { createdAt: "desc" },
     take: 5000,

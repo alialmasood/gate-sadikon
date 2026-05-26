@@ -32,6 +32,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name ?? undefined,
           role: user.role,
+          department: user.department ?? undefined,
           officeId: user.officeId ?? undefined,
           serialNumber: user.serialNumber ?? undefined,
         };
@@ -47,6 +48,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+        token.department = (user as { department?: string }).department;
         token.officeId = (user as { officeId?: string }).officeId;
         token.serialNumber = (user as { serialNumber?: string }).serialNumber;
       }
@@ -56,6 +58,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as { id?: string }).id = token.id as string;
         (session.user as { role?: string }).role = token.role as string;
+        (session.user as { department?: string }).department = token.department as string | undefined;
         (session.user as { officeId?: string }).officeId = token.officeId as string | undefined;
         (session.user as { serialNumber?: string }).serialNumber = token.serialNumber as string | undefined;
       }

@@ -28,6 +28,7 @@ model User {
   office       Office?  @relation(fields: [officeId], references: [id], onDelete: SetNull)
   managedOffices Office[] @relation("OfficeManager")
   evaluationsAsEvaluator Evaluation[] @relation("EvaluationEvaluator")
+  createdTransactions Transaction[] @relation("TransactionCreator")
 }
 
 model Evaluation {
@@ -125,6 +126,7 @@ model Transaction {
   citizenDepartment   String?
   citizenOrganization String?
   officeId         String
+  createdByUserId  String?
   delegateId       String?
   status           String    @default("PENDING")
   type             String?
@@ -147,6 +149,7 @@ model Transaction {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   office           Office    @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  createdByUser    User?     @relation("TransactionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   delegate         Delegate? @relation(fields: [delegateId], references: [id], onDelete: SetNull)
   formation        Formation? @relation(fields: [formationId], references: [id], onDelete: SetNull)
 }

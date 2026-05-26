@@ -49,7 +49,7 @@ export default function CoordinatorDashboard() {
     <div className="space-y-6" dir="rtl">
       <div className="border-b border-[#d4cfc8] pb-4">
         <h2 className="text-xl font-bold text-[#1B1B1B]">وحدة التنسيق والمتابعة</h2>
-        <p className="mt-1 text-sm text-[#5a5a5a]">لوحة تحكم التنسيق والمتابعة</p>
+        <p className="mt-1 text-sm text-[#5a5a5a]">لوحة تحكم مركزية لمتابعة معاملات المكتب</p>
       </div>
 
       {/* إشعار: معاملات منجزة من المدير */}

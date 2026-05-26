@@ -28,10 +28,27 @@ type TxItem = {
   urgent?: boolean;
   cannotComplete?: boolean;
   cannotCompleteReason?: string | null;
+  sourceSection?: string | null;
   reachedSorting?: boolean;
   updatedAt?: string | null;
   status?: string;
 };
+
+const SOURCE_SECTION_LABELS: Record<string, string> = {
+  RECEPTION: "الاستقبال",
+  COORDINATOR: "التنسيق والمتابعة",
+  DOCUMENTATION: "التوثيق",
+  ADMIN: "مدير المكتب",
+  SORTING: "الفرز",
+};
+
+function getCreationStepLabel(sourceSection?: string | null): string {
+  const sourceLabel =
+    (sourceSection && SOURCE_SECTION_LABELS[sourceSection]) ||
+    sourceSection ||
+    "الاستقبال";
+  return `${sourceLabel} — تسجيل المعاملة`;
+}
 
 function daysBetween(start: string | null, end: string | null): number {
   if (!start || !end) return 0;
@@ -77,7 +94,7 @@ function formatDateTime(s: string | null | undefined): string {
 
 function getWorkflowSteps(t: TxItem): { label: string; detail?: string }[] {
   const steps: { label: string; detail?: string }[] = [];
-  steps.push({ label: "الاستقبال — تسجيل المعاملة", detail: t.createdAt ? formatDateTime(t.createdAt) : undefined });
+  steps.push({ label: getCreationStepLabel(t.sourceSection), detail: t.createdAt ? formatDateTime(t.createdAt) : undefined });
   if (t.reachedSorting) steps.push({ label: "قسم الفرز — وصول المعاملة" });
   if (t.urgent) steps.push({ label: "عاجل — إرسال لقسم المتابعة", detail: t.updatedAt ? formatDateTime(t.updatedAt) : undefined });
   if (t.delegateName) steps.push({ label: `محوّلة للمخول — ${t.delegateName}`, detail: t.updatedAt ? formatDateTime(t.updatedAt) : undefined });

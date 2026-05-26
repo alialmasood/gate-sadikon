@@ -8,15 +8,19 @@ export async function GET(
 ) {
   const auth = await requireAdminOrReceptionOrSorting();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  const { officeId, role, userId } = auth;
   const { id } = await params;
 
-  if (!officeId) {
+  if ((role === "ADMIN" || role === "RECEPTION") && !officeId) {
     return NextResponse.json({ error: "الحساب غير مرتبط بمكتب" }, { status: 403 });
   }
 
+  const accessWhere: Record<string, string> = { id };
+  if ((role === "ADMIN" || role === "RECEPTION") && officeId) accessWhere.officeId = officeId;
+  if (role === "RECEPTION" && userId) accessWhere.createdByUserId = userId;
+
   const transaction = await prisma.transaction.findFirst({
-    where: { id, officeId },
+    where: accessWhere,
     include: {
       delegate: { select: { name: true } },
       office: { select: { name: true } },
@@ -78,6 +82,7 @@ export async function GET(
     completedByAdmin: transaction.completedByAdmin ?? false,
     cannotCompleteReason: transaction.cannotCompleteReason,
     reachedSorting: transaction.reachedSorting,
+    sourceSection: transaction.sourceSection ?? null,
     delegateId: transaction.delegateId,
     delegateActions: transaction.delegateActions ?? [],
   });
@@ -89,15 +94,18 @@ export async function DELETE(
 ) {
   const auth = await requireAdminOrReception();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  const { officeId, role, userId } = auth;
   const { id } = await params;
 
   if (!officeId) {
     return NextResponse.json({ error: "الحساب غير مرتبط بمكتب" }, { status: 403 });
   }
 
+  const accessWhere: Record<string, string> = { id, officeId };
+  if (role === "RECEPTION" && userId) accessWhere.createdByUserId = userId;
+
   const existing = await prisma.transaction.findFirst({
-    where: { id, officeId },
+    where: accessWhere,
   });
   if (!existing) return NextResponse.json({ error: "المعاملة غير موجودة" }, { status: 404 });
 
@@ -111,10 +119,10 @@ export async function PATCH(
 ) {
   const auth = await requireAdminOrReceptionOrSorting();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId, role } = auth;
+  const { officeId, role, userId } = auth;
   const { id } = await params;
 
-  if (!officeId) {
+  if ((role === "ADMIN" || role === "RECEPTION") && !officeId) {
     return NextResponse.json({ error: "الحساب غير مرتبط بمكتب" }, { status: 403 });
   }
 
@@ -147,10 +155,16 @@ export async function PATCH(
     return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
   }
 
+  const accessWhere: Record<string, string> = { id };
+  if ((role === "ADMIN" || role === "RECEPTION") && officeId) accessWhere.officeId = officeId;
+  if (role === "RECEPTION" && userId) accessWhere.createdByUserId = userId;
+
   const existing = await prisma.transaction.findFirst({
-    where: { id, officeId },
+    where: accessWhere,
   });
   if (!existing) return NextResponse.json({ error: "المعاملة غير موجودة" }, { status: 404 });
+
+  const targetOfficeId = existing.officeId;
 
   if (role === "ADMIN" && (body.delegateId !== undefined || (body.status === "DONE" && body.completedByAdmin === true))) {
     const adminData: Record<string, unknown> = {};
@@ -164,7 +178,7 @@ export async function PATCH(
         if (!delegate) {
           return NextResponse.json({ error: "المخول غير موجود أو غير مفعّل" }, { status: 400 });
         }
-        if (delegate.officeId && delegate.officeId !== officeId) {
+        if (delegate.officeId && delegate.officeId !== targetOfficeId) {
           return NextResponse.json({ error: "المخول غير مرتبط بنفس المكتب" }, { status: 400 });
         }
         adminData.delegateId = delegateId;
@@ -214,7 +228,7 @@ export async function PATCH(
         if (!delegate) {
           return NextResponse.json({ error: "المخول غير موجود أو غير مفعّل" }, { status: 400 });
         }
-        if (delegate.officeId && delegate.officeId !== officeId) {
+        if (delegate.officeId && delegate.officeId !== targetOfficeId) {
           return NextResponse.json({ error: "المخول غير مرتبط بنفس المكتب" }, { status: 400 });
         }
         sortData.delegateId = delegateId;

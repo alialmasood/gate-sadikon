@@ -6,10 +6,14 @@ import { requireAdminOrDocumentationOrCoordinator } from "@/lib/api-auth";
 export async function GET() {
   const auth = await requireAdminOrDocumentationOrCoordinator();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  const { officeId, role } = auth;
 
   const transactions = await prisma.transaction.findMany({
-    where: { officeId, status: "DONE", completedByAdmin: true },
+    where: {
+      ...(role === "COORDINATOR" ? {} : { officeId }),
+      status: "DONE",
+      completedByAdmin: true,
+    },
     orderBy: { completedAt: "desc" },
     take: 100,
     include: {

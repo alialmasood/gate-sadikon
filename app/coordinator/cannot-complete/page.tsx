@@ -22,6 +22,7 @@ type Transaction = {
   cannotCompleteReason?: string | null;
   urgent?: boolean;
   cannotComplete?: boolean;
+  sourceSection?: string | null;
   reachedSorting?: boolean;
   completedByAdmin?: boolean;
   updatedAt?: string | null;
@@ -37,6 +38,22 @@ type FullTransaction = Transaction & {
   subDeptName?: string | null;
   followUpUrl?: string | null;
 };
+
+const SOURCE_SECTION_LABELS: Record<string, string> = {
+  RECEPTION: "الاستقبال",
+  COORDINATOR: "التنسيق والمتابعة",
+  DOCUMENTATION: "التوثيق",
+  ADMIN: "مدير المكتب",
+  SORTING: "الفرز",
+};
+
+function getCreationStepLabel(sourceSection?: string | null): string {
+  const sourceLabel =
+    (sourceSection && SOURCE_SECTION_LABELS[sourceSection]) ||
+    sourceSection ||
+    "الاستقبال";
+  return `${sourceLabel} — تسجيل المعاملة`;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "قيد التنفيذ",
@@ -82,7 +99,7 @@ function getStatusLocation(t: Transaction | FullTransaction): string {
   if (t.urgent) return "قسم المتابعة (عاجل)";
   if (t.status === "OVERDUE") return "متأخرة";
   if (t.reachedSorting) return "قسم الفرز";
-  return "الاستقبال";
+  return (t.sourceSection && SOURCE_SECTION_LABELS[t.sourceSection]) || t.sourceSection || "الاستقبال";
 }
 
 function getStatusDateTime(t: Transaction | FullTransaction): string | null {
@@ -116,7 +133,7 @@ function getStatusText(t: Transaction | FullTransaction): string {
 
 function getWorkflowSteps(t: Transaction | FullTransaction): { label: string; detail?: string }[] {
   const steps: { label: string; detail?: string }[] = [];
-  steps.push({ label: "الاستقبال — تسجيل المعاملة", detail: t.createdAt ? formatDateTime(t.createdAt) : undefined });
+  steps.push({ label: getCreationStepLabel(t.sourceSection), detail: t.createdAt ? formatDateTime(t.createdAt) : undefined });
   if (t.reachedSorting) steps.push({ label: "قسم الفرز — وصول المعاملة" });
   if (t.urgent) steps.push({ label: "عاجل — إرسال لقسم المتابعة", detail: t.updatedAt ? formatDateTime(t.updatedAt) : undefined });
   if (t.delegateName) steps.push({ label: `محوّلة للمخول — ${t.delegateName}`, detail: t.updatedAt ? formatDateTime(t.updatedAt) : undefined });

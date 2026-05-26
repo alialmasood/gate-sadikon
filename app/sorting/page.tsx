@@ -16,8 +16,6 @@ import {
   Cell,
 } from "recharts";
 
-const PIE_COLORS = ["#7C3AED", "#1E6B3A", "#B08D57", "#b91c1c", "#5B7C99", "#6b7280", "#0ea5e9"];
-
 const SOURCE_SECTION_LABELS: Record<string, string> = {
   RECEPTION: "الاستعلامات والاستقبال",
   COORDINATOR: "المتابعة",
@@ -38,6 +36,7 @@ type Transaction = {
   status?: string;
   urgent?: boolean;
   cannotComplete?: boolean;
+  completedByAdmin?: boolean;
   delegateName?: string | null;
   formationName?: string | null;
   officeName?: string | null;
@@ -65,6 +64,7 @@ type Stats = {
 
 type AlertGroup = {
   sourceName: string;
+  officeName: string;
   transactionType: string;
   count: number;
   latestReceiptDate: string;
@@ -74,6 +74,7 @@ type AlertGroup = {
 type DelegateChartPoint = { name: string; value: number };
 type ChartPoint = { name: string; value: number };
 type WeekChartPoint = { date: string; label: string; count: number };
+type OfficeStatsCard = { officeName: string; total: number; pending: number };
 
 const POLL_INTERVAL_MS = 6000;
 
@@ -135,6 +136,7 @@ export default function SortingDashboard() {
   const [formationBreakdown, setFormationBreakdown] = useState<ChartPoint[]>([]);
   const [weeklyData, setWeeklyData] = useState<WeekChartPoint[]>([]);
   const [distributionPie, setDistributionPie] = useState<{ name: string; value: number; fill: string }[]>([]);
+  const [officeStatsCards, setOfficeStatsCards] = useState<OfficeStatsCard[]>([]);
   const [dailyReport, setDailyReport] = useState<DailyReport>({
     receivedToday: 0,
     receivedPendingToday: 0,
@@ -151,8 +153,12 @@ export default function SortingDashboard() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         const all: Transaction[] = data.transactions || [];
-        const received = all.filter((t) => !t.urgent && !t.cannotComplete);
-        const outgoing = all.filter((t) => t.urgent || t.cannotComplete);
+        const received = all.filter(
+          (t) => !t.urgent && !t.cannotComplete && !t.delegateName && !t.completedByAdmin && t.status !== "DONE"
+        );
+        const outgoing = all.filter(
+          (t) => t.urgent || t.cannotComplete || !!t.delegateName || !!t.completedByAdmin || t.status === "DONE"
+        );
         const urgent = all.filter((t) => t.urgent).length;
         const cannotComplete = all.filter((t) => t.cannotComplete).length;
         const delegated = all.filter((t) => t.delegateName).length;
@@ -164,10 +170,34 @@ export default function SortingDashboard() {
           cannotComplete,
           delegated,
         });
+
+        const officeStatsMap = new Map<string, OfficeStatsCard>();
+        for (const t of all) {
+          const officeName = t.officeName?.trim() || "غير محدد";
+          const existing = officeStatsMap.get(officeName);
+          const isPendingAtSorting =
+            !t.urgent && !t.cannotComplete && !t.delegateName && !t.completedByAdmin && t.status !== "DONE";
+          if (existing) {
+            existing.total++;
+            if (isPendingAtSorting) existing.pending++;
+          } else {
+            officeStatsMap.set(officeName, {
+              officeName,
+              total: 1,
+              pending: isPendingAtSorting ? 1 : 0,
+            });
+          }
+        }
+        setOfficeStatsCards(
+          Array.from(officeStatsMap.values()).sort((a, b) =>
+            b.total !== a.total ? b.total - a.total : a.officeName.localeCompare(b.officeName, "ar")
+          )
+        );
+
         const now = new Date();
         const receivedToday = all.filter((t) => isToday(t.createdAt, now)).length;
         const receivedPendingToday = received.filter((t) => isToday(t.createdAt, now)).length;
-        const withAction = all.filter((t) => t.urgent || t.cannotComplete || t.delegateName);
+        const withAction = all.filter((t) => t.urgent || t.cannotComplete || t.delegateName || t.completedByAdmin);
         const actionTakenToday = withAction.filter((t) => t.updatedAt && isToday(t.updatedAt, now)).length;
         const urgentToday = all.filter((t) => t.urgent && t.updatedAt && isToday(t.updatedAt, now)).length;
         const cannotCompleteToday = all.filter((t) => t.cannotComplete && t.updatedAt && isToday(t.updatedAt, now)).length;
@@ -197,7 +227,7 @@ export default function SortingDashboard() {
         for (const t of all) {
           const type = t.transactionType || t.type || "غير محدد";
           typeCounts.set(type, (typeCounts.get(type) || 0) + 1);
-          const formation = t.formationName || t.officeName || "وحدة الاستقبال";
+          const formation = t.formationName || t.officeName || "القسم المصدر";
           formationCounts.set(formation, (formationCounts.get(formation) || 0) + 1);
         }
         setTypeBreakdown(
@@ -235,8 +265,10 @@ export default function SortingDashboard() {
         const urgentCount = all.filter((t) => t.urgent).length;
         const cannotCompleteCount = all.filter((t) => t.cannotComplete).length;
         const delegatedCount = all.filter((t) => t.delegateName).length;
-        const doneCount = all.filter((t) => t.status === "DONE").length;
-        const atSortingCount = all.filter((t) => !t.urgent && !t.cannotComplete && !t.delegateName && t.status !== "DONE").length;
+        const doneCount = all.filter((t) => t.status === "DONE" || t.completedByAdmin).length;
+        const atSortingCount = all.filter(
+          (t) => !t.urgent && !t.cannotComplete && !t.delegateName && !t.completedByAdmin && t.status !== "DONE"
+        ).length;
         setDistributionPie(
           [
             { name: "قيد الفرز (بانتظار إجراء)", value: atSortingCount, fill: "#7C3AED" },
@@ -248,7 +280,7 @@ export default function SortingDashboard() {
         );
 
         const pending = all.filter(
-          (t) => !t.urgent && !t.cannotComplete && !t.delegateName && t.status !== "DONE"
+          (t) => !t.urgent && !t.cannotComplete && !t.delegateName && !t.completedByAdmin && t.status !== "DONE"
         );
         const grouped = new Map<string, AlertGroup>();
         for (const t of pending) {
@@ -256,8 +288,9 @@ export default function SortingDashboard() {
             (t.sourceSection && SOURCE_SECTION_LABELS[t.sourceSection]) ||
             t.sourceSection ||
             "غير محدد";
+          const officeName = t.officeName?.trim() || "غير محدد";
           const txType = t.transactionType || t.type || "—";
-          const key = `${sourceName}|${txType}`;
+          const key = `${sourceName}|${officeName}|${txType}`;
           const existing = grouped.get(key);
           if (existing) {
             existing.count++;
@@ -268,6 +301,7 @@ export default function SortingDashboard() {
           } else {
             grouped.set(key, {
               sourceName,
+              officeName,
               transactionType: txType,
               count: 1,
               latestReceiptDate: t.createdAt,
@@ -300,7 +334,7 @@ export default function SortingDashboard() {
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] pb-4">
         <div>
           <h2 className="text-xl font-bold text-[#1B1B1B]">مرحباً، قسم الفرز</h2>
-          <p className="mt-1 text-sm text-[#5a5a5a]">لوحة تحكم قسم الفرز وإحالة المعاملات</p>
+          <p className="mt-1 text-sm text-[#5a5a5a]">لوحة تحكم مركزية لفرز معاملات المكتب وإحالتها</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {!loading && stats.received > 0 && (
@@ -390,6 +424,30 @@ export default function SortingDashboard() {
         </article>
       )}
 
+      {!loading && officeStatsCards.length > 0 && (
+        <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+          <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+            <h2 className="text-base font-semibold text-[#1B1B1B]">مكاتب الارتباط المستلمة</h2>
+            <p className="mt-0.5 text-sm text-[#5a5a5a]">بطاقات ديناميكية حسب المكتب الذي وردت منه المعاملات</p>
+          </div>
+          <div className="grid gap-4 p-6 sm:grid-cols-2 xl:grid-cols-4">
+            {officeStatsCards.map((office) => (
+              <Link
+                key={office.officeName}
+                href="/sorting/received"
+                className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#7C3AED] bg-white p-4 shadow-sm transition-colors hover:border-[#7C3AED]/50 hover:bg-[#7C3AED]/5 hover:shadow-md"
+              >
+                <p className="text-sm font-medium text-[#5a5a5a]">مكتب الارتباط</p>
+                <p className="mt-1 line-clamp-2 min-h-[3rem] text-base font-bold text-[#1B1B1B]">{office.officeName}</p>
+                <p className="mt-3 text-xs text-[#5a5a5a]">إجمالي المعاملات الواردة</p>
+                <p className="mt-1 text-2xl font-bold text-[#7C3AED]">{office.total}</p>
+                <p className="mt-2 text-xs text-[#5a5a5a]">بانتظار إجراء الفرز: <span className="font-bold text-[#1B1B1B]">{office.pending}</span></p>
+              </Link>
+            ))}
+          </div>
+        </article>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
@@ -403,7 +461,7 @@ export default function SortingDashboard() {
           {alertGroups.map((g, i) => (
             <Link
               key={i}
-              href="/sorting/received"
+              href={`/sorting/received?office=${encodeURIComponent(g.officeName)}&type=${encodeURIComponent(g.transactionType)}`}
               className="block rounded-xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -418,6 +476,7 @@ export default function SortingDashboard() {
                       لديك <strong>{g.count}</strong> معاملة واردة من قسم <strong>{g.sourceName}</strong>
                     </p>
                     <p className="mt-0.5 text-sm text-amber-800">
+                      مكتب الارتباط: <strong>{g.officeName}</strong> —{" "}
                       نوع المعاملة: <strong>{g.transactionType}</strong> — تاريخ الاستلام: {formatDate(g.latestReceiptDate)}
                     </p>
                   </div>

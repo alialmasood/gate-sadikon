@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import {
@@ -37,6 +37,7 @@ type Transaction = {
   reachedSorting?: boolean;
   formationName: string | null;
   completedByAdmin?: boolean;
+  officeName?: string | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -54,6 +55,8 @@ const WORKFLOW_LABELS: Record<string, string> = {
   atSorting: "قسم الفرز",
   atReception: "في الاستقبال",
 };
+
+const REPORT_BATCH_SIZE = 3000;
 
 function formatDateShort(d: string) {
   try {
@@ -73,13 +76,18 @@ function formatDateForInput(d: Date): string {
 }
 
 function getWorkflowStatus(t: Transaction): string {
-  if (t.status === "DONE") return "done";
+  if (t.status === "DONE" || t.completedByAdmin) return "done";
   if (t.status === "OVERDUE") return "overdue";
   if (t.cannotComplete) return "cannotComplete";
   if (t.delegateName) return "atDelegate";
   if (t.urgent) return "urgent";
   if (t.reachedSorting) return "atSorting";
   return "atReception";
+}
+
+function getStatusLabel(t: Transaction): string {
+  if (t.status === "DONE" || t.completedByAdmin) return "منجزة";
+  return STATUS_LABELS[t.status] ?? t.status;
 }
 
 function escapeCsv(val: string | null | undefined): string {
@@ -96,30 +104,44 @@ export default function SortingReportsPage() {
   const [dateFrom, setDateFrom] = useState(formatDateForInput(lastMonth));
   const [dateTo, setDateTo] = useState(formatDateForInput(today));
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [officeFilter, setOfficeFilter] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const buildUrl = useCallback(() => {
+  const buildSearchParams = useCallback((offset = 0) => {
     const params = new URLSearchParams();
-    params.set("limit", "3000");
+    params.set("limit", String(REPORT_BATCH_SIZE));
+    if (offset > 0) params.set("offset", String(offset));
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
-    return `/api/transactions?${params}`;
+    return params;
   }, [dateFrom, dateTo]);
 
   const loadData = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
     try {
-      const res = await fetch(buildUrl(), { credentials: "include" });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setTransactions(data.transactions || []);
-      } else {
-        setTransactions([]);
+      let offset = 0;
+      const merged: Transaction[] = [];
+
+      while (true) {
+        const res = await fetch(`/api/transactions?${buildSearchParams(offset).toString()}`, { credentials: "include" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setTransactions([]);
+          return;
+        }
+
+        const batch = (data.transactions || []) as Transaction[];
+        merged.push(...batch);
+
+        if (batch.length < REPORT_BATCH_SIZE) break;
+        offset += REPORT_BATCH_SIZE;
       }
+
+      setTransactions(merged);
     } finally {
       if (!opts?.silent) setLoading(false);
     }
-  }, [buildUrl]);
+  }, [buildSearchParams]);
 
   useEffect(() => {
     loadData();
@@ -127,16 +149,35 @@ export default function SortingReportsPage() {
 
   useAutoRefresh(() => loadData({ silent: true }));
 
-  const total = transactions.length;
-  const pending = transactions.filter((t) => t.status === "PENDING").length;
-  const done = transactions.filter((t) => t.status === "DONE").length;
-  const overdue = transactions.filter((t) => t.status === "OVERDUE").length;
-  const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
-  const urgent = transactions.filter((t) => t.urgent).length;
-  const delegated = transactions.filter((t) => t.delegateName).length;
-  const cannotComplete = transactions.filter((t) => t.cannotComplete).length;
+  const officeBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of transactions) {
+      const officeName = t.officeName?.trim() || "غير محدد";
+      map.set(officeName, (map.get(officeName) || 0) + 1);
+    }
 
-  const typeCounts = transactions.reduce<Record<string, number>>((acc, t) => {
+    return Array.from(map.entries())
+      .map(([officeName, count]) => ({ officeName, count }))
+      .sort((a, b) => (b.count !== a.count ? b.count - a.count : a.officeName.localeCompare(b.officeName, "ar")));
+  }, [transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    if (!officeFilter) return transactions;
+    return transactions.filter((t) => (t.officeName?.trim() || "غير محدد") === officeFilter);
+  }, [transactions, officeFilter]);
+
+  const total = filteredTransactions.length;
+  const pending = filteredTransactions.filter(
+    (t) => !t.urgent && !t.cannotComplete && !t.delegateName && !t.completedByAdmin && t.status !== "DONE"
+  ).length;
+  const done = filteredTransactions.filter((t) => t.status === "DONE" || t.completedByAdmin).length;
+  const overdue = filteredTransactions.filter((t) => t.status === "OVERDUE").length;
+  const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
+  const urgent = filteredTransactions.filter((t) => t.urgent).length;
+  const delegated = filteredTransactions.filter((t) => t.delegateName).length;
+  const cannotComplete = filteredTransactions.filter((t) => t.cannotComplete).length;
+
+  const typeCounts = filteredTransactions.reduce<Record<string, number>>((acc, t) => {
     const type = t.transactionType || t.type || "غير محدد";
     acc[type] = (acc[type] || 0) + 1;
     return acc;
@@ -145,7 +186,7 @@ export default function SortingReportsPage() {
     .sort((a, b) => b[1] - a[1])
     .map(([name, value]) => ({ name, value }));
 
-  const workflowCounts = transactions.reduce<Record<string, number>>((acc, t) => {
+  const workflowCounts = filteredTransactions.reduce<Record<string, number>>((acc, t) => {
     const w = getWorkflowStatus(t);
     acc[w] = (acc[w] || 0) + 1;
     return acc;
@@ -156,7 +197,7 @@ export default function SortingReportsPage() {
   }));
   const PIE_COLORS = ["#1E6B3A", "#b91c1c", "#6b7280", "#7C3AED", "#5B7C99", "#B08D57"];
 
-  const dailyCounts = transactions.reduce<Record<string, number>>((acc, t) => {
+  const dailyCounts = filteredTransactions.reduce<Record<string, number>>((acc, t) => {
     const d = (t.submissionDate || t.createdAt)?.slice(0, 10) ?? "";
     if (d) acc[d] = (acc[d] || 0) + 1;
     return acc;
@@ -180,6 +221,7 @@ export default function SortingReportsPage() {
       "نوع المعاملة",
       "عنوان المعاملة",
       "التشكيل/الجهة",
+      "مكتب الارتباط",
       "الحالة",
       "مسار العمل",
       "تاريخ التقديم",
@@ -188,8 +230,8 @@ export default function SortingReportsPage() {
       "المخول",
       "ملاحظات",
     ];
-    const rows = transactions.map((t) => {
-      const statusLabel = STATUS_LABELS[t.status] ?? t.status;
+    const rows = filteredTransactions.map((t) => {
+      const statusLabel = getStatusLabel(t);
       const workflow = WORKFLOW_LABELS[getWorkflowStatus(t)] ?? "";
       const subDate = t.submissionDate ? formatDateShort(t.submissionDate) : "";
       const createdDate = formatDateShort(t.createdAt);
@@ -203,6 +245,7 @@ export default function SortingReportsPage() {
         t.transactionType || t.type || "",
         t.transactionTitle || "",
         t.formationName || "",
+        t.officeName || "",
         statusLabel,
         workflow,
         subDate,
@@ -217,7 +260,7 @@ export default function SortingReportsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `تقرير_معاملات_فرز_${dateFrom}_${dateTo}.csv`;
+    a.download = `تقرير_معاملات_فرز_${officeFilter || "كل_المكاتب"}_${dateFrom}_${dateTo}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -227,7 +270,10 @@ export default function SortingReportsPage() {
       <div className="flex flex-col gap-4 border-b border-[#d4cfc8] pb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-bold text-[#1B1B1B]">تقارير وإحصائيات</h2>
-          <p className="mt-1 text-sm text-[#5a5a5a]">تقارير تفصيلية لمعاملات قسم الفرز مع إمكانية التصدير</p>
+          <p className="mt-1 text-sm text-[#5a5a5a]">
+            تقارير تفصيلية لمعاملات قسم الفرز مع إمكانية التصدير
+            {officeFilter ? <span className="mr-2 text-[#7C3AED]">للمكتب: {officeFilter}</span> : null}
+          </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div>
@@ -247,6 +293,21 @@ export default function SortingReportsPage() {
               onChange={(e) => setDateTo(e.target.value)}
               className="rounded-lg border border-[#d4cfc8] bg-white px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/30"
             />
+          </div>
+          <div className="min-w-[220px]">
+            <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">مكتب الارتباط</label>
+            <select
+              value={officeFilter}
+              onChange={(e) => setOfficeFilter(e.target.value)}
+              className="w-full rounded-lg border border-[#d4cfc8] bg-white px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/30"
+            >
+              <option value="">كل المكاتب</option>
+              {officeBreakdown.map((item) => (
+                <option key={item.officeName} value={item.officeName}>
+                  {item.officeName} ({item.count})
+                </option>
+              ))}
+            </select>
           </div>
           <button
             type="button"
@@ -270,6 +331,38 @@ export default function SortingReportsPage() {
         </div>
       </div>
 
+      {officeBreakdown.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => setOfficeFilter("")}
+            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+              !officeFilter
+                ? "border-[#7C3AED] bg-[#7C3AED]/10 text-[#7C3AED]"
+                : "border-[#d4cfc8] bg-white text-[#1B1B1B] hover:bg-[#f6f3ed]"
+            }`}
+          >
+            <span className="font-medium">كل المكاتب</span>
+            <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs font-bold">{transactions.length}</span>
+          </button>
+          {officeBreakdown.map((item) => (
+            <button
+              key={item.officeName}
+              type="button"
+              onClick={() => setOfficeFilter(item.officeName)}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                officeFilter === item.officeName
+                  ? "border-[#7C3AED] bg-[#7C3AED]/10 text-[#7C3AED]"
+                  : "border-[#d4cfc8] bg-white text-[#1B1B1B] hover:bg-[#f6f3ed]"
+              }`}
+            >
+              <span className="font-medium">{item.officeName}</span>
+              <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs font-bold">{item.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
@@ -281,6 +374,7 @@ export default function SortingReportsPage() {
               <h2 className="text-base font-semibold text-[#1B1B1B]">ملخص حالة المعاملات</h2>
               <p className="mt-0.5 text-sm text-[#5a5a5a]">
                 الفترة: {formatDateShort(dateFrom)} — {formatDateShort(dateTo)}
+                {officeFilter ? ` | المكتب: ${officeFilter}` : " | جميع مكاتب الارتباط"}
               </p>
             </div>
             <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
@@ -434,6 +528,53 @@ export default function SortingReportsPage() {
             </article>
           </div>
 
+          <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+              <div>
+                <h2 className="text-base font-semibold text-[#1B1B1B]">تقرير حسب مكتب الارتباط</h2>
+                <p className="mt-0.5 text-sm text-[#5a5a5a]">توزيع المعاملات في الفترة الحالية على مكاتب الارتباط</p>
+              </div>
+              <Link
+                href={officeFilter ? `/sorting/transactions?office=${encodeURIComponent(officeFilter)}` : "/sorting/transactions"}
+                className="rounded-lg border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-3 py-2 text-sm font-medium text-[#7C3AED] transition hover:bg-[#7C3AED]/20"
+              >
+                فتح صفحة المعاملات
+              </Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-right text-sm">
+                <thead>
+                  <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
+                    <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">مكتب الارتباط</th>
+                    <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">العدد</th>
+                    <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">النسبة</th>
+                    <th className="px-3 py-2 font-medium text-[#5a5a5a]">إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {officeBreakdown.map((item) => (
+                    <tr key={item.officeName} className="border-b border-[#d4cfc8]/80">
+                      <td className="border-l border-[#d4cfc8]/60 px-3 py-2 font-medium text-[#1B1B1B]">{item.officeName}</td>
+                      <td className="border-l border-[#d4cfc8]/60 px-3 py-2 text-[#7C3AED]">{item.count}</td>
+                      <td className="border-l border-[#d4cfc8]/60 px-3 py-2 text-[#5a5a5a]">
+                        {transactions.length > 0 ? Math.round((item.count / transactions.length) * 100) : 0}%
+                      </td>
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => setOfficeFilter(item.officeName)}
+                          className="text-[#7C3AED] underline hover:no-underline"
+                        >
+                          عرض التقرير
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+
           {overdue > 0 && (
             <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
               <div className="border-b border-[#d4cfc8] bg-red-50/50 px-6 py-3">
@@ -447,12 +588,13 @@ export default function SortingReportsPage() {
                       <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">رقم المعاملة</th>
                       <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">المواطن</th>
                       <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">نوع المعاملة</th>
+                      <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">مكتب الارتباط</th>
                       <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">تاريخ التقديم</th>
                       <th className="px-3 py-2 font-medium text-[#5a5a5a]">إجراء</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions
+                    {filteredTransactions
                       .filter((t) => t.status === "OVERDUE")
                       .slice(0, 20)
                       .map((t) => (
@@ -460,9 +602,15 @@ export default function SortingReportsPage() {
                           <td className="border-l border-[#d4cfc8]/60 px-3 py-2 font-mono text-[#7C3AED]">{t.serialNumber || "—"}</td>
                           <td className="border-l border-[#d4cfc8]/60 px-3 py-2 font-medium text-[#1B1B1B]">{t.citizenName || "—"}</td>
                           <td className="border-l border-[#d4cfc8]/60 px-3 py-2 text-[#5a5a5a]">{t.transactionType || t.type || "—"}</td>
+                          <td className="border-l border-[#d4cfc8]/60 px-3 py-2 text-[#5a5a5a]">{t.officeName || "غير محدد"}</td>
                           <td className="border-l border-[#d4cfc8]/60 px-3 py-2 text-[#5a5a5a]">{formatDateShort(t.submissionDate || t.createdAt)}</td>
                           <td className="px-3 py-2">
-                            <Link href="/sorting/transactions" className="text-[#7C3AED] underline hover:no-underline">
+                            <Link
+                              href={`/sorting/transactions?statusFilter=OVERDUE&office=${encodeURIComponent(
+                                t.officeName?.trim() || "غير محدد"
+                              )}&search=${encodeURIComponent(t.serialNumber || "")}`}
+                              className="text-[#7C3AED] underline hover:no-underline"
+                            >
                               عرض
                             </Link>
                           </td>
@@ -472,7 +620,7 @@ export default function SortingReportsPage() {
                 </table>
                 {overdue > 20 && (
                   <p className="border-t border-[#d4cfc8] bg-[#f6f3ed]/30 px-6 py-3 text-center text-sm text-[#5a5a5a]">
-                    عرض أول 20 معاملة — إجمالي المتأخرة: {overdue}
+                    عرض أول 20 معاملة ضمن الفلتر الحالي — إجمالي المتأخرة: {overdue}
                   </p>
                 )}
               </div>
@@ -483,10 +631,10 @@ export default function SortingReportsPage() {
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
               <div>
                 <h2 className="text-base font-semibold text-[#1B1B1B]">جدول المعاملات التفصيلي</h2>
-                <p className="mt-0.5 text-sm text-[#5a5a5a]">عينة من المعاملات — التصدير الكامل متاح عبر زر إكسل أعلاه</p>
+                <p className="mt-0.5 text-sm text-[#5a5a5a]">عينة من المعاملات ضمن النطاق الحالي — التصدير الكامل متاح عبر زر إكسل أعلاه</p>
               </div>
               <Link
-                href="/sorting/transactions"
+                href={officeFilter ? `/sorting/transactions?office=${encodeURIComponent(officeFilter)}` : "/sorting/transactions"}
                 className="rounded-lg border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-3 py-2 text-sm font-medium text-[#7C3AED] transition hover:bg-[#7C3AED]/20"
               >
                 عرض جميع المعاملات
@@ -499,6 +647,7 @@ export default function SortingReportsPage() {
                     <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">رقم</th>
                     <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">المواطن</th>
                     <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">النوع</th>
+                    <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">مكتب الارتباط</th>
                     <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">الحالة</th>
                     <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">مسار العمل</th>
                     <th className="border-l border-[#d4cfc8] px-3 py-2 font-medium text-[#5a5a5a]">تاريخ التقديم</th>
@@ -506,23 +655,26 @@ export default function SortingReportsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.slice(0, 15).map((t) => (
+                  {filteredTransactions.slice(0, 15).map((t) => (
                     <tr key={t.id} className="border-b border-[#d4cfc8]/80">
                       <td className="border-l border-[#d4cfc8]/60 px-3 py-2 font-mono text-[#7C3AED]">{t.serialNumber || "—"}</td>
                       <td className="border-l border-[#d4cfc8]/60 px-3 py-2 font-medium text-[#1B1B1B]">{t.citizenName || "—"}</td>
                       <td className="max-w-[120px] truncate border-l border-[#d4cfc8]/60 px-3 py-2 text-[#5a5a5a]" title={t.transactionType || t.type || ""}>
                         {t.transactionType || t.type || "—"}
                       </td>
+                      <td className="border-l border-[#d4cfc8]/60 px-3 py-2 text-[#5a5a5a]">{t.officeName || "غير محدد"}</td>
                       <td className="border-l border-[#d4cfc8]/60 px-3 py-2">
                         <span className="rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-xs font-medium text-[#7C3AED]">
-                          {STATUS_LABELS[t.status] ?? t.status}
+                          {getStatusLabel(t)}
                         </span>
                       </td>
                       <td className="border-l border-[#d4cfc8]/60 px-3 py-2 text-[#5a5a5a]">{WORKFLOW_LABELS[getWorkflowStatus(t)] ?? "—"}</td>
                       <td className="border-l border-[#d4cfc8]/60 px-3 py-2 text-[#5a5a5a]">{formatDateShort(t.submissionDate || t.createdAt)}</td>
                       <td className="px-3 py-2">
                         <Link
-                          href={`/sorting/transactions?sn=${t.serialNumber || ""}`}
+                          href={`/sorting/transactions?office=${encodeURIComponent(
+                            t.officeName?.trim() || "غير محدد"
+                          )}&search=${encodeURIComponent(t.serialNumber || "")}`}
                           className="text-[#7C3AED] underline hover:no-underline"
                         >
                           عرض
@@ -532,9 +684,9 @@ export default function SortingReportsPage() {
                   ))}
                 </tbody>
               </table>
-              {transactions.length > 15 && (
+              {filteredTransactions.length > 15 && (
                 <p className="border-t border-[#d4cfc8] bg-[#f6f3ed]/30 px-6 py-3 text-center text-sm text-[#5a5a5a]">
-                  عرض أول 15 معاملة — استخدم «تصدير إكسل» للحصول على الكل
+                  عرض أول 15 معاملة ضمن النطاق الحالي — استخدم «تصدير إكسل» للحصول على الكل
                 </p>
               )}
             </div>

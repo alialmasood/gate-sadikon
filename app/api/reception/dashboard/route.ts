@@ -27,7 +27,7 @@ function getStartOfMonth(d: Date) {
 export async function GET() {
   const auth = await requireAdminOrReceptionOrSorting();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  const { officeId, role, userId } = auth;
 
   if (!officeId) {
     return NextResponse.json({
@@ -47,20 +47,22 @@ export async function GET() {
   const todayStart = getStartOfDay(now);
   const weekStart = getStartOfWeek(now);
   const monthStart = getStartOfMonth(now);
+  const scopeWhere: Record<string, unknown> = { officeId };
+  if (role === "RECEPTION" && userId) scopeWhere.createdByUserId = userId;
 
   const [uniqueCitizens, totalTx, todayTx, weekTx, monthTx, allForTypes, typeByDayRaw] = await Promise.all([
     prisma.transaction.groupBy({
       by: ["citizenName"],
       where: {
-        officeId,
+        ...scopeWhere,
         citizenName: { not: null },
       },
       _count: { id: true },
     }),
-    prisma.transaction.count({ where: { officeId } }),
+    prisma.transaction.count({ where: scopeWhere }),
     prisma.transaction.count({
       where: {
-        officeId,
+        ...scopeWhere,
         OR: [
           { createdAt: { gte: todayStart } },
           { submissionDate: { gte: todayStart } },
@@ -69,7 +71,7 @@ export async function GET() {
     }),
     prisma.transaction.count({
       where: {
-        officeId,
+        ...scopeWhere,
         OR: [
           { createdAt: { gte: weekStart } },
           { submissionDate: { gte: weekStart } },
@@ -78,7 +80,7 @@ export async function GET() {
     }),
     prisma.transaction.count({
       where: {
-        officeId,
+        ...scopeWhere,
         OR: [
           { createdAt: { gte: monthStart } },
           { submissionDate: { gte: monthStart } },
@@ -86,11 +88,11 @@ export async function GET() {
       },
     }),
     prisma.transaction.findMany({
-      where: { officeId },
+      where: scopeWhere,
       select: { transactionType: true, type: true, status: true, createdAt: true, submissionDate: true },
     }),
     prisma.transaction.findMany({
-      where: { officeId },
+      where: scopeWhere,
       select: { transactionType: true, type: true, createdAt: true, submissionDate: true },
     }),
   ]);

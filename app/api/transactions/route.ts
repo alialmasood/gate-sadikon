@@ -5,8 +5,10 @@ import { prisma } from "@/lib/prisma";
 const secret = process.env.NEXTAUTH_SECRET;
 
 /**
- * إرجاع المعاملات لمكتب المستخدم الحالي
- * متاح لـ ADMIN و RECEPTION — يستخدم التوكن مباشرة لتفادي مشاكل الجلسة
+ * إرجاع المعاملات لمكتب المستخدم الحالي.
+ * حسابات RECEPTION ترى فقط المعاملات التي أنشأتها هي،
+ * بينما ADMIN و SORTING و COORDINATOR يرون معاملات المكتب بشكل مركزي.
+ * يستخدم التوكن مباشرة لتفادي مشاكل الجلسة.
  */
 export async function GET(request: NextRequest) {
   const token = await getToken({ req: request, secret });
@@ -15,10 +17,11 @@ export async function GET(request: NextRequest) {
   }
   const role = token.role as string | undefined;
   const officeId = token.officeId as string | undefined;
+  const userId = token.sub as string | undefined;
   if (role !== "ADMIN" && role !== "RECEPTION" && role !== "SORTING" && role !== "COORDINATOR") {
     return NextResponse.json({ error: "غير مصرح", transactions: [] }, { status: 403 });
   }
-  if (!officeId) {
+  if ((role === "ADMIN" || role === "RECEPTION") && !officeId) {
     return NextResponse.json({ transactions: [], overdueCount: 0 });
   }
 
@@ -31,8 +34,11 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get("dateFrom")?.trim();
   const dateTo = searchParams.get("dateTo")?.trim();
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 3000);
+  const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
 
-  const where: Record<string, unknown> = { officeId };
+  const where: Record<string, unknown> = {};
+  if (role === "ADMIN" || role === "RECEPTION") where.officeId = officeId;
+  if (role === "RECEPTION" && userId) where.createdByUserId = userId;
   if (status) where.status = status;
   if (urgentOnly) where.urgent = true;
   if (cannotCompleteOnly) where.cannotComplete = true;
@@ -55,6 +61,7 @@ export async function GET(request: NextRequest) {
     prisma.transaction.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      skip: offset,
       take: limit,
       include: {
         delegate: { select: { name: true } },
@@ -62,7 +69,13 @@ export async function GET(request: NextRequest) {
         office: { select: { name: true } },
       },
     }),
-    prisma.transaction.count({ where: { officeId, status: "OVERDUE" } }),
+    prisma.transaction.count({
+      where: {
+        ...(role === "ADMIN" || role === "RECEPTION" ? { officeId } : {}),
+        ...(role === "RECEPTION" && userId ? { createdByUserId: userId } : {}),
+        status: "OVERDUE",
+      },
+    }),
   ]);
 
   return NextResponse.json({

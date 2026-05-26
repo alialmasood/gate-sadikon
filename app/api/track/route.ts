@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
     urgent: t.urgent,
     cannotComplete: t.cannotComplete,
     cannotCompleteReason: t.cannotCompleteReason,
+    sourceSection: t.sourceSection ?? null,
     hasDelegate: !!t.delegateId,
     reachedSorting: t.reachedSorting,
     completedByAdmin: t.completedByAdmin,

@@ -12,6 +12,7 @@ type WorkflowData = {
   urgent?: boolean;
   cannotComplete?: boolean;
   cannotCompleteReason?: string | null;
+  sourceSection?: string | null;
   delegateName?: string | null;
   reachedSorting?: boolean;
   completedByAdmin?: boolean;

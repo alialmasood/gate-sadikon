@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 
 type Transaction = {
@@ -30,6 +31,7 @@ type Transaction = {
   completedByAdmin?: boolean;
   reachedSorting?: boolean;
   formationName?: string | null;
+  officeName?: string | null;
 };
 
 const SECTOR_LABELS: Record<string, string> = {
@@ -101,18 +103,28 @@ const FILTER_OPTIONS = [
   { value: "OVERDUE", label: "متأخرة" },
 ];
 
+type OfficeBreakdownItem = {
+  officeName: string;
+  count: number;
+};
+
 export default function SortingTransactionsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [officeFilter, setOfficeFilter] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const res = await fetch("/api/transactions?limit=500", { credentials: "include" });
+      const res = await fetch("/api/transactions?limit=3000", { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setTransactions(data.transactions || []);
@@ -134,6 +146,36 @@ export default function SortingTransactionsPage() {
 
   useAutoRefresh(loadData);
 
+  useEffect(() => {
+    const closeMenu = () => setOpenActionMenuId(null);
+    window.addEventListener("click", closeMenu);
+    return () => window.removeEventListener("click", closeMenu);
+  }, []);
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get("search")?.trim() || searchParams.get("sn")?.trim() || "");
+    setFilterStatus(searchParams.get("statusFilter")?.trim() || "");
+    setOfficeFilter(searchParams.get("office")?.trim() || "");
+  }, [searchParams]);
+
+  const updateFilters = useCallback((nextSearch: string, nextStatus: string, nextOffice: string) => {
+    setSearchQuery(nextSearch);
+    setFilterStatus(nextStatus);
+    setOfficeFilter(nextOffice);
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextSearch) params.set("search", nextSearch);
+    else {
+      params.delete("search");
+      params.delete("sn");
+    }
+    if (nextStatus) params.set("statusFilter", nextStatus);
+    else params.delete("statusFilter");
+    if (nextOffice) params.set("office", nextOffice);
+    else params.delete("office");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
   const stats = useMemo(() => ({
     total: transactions.length,
     pending: transactions.filter((t) => !t.urgent && !t.cannotComplete && !t.delegateName && !t.completedByAdmin && t.status !== "DONE").length,
@@ -143,6 +185,17 @@ export default function SortingTransactionsPage() {
     delegated: transactions.filter((t) => t.delegateName).length,
     cannotComplete: transactions.filter((t) => t.cannotComplete).length,
   }), [transactions]);
+
+  const officeBreakdown = useMemo<OfficeBreakdownItem[]>(() => {
+    const map = new Map<string, number>();
+    for (const t of transactions) {
+      const officeName = t.officeName?.trim() || "غير محدد";
+      map.set(officeName, (map.get(officeName) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([officeName, count]) => ({ officeName, count }))
+      .sort((a, b) => (b.count !== a.count ? b.count - a.count : a.officeName.localeCompare(b.officeName, "ar")));
+  }, [transactions]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
@@ -163,6 +216,8 @@ export default function SortingTransactionsPage() {
         )
           return false;
       }
+      const officeName = t.officeName?.trim() || "غير محدد";
+      if (officeFilter && officeName !== officeFilter) return false;
       if (filterStatus === "received") {
         if (t.urgent || t.cannotComplete || t.delegateName || t.completedByAdmin || t.status === "DONE") return false;
       } else if (filterStatus === "urgent" && !t.urgent) return false;
@@ -172,7 +227,7 @@ export default function SortingTransactionsPage() {
       else if (filterStatus === "OVERDUE" && t.status !== "OVERDUE") return false;
       return true;
     });
-  }, [transactions, searchQuery, filterStatus]);
+  }, [transactions, searchQuery, filterStatus, officeFilter]);
 
   const handlePrint = useCallback(async (t: Transaction) => {
     try {
@@ -301,16 +356,28 @@ export default function SortingTransactionsPage() {
                 type="search"
                 placeholder="بحث (اسم، رقم، هاتف، نوع، تشكيل)..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => updateFilters(e.target.value, filterStatus, officeFilter)}
                 className="flex-1 min-w-[200px] rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm text-[#1B1B1B] placeholder:text-[#9a9a9a] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/30"
               />
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => updateFilters(searchQuery, e.target.value, officeFilter)}
                 className="rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm text-[#1B1B1B] focus:border-[#7C3AED] focus:outline-none"
               >
                 {FILTER_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <select
+                value={officeFilter}
+                onChange={(e) => updateFilters(searchQuery, filterStatus, e.target.value)}
+                className="rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm text-[#1B1B1B] focus:border-[#7C3AED] focus:outline-none"
+              >
+                <option value="">كل مكاتب الارتباط</option>
+                {officeBreakdown.map((office) => (
+                  <option key={office.officeName} value={office.officeName}>
+                    {office.officeName} ({office.count})
+                  </option>
                 ))}
               </select>
               <div className="flex rounded-lg border border-[#d4cfc8] p-1">
@@ -335,6 +402,38 @@ export default function SortingTransactionsPage() {
                 عرض {filteredTransactions.length} من {transactions.length}
               </span>
             </div>
+            {officeBreakdown.length > 0 && (
+              <div className="border-t border-[#d4cfc8] px-4 py-3">
+                <div className="flex flex-wrap gap-3">
+                  {officeBreakdown.map((office) => (
+                    <button
+                      key={office.officeName}
+                      type="button"
+                      onClick={() => updateFilters(searchQuery, filterStatus, officeFilter === office.officeName ? "" : office.officeName)}
+                      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                        officeFilter === office.officeName
+                          ? "border-[#7C3AED] bg-[#7C3AED]/10 text-[#7C3AED]"
+                          : "border-[#d4cfc8] bg-white text-[#1B1B1B] hover:bg-[#f6f3ed]"
+                      }`}
+                    >
+                      <span className="font-medium">{office.officeName}</span>
+                      <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs font-bold">{office.count}</span>
+                    </button>
+                  ))}
+                </div>
+                {(officeFilter || filterStatus) && (
+                  <div className="mt-3 rounded-lg border border-[#d4cfc8] bg-[#f6f3ed]/50 px-3 py-2 text-sm text-[#5a5a5a]">
+                    الفلتر النشط:
+                    {officeFilter ? <span className="mr-2 font-medium text-[#1B1B1B]">المكتب: {officeFilter}</span> : null}
+                    {filterStatus ? (
+                      <span className="mr-2 font-medium text-[#1B1B1B]">
+                        الحالة: {FILTER_OPTIONS.find((o) => o.value === filterStatus)?.label || filterStatus}
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
           </article>
 
           {/* جدول أو بطاقات */}
@@ -348,7 +447,9 @@ export default function SortingTransactionsPage() {
                 <p className="text-[#5a5a5a]">لا توجد نتائج تطابق البحث أو الفلتر.</p>
                 <button
                   type="button"
-                  onClick={() => { setSearchQuery(""); setFilterStatus(""); }}
+                  onClick={() => {
+                    updateFilters("", "", "");
+                  }}
                   className="rounded-xl border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-4 py-2 text-sm font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
                 >
                   مسح البحث والفلتر
@@ -356,7 +457,7 @@ export default function SortingTransactionsPage() {
               </div>
             ) : viewMode === "table" ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-right text-sm">
+            <table className="w-full min-w-[1120px] text-right text-sm">
               <thead>
                 <tr className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50">
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">رقم المعاملة</th>
@@ -364,13 +465,14 @@ export default function SortingTransactionsPage() {
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">الهاتف</th>
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">العنوان</th>
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">نوع المعاملة</th>
+                  <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">مكتب الارتباط</th>
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">موظف / جهة العمل</th>
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">تاريخ التقديم</th>
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">الحالة</th>
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">المخول</th>
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">تاريخ الإنشاء</th>
                   <th className="border-l border-[#d4cfc8] py-3 px-3 font-medium text-[#5a5a5a]">مرفقات</th>
-                  <th className="py-3 px-3 font-medium text-[#5a5a5a]">إجراءات</th>
+                  <th className="w-[64px] py-3 px-2 font-medium text-[#5a5a5a]">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -388,6 +490,9 @@ export default function SortingTransactionsPage() {
                       {t.citizenAddress || "—"}
                     </td>
                     <td className="border-l border-[#d4cfc8]/60 py-3 px-3 text-[#1B1B1B]">{t.transactionType || t.type || "—"}</td>
+                    <td className="max-w-[160px] truncate border-l border-[#d4cfc8]/60 py-3 px-3 text-[#5a5a5a]" title={t.officeName || undefined}>
+                      {t.officeName || "—"}
+                    </td>
                     <td className="max-w-[160px] truncate border-l border-[#d4cfc8]/60 py-3 px-3 text-[#5a5a5a]" title={getEmployeeInfo(t)}>
                       {getEmployeeInfo(t)}
                     </td>
@@ -432,22 +537,50 @@ export default function SortingTransactionsPage() {
                         "—"
                       )}
                     </td>
-                    <td className="py-3 px-3">
-                      <div className="flex gap-1">
+                    <td className="py-3 px-2">
+                      <div className="relative flex justify-center">
                         <button
                           type="button"
-                          onClick={() => handleView(t)}
-                          className="rounded-lg border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-2 py-1 text-xs font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenActionMenuId((prev) => (prev === t.id ? null : t.id));
+                          }}
+                          className="rounded-lg border border-[#d4cfc8] bg-white p-1.5 text-[#5a5a5a] hover:bg-[#f6f3ed]"
+                          aria-label="إجراءات"
                         >
-                          عرض
+                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="5" r="2" />
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="12" cy="19" r="2" />
+                          </svg>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handlePrint(t)}
-                          className="rounded-lg border border-[#B08D57]/50 bg-[#B08D57]/10 px-2 py-1 text-xs font-medium text-[#9C7B49] hover:bg-[#B08D57]/20"
-                        >
-                          طباعة
-                        </button>
+                        {openActionMenuId === t.id && (
+                          <div
+                            className="absolute left-0 top-9 z-20 min-w-[110px] overflow-hidden rounded-xl border border-[#d4cfc8] bg-white shadow-lg"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleView(t);
+                                setOpenActionMenuId(null);
+                              }}
+                              className="block w-full px-3 py-2 text-right text-sm text-[#1B1B1B] hover:bg-[#f6f3ed]"
+                            >
+                              عرض
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handlePrint(t);
+                                setOpenActionMenuId(null);
+                              }}
+                              className="block w-full border-t border-[#d4cfc8] px-3 py-2 text-right text-sm text-[#1B1B1B] hover:bg-[#f6f3ed]"
+                            >
+                              طباعة
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -481,6 +614,7 @@ export default function SortingTransactionsPage() {
                       </div>
                     </div>
                     <div className="flex flex-1 flex-col p-4">
+                      <p className="text-xs text-[#7C3AED]">مكتب الارتباط: {t.officeName || "—"}</p>
                       <h3 className="truncate font-semibold text-[#1B1B1B]">{t.citizenName || "—"}</h3>
                       <p className="mt-1 text-sm text-[#5a5a5a]" dir="ltr">{t.citizenPhone || "—"}</p>
                       <p className="mt-1 line-clamp-2 text-sm text-[#5a5a5a]">{t.transactionType || t.type || "—"}</p>

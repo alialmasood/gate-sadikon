@@ -236,7 +236,7 @@ export default function ReceptionCitizensPage() {
       <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
         <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
           <h2 className="text-base font-semibold text-[#1B1B1B]">حالة المتابعة</h2>
-          <p className="mt-0.5 text-sm text-[#5a5a5a]">ملخص إحصائي لحالة المعاملات في المكتب</p>
+          <p className="mt-0.5 text-sm text-[#5a5a5a]">ملخص إحصائي لحالة المعاملات المسجلة من حسابك</p>
         </div>
         <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#5B7C99] bg-white p-4 shadow-sm">
@@ -315,7 +315,7 @@ export default function ReceptionCitizensPage() {
       <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
         <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
           <h2 className="text-base font-semibold text-[#1B1B1B]">جدول المعاملات</h2>
-          <p className="mt-0.5 text-sm text-[#5a5a5a]">جميع المعاملات المسجلة في مكتبك مع تفاصيلها</p>
+          <p className="mt-0.5 text-sm text-[#5a5a5a]">المعاملات المسجلة من حسابك ضمن مكتبك مع تفاصيلها</p>
         </div>
         <div className="p-6">
         {loading ? (

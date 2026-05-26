@@ -5,7 +5,7 @@ import { requireAdminOrReception } from "@/lib/api-auth";
 export async function GET(request: NextRequest) {
   const auth = await requireAdminOrReception(request);
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  const { officeId, role, userId } = auth;
 
   if (!officeId) {
     return NextResponse.json({ transactions: [], overdueCount: 0 });
@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status") ?? undefined;
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 200);
 
-  const where: { officeId: string; status?: string } = { officeId };
+  const where: { officeId: string; createdByUserId?: string; status?: string } = { officeId };
+  if (role === "RECEPTION" && userId) where.createdByUserId = userId;
   if (status) where.status = status;
 
   const [transactions, overdueCount] = await Promise.all([
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
       take: limit,
       include: { delegate: { select: { name: true } } },
     }),
-    prisma.transaction.count({ where: { officeId, status: "OVERDUE" } }),
+    prisma.transaction.count({ where: { officeId, ...(role === "RECEPTION" ? { createdByUserId: userId } : {}), status: "OVERDUE" } }),
   ]);
 
   return NextResponse.json({
@@ -77,7 +78,7 @@ async function generateUniqueSerial(): Promise<string> {
 export async function POST(request: NextRequest) {
   const auth = await requireAdminOrReception(request);
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId, role } = auth;
+  const { officeId, role, userId } = auth;
 
   if (!officeId) {
     return NextResponse.json({ error: "الحساب غير مرتبط بمكتب — يرجى التواصل مع المدير لربط حسابك بمكتب" }, { status: 403 });
@@ -151,6 +152,7 @@ export async function POST(request: NextRequest) {
       citizenDepartment,
       citizenOrganization,
       officeId,
+      createdByUserId: userId,
       status: "PENDING",
       type: transactionType,
       transactionType,
