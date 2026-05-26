@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { Suspense, useState, useCallback, useEffect, useMemo } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -55,7 +55,7 @@ function formatDate(s: string | null): string {
   }
 }
 
-export default function SortingOutgoingPage() {
+function SortingOutgoingPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -441,5 +441,19 @@ export default function SortingOutgoingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SortingOutgoingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-16" dir="rtl">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
+        </div>
+      }
+    >
+      <SortingOutgoingPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { Suspense, useState, useCallback, useEffect, useMemo } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -108,7 +108,7 @@ type OfficeBreakdownItem = {
   count: number;
 };
 
-export default function SortingTransactionsPage() {
+function SortingTransactionsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -687,5 +687,19 @@ export default function SortingTransactionsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SortingTransactionsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-16" dir="rtl">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
+        </div>
+      }
+    >
+      <SortingTransactionsPageContent />
+    </Suspense>
   );
 }

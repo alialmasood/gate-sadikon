@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { Suspense, useState, useCallback, useEffect, useMemo } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -74,7 +74,7 @@ function formatDate(s: string | null): string {
   }
 }
 
-export default function SortingReceivedPage() {
+function SortingReceivedPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -832,5 +832,19 @@ export default function SortingReceivedPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SortingReceivedPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-16" dir="rtl">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
+        </div>
+      }
+    >
+      <SortingReceivedPageContent />
+    </Suspense>
   );
 }
