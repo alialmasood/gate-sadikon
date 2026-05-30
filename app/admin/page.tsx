@@ -814,6 +814,7 @@ function AdminActionModal({
                 citizenDepartment: fullTx.citizenDepartment ?? null,
                 citizenOrganization: fullTx.citizenOrganization ?? null,
                 transactionType: fullTx.transactionType ?? null,
+                transactionTitle: fullTx.transactionTitle ?? null,
                 formationName: fullTx.formationName ?? null,
                 subDeptName: fullTx.subDeptName ?? null,
                 officeName: fullTx.officeName ?? null,

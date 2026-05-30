@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
+import { useEmployeeSectorOptions } from "@/hooks/useEmployeeSectorOptions";
+import { useTransactionTypeOptions } from "@/hooks/useTransactionTypeOptions";
 
 const INPUT_CLASS =
   "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-[#1B1B1B] focus:border-[#0D9488] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20";
@@ -65,29 +67,11 @@ function saveIdToStorage(id: string) {
 type Formation = { id: string; name: string; type: string };
 type SubDept = { id: string; name: string; formationId: string };
 
-const TRANSACTION_TYPES = [
-  { value: "طلب", label: "طلب" },
-  { value: "طلب نقل خدمات بين وزارتين", label: "طلب نقل خدمات بين وزارتين" },
-  { value: "نقل خدمات بين تشكيلين في وزارة", label: "نقل خدمات بين تشكيلين في وزارة" },
-  { value: "طلب تخصيص قطعة ارض", label: "طلب تخصيص قطعة ارض" },
-  { value: "طلب تعيين", label: "طلب تعيين" },
-  { value: "طلب تشغيل", label: "طلب تشغيل" },
-  { value: "تظلم", label: "تظلم" },
-  { value: "مفاتحة", label: "مفاتحة" },
-  { value: "طلب رعاية اجتماعية", label: "طلب رعاية اجتماعية" },
-];
-
-const EMPLOYEE_SECTOR_OPTIONS = [
-  { value: "GOVERNMENT", label: "موظف حكومي" },
-  { value: "PRIVATE", label: "موظف قطاع خاص" },
-  { value: "NOT_LINKED", label: "موظف في جهة غير مرتبطة بوزارة" },
-  { value: "MIXED", label: "موظف في قطاع مشترك" },
-  { value: "OTHER", label: "موظف في جهة اخرى" },
-] as const;
-
 function ReceptionNewTransactionContent() {
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit")?.trim() || null;
+  const { options: employeeSectorOptions } = useEmployeeSectorOptions();
+  const { options: transactionTypeOptions } = useTransactionTypeOptions();
 
   const [fullName, setFullName] = useState("");
   const [showNameSuggestions, setShowNameSuggestions] = useState(false);
@@ -140,6 +124,7 @@ function ReceptionNewTransactionContent() {
   const [formationsLoading, setFormationsLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editLoadError, setEditLoadError] = useState("");
+  const [loadedSerialNumber, setLoadedSerialNumber] = useState<string | null>(null);
 
   const loadFormations = useCallback(async () => {
     setFormationsLoading(true);
@@ -223,6 +208,7 @@ function ReceptionNewTransactionContent() {
         setEmployeeSector((t.citizenEmployeeSector as string) || "");
         setTransactionType((t.transactionType as string) || (t.type as string) || "");
         setTransactionDescription((t.transactionTitle as string) || "");
+        setLoadedSerialNumber((t.serialNumber as string) || null);
         setSubmissionDate(
           t.submissionDate
             ? (t.submissionDate as string).slice(0, 10)
@@ -580,6 +566,11 @@ function ReceptionNewTransactionContent() {
           citizenDepartment: getCitizenDepartment() ?? null,
           citizenOrganization: getCitizenOrganization() ?? null,
           transactionType: (data.transactionType ?? transactionType) || null,
+          transactionTitle:
+            transactionDescription.trim() &&
+            transactionDescription.trim() !== (transactionType?.trim() || "")
+              ? transactionDescription.trim()
+              : null,
           formationName: formationName ?? null,
           subDeptName: subDeptName ?? null,
           officeName: data.officeName ?? null,
@@ -652,6 +643,39 @@ function ReceptionNewTransactionContent() {
           <Link href="/reception/citizens" className="underline">
             العودة
           </Link>
+        </div>
+      )}
+
+      {editId && !editLoading && !editLoadError && (
+        <div className="rounded-lg border border-[#1E6B3A]/25 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+          <h2 className="border-b border-gray-200 pb-2 text-base font-bold text-[#1B1B1B]">
+            تفاصيل المعاملة
+          </h2>
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            {loadedSerialNumber && (
+              <div>
+                <dt className="text-[#5a5a5a]">رقم المعاملة</dt>
+                <dd className="mt-0.5 font-medium text-[#1E6B3A]" dir="ltr">
+                  2026-{loadedSerialNumber}
+                </dd>
+              </div>
+            )}
+            {transactionType && (
+              <div>
+                <dt className="text-[#5a5a5a]">نوع المعاملة</dt>
+                <dd className="mt-0.5 font-medium text-[#1B1B1B]">{transactionType}</dd>
+              </div>
+            )}
+            {transactionDescription.trim() &&
+              transactionDescription.trim() !== transactionType.trim() && (
+                <div className="sm:col-span-2">
+                  <dt className="text-[#5a5a5a]">وصف المعاملة</dt>
+                  <dd className="mt-0.5 whitespace-pre-wrap font-medium text-[#1B1B1B]">
+                    {transactionDescription.trim()}
+                  </dd>
+                </div>
+              )}
+          </dl>
         </div>
       )}
 
@@ -784,7 +808,7 @@ function ReceptionNewTransactionContent() {
                     className={INPUT_CLASS}
                   >
                     <option value="">اختر النوع</option>
-                    {EMPLOYEE_SECTOR_OPTIONS.map((o) => (
+                    {employeeSectorOptions.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
                       </option>
@@ -1078,7 +1102,7 @@ function ReceptionNewTransactionContent() {
                 className={INPUT_CLASS}
               >
                 <option value="">اختر نوع المعاملة</option>
-                {TRANSACTION_TYPES.map((t) => (
+                {transactionTypeOptions.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
                   </option>

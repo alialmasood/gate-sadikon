@@ -11,6 +11,8 @@ export type ReceiptData = {
   citizenDepartment: string | null;
   citizenOrganization: string | null;
   transactionType: string | null;
+  /** وصف المعاملة (transactionTitle) — يُعرض عند وجوده */
+  transactionTitle?: string | null;
   formationName: string | null;
   subDeptName: string | null;
   officeName: string | null;
@@ -206,6 +208,10 @@ ${trackBase}
           <table className="w-full text-sm">
             <tbody>
               <Row label="نوع المعاملة" value={receipt.transactionType} />
+              {receipt.transactionTitle?.trim() &&
+                receipt.transactionTitle.trim() !== (receipt.transactionType?.trim() || "") && (
+                  <Row label="وصف المعاملة" value={receipt.transactionTitle.trim()} />
+                )}
               <Row label="الوزارة أو الجهة المراد مخاطبتها" value={receipt.formationName} />
               <Row label="الدائرة الفرعية" value={receipt.subDeptName} />
               <Row label="تاريخ التقديم" value={receipt.submissionDate ? formatDateAr(receipt.submissionDate) : null} />

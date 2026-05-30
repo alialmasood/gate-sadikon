@@ -1,18 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdminOrAdmin } from "@/lib/api-auth";
+import { prismaUserOfficeIdFilter, resolveOfficeScope } from "@/lib/office-scope";
 
 export const dynamic = "force-dynamic";
 
-/** قائمة جميع المخولين في النظام — للقراءة فقط (للاستخدام في صفحة أدمن المكتب) */
+/** قائمة المخولين — السوبر أدمن يرى الكل، مدير المكتب المركزي يرى فروعه، الفرعي يرى مكتبه */
 export async function GET() {
   const auth = await requireSuperAdminOrAdmin();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  const where: { serialNumber: { startsWith: string }; officeId?: ReturnType<typeof prismaUserOfficeIdFilter> } = {
+    serialNumber: { startsWith: "DEL-" },
+  };
+
+  if (auth.role === "ADMIN" && auth.officeId) {
+    const scope = await resolveOfficeScope(auth.officeId);
+    if (scope) where.officeId = prismaUserOfficeIdFilter(scope.officeIds);
+  }
 
   const delegates = await prisma.user.findMany({
-    where: {
-      serialNumber: { startsWith: "DEL-" },
-    },
+    where,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrReceptionOrSorting } from "@/lib/api-auth";
+import { prismaOfficeIdFilter } from "@/lib/office-scope";
 
 function getStartOfDay(d: Date) {
   const x = new Date(d);
@@ -26,8 +27,8 @@ function getStartOfMonth(d: Date) {
 
 export async function GET() {
   const auth = await requireAdminOrReceptionOrSorting();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId, role, userId } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeId, officeIds, role, userId } = auth;
 
   if (!officeId) {
     return NextResponse.json({
@@ -47,7 +48,9 @@ export async function GET() {
   const todayStart = getStartOfDay(now);
   const weekStart = getStartOfWeek(now);
   const monthStart = getStartOfMonth(now);
-  const scopeWhere: Record<string, unknown> = { officeId };
+  const scopeWhere: Record<string, unknown> = {
+    officeId: officeIds.length ? prismaOfficeIdFilter(officeIds) : officeId,
+  };
   if (role === "RECEPTION" && userId) scopeWhere.createdByUserId = userId;
 
   const [uniqueCitizens, totalTx, todayTx, weekTx, monthTx, allForTypes, typeByDayRaw] = await Promise.all([

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrReception } from "@/lib/api-auth";
+import { prismaOfficeIdFilter } from "@/lib/office-scope";
 
 /**
  * يعيد قائمة بأسماء المواطنين ومعرفاتهم الفريدة من معاملات المكتب
@@ -8,14 +9,14 @@ import { requireAdminOrReception } from "@/lib/api-auth";
  */
 export async function GET() {
   const auth = await requireAdminOrReception();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId, role, userId } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeId, officeIds, role, userId } = auth;
 
   if (!officeId) {
     return NextResponse.json({ names: [], citizenIds: [] });
   }
 
-  const where: Record<string, unknown> = { officeId };
+  const where: Record<string, unknown> = { officeId: prismaOfficeIdFilter(officeIds) };
   if (role === "RECEPTION") where.createdByUserId = userId;
 
   const transactions = await prisma.transaction.findMany({

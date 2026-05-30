@@ -8,7 +8,7 @@ import { requireAdminOrReceptionOrSorting } from "@/lib/api-auth";
  */
 export async function GET(request: NextRequest) {
   const auth = await requireAdminOrReceptionOrSorting();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { officeId, role } = auth;
 
   const transactionId = request.nextUrl.searchParams.get("transactionId")?.trim();

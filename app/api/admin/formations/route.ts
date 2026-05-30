@@ -4,7 +4,7 @@ import { requireAdminOrReception } from "@/lib/api-auth";
 
 export async function GET() {
   const auth = await requireAdminOrReception();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const formations = await prisma.formation.findMany({
     where: { status: "ACTIVE" },

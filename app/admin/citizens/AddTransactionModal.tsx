@@ -3,17 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { useRouter } from "next/navigation";
-
-const TRANSACTION_TYPES = [
-  { value: "طلب", label: "طلب" },
-  { value: "نقل خدمات بين وزارتين", label: "نقل خدمات بين وزارتين" },
-  { value: "نقل داخل الوزارة", label: "نقل داخل الوزارة" },
-  { value: "اعادة الى الوظيفة", label: "اعادة الى الوظيفة" },
-  { value: "تخصيص قطعة ارض", label: "تخصيص قطعة ارض" },
-  { value: "طلب منحة", label: "طلب منحة" },
-  { value: "طلب تعيين", label: "طلب تعيين" },
-  { value: "طلب تشغيل", label: "طلب تشغيل" },
-];
+import { useEmployeeSectorOptions } from "@/hooks/useEmployeeSectorOptions";
+import { useTransactionTypeOptions } from "@/hooks/useTransactionTypeOptions";
 
 type Formation = { id: string; name: string; type: string };
 type SubDept = { id: string; name: string; formationId: string };
@@ -47,6 +38,8 @@ export default function AddTransactionModal({
   returnTo?: string;
 }) {
   const router = useRouter();
+  const { options: employeeSectorOptions } = useEmployeeSectorOptions();
+  const { options: transactionTypeOptions } = useTransactionTypeOptions();
   const [citizenName, setCitizenName] = useState("");
   const [citizenPhone, setCitizenPhone] = useState("");
   const [citizenAddress, setCitizenAddress] = useState("");
@@ -410,9 +403,11 @@ export default function AddTransactionModal({
                       className={INPUT_CLASS}
                     >
                       <option value="">اختر النوع</option>
-                      <option value="GOVERNMENT">موظف حكومي</option>
-                      <option value="PRIVATE">قطاع خاص</option>
-                      <option value="MIXED">قطاع مشترك</option>
+                      {employeeSectorOptions.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   {employeeSector === "GOVERNMENT" && (
@@ -452,7 +447,7 @@ export default function AddTransactionModal({
                 <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">نوع المعاملة</label>
                 <select value={transactionType} onChange={(e) => setTransactionType(e.target.value)} className={INPUT_CLASS}>
                   <option value="">اختر النوع</option>
-                  {TRANSACTION_TYPES.map((t) => (
+                  {transactionTypeOptions.map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>

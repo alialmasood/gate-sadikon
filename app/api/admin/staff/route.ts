@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { prismaUserOfficeIdFilter } from "@/lib/office-scope";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "مدير المنصة",
@@ -17,11 +18,11 @@ const ROLE_LABELS: Record<string, string> = {
 
 export async function GET() {
   const auth = await requireAdmin();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeIds } = auth;
 
   const users = await prisma.user.findMany({
-    where: { officeId },
+    where: { officeId: prismaUserOfficeIdFilter(officeIds) },
     select: {
       id: true,
       name: true,

@@ -22,6 +22,7 @@ type TxItem = {
   citizenDepartment?: string | null;
   citizenOrganization?: string | null;
   transactionType: string | null;
+  transactionTitle?: string | null;
   type: string | null;
   serialNumber: string | null;
   formationName?: string | null;
@@ -566,6 +567,7 @@ export default function CoordinatorFollowUpPage() {
                   citizenDepartment: viewTx.citizenDepartment ?? null,
                   citizenOrganization: viewTx.citizenOrganization ?? null,
                   transactionType: viewTx.transactionType || viewTx.type,
+                  transactionTitle: viewTx.transactionTitle ?? null,
                   formationName: viewTx.formationName ?? null,
                   subDeptName: viewTx.subDeptName ?? null,
                   officeName: viewTx.officeName ?? null,

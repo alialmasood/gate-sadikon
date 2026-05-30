@@ -3,6 +3,7 @@ import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveOfficeScope, type OfficeScope } from "@/lib/office-scope";
 
 const secret = process.env.NEXTAUTH_SECRET;
 
@@ -28,8 +29,24 @@ export async function getSessionWithDbValidation(req?: NextRequest) {
   return { session: effectiveSession, user };
 }
 
-/** مدير مكتب: يجب أن يكون ADMIN وله officeId */
-export async function requireAdmin() {
+export type AdminAuth = {
+  session: { user?: { id?: string } };
+  officeId: string;
+  userId: string;
+  officeIds: string[];
+  isCentralOffice: boolean;
+  officeType: string;
+  officeName: string;
+};
+
+async function withOfficeScope(officeId: string): Promise<OfficeScope | { error: string; status: number }> {
+  const scope = await resolveOfficeScope(officeId);
+  if (!scope) return { error: "المكتب غير موجود", status: 403 };
+  return scope;
+}
+
+/** مدير مكتب: يجب أن يكون ADMIN وله officeId — المركزي يرى كل الفروع */
+export async function requireAdmin(): Promise<AdminAuth | { error: string; status: number }> {
   const result = await getSessionWithDbValidation();
   if (!result) {
     return { error: "غير مصرح", status: 403 };
@@ -41,7 +58,17 @@ export async function requireAdmin() {
   if (!officeId) {
     return { error: "الحساب غير مرتبط بمكتب", status: 403 };
   }
-  return { session: result.session, officeId, userId: result.user.id };
+  const scope = await withOfficeScope(officeId);
+  if ("error" in scope) return scope;
+  return {
+    session: result.session,
+    officeId,
+    userId: result.user.id,
+    officeIds: scope.officeIds,
+    isCentralOffice: scope.isCentral,
+    officeType: scope.officeType,
+    officeName: scope.officeName,
+  };
 }
 
 /** للقراءة فقط (مثل قائمة التشكيلات): ADMIN أو RECEPTION أو SUPER_ADMIN — لا يشترط officeId */
@@ -67,7 +94,19 @@ export async function requireAdminOrReception(req?: NextRequest) {
     return { error: "غير مصرح", status: 403 };
   }
   const officeId = result.user.officeId ?? undefined;
-  return { session: result.session, officeId, role: result.user.role, userId: result.user.id };
+  if (!officeId) {
+    return { session: result.session, officeId, officeIds: [] as string[], isCentralOffice: false, role: result.user.role, userId: result.user.id };
+  }
+  const scope = await withOfficeScope(officeId);
+  if ("error" in scope) return scope;
+  return {
+    session: result.session,
+    officeId,
+    officeIds: scope.officeIds,
+    isCentralOffice: scope.isCentral,
+    role: result.user.role,
+    userId: result.user.id,
+  };
 }
 
 /** مدير مكتب أو موظف استقبال أو قسم الفرز أو تنسيق ومتابعة — للقراءة وعرض تفاصيل المعاملات، SORTING يمكنه تعيين عاجل فقط */
@@ -81,7 +120,19 @@ export async function requireAdminOrReceptionOrSorting(req?: NextRequest) {
     return { error: "غير مصرح", status: 403 };
   }
   const officeId = result.user.officeId ?? undefined;
-  return { session: result.session, officeId, role, userId: result.user.id };
+  if (!officeId) {
+    return { session: result.session, officeId, officeIds: [] as string[], isCentralOffice: false, role, userId: result.user.id };
+  }
+  const scope = await withOfficeScope(officeId);
+  if ("error" in scope) return scope;
+  return {
+    session: result.session,
+    officeId,
+    officeIds: scope.officeIds,
+    isCentralOffice: scope.isCentral,
+    role,
+    userId: result.user.id,
+  };
 }
 
 /** مدير مكتب أو قسم التوثيق أو قسم المتابعة — للوصول لمعاملات المكتب */
@@ -94,7 +145,19 @@ export async function requireAdminOrDocumentationOrCoordinator(req?: NextRequest
   }
   const officeId = result.user.officeId ?? undefined;
   if (role !== "COORDINATOR" && !officeId) return { error: "الحساب غير مرتبط بمكتب", status: 403 };
-  return { session: result.session, officeId, role, userId: result.user.id };
+  if (!officeId) {
+    return { session: result.session, officeId, officeIds: [] as string[], isCentralOffice: false, role, userId: result.user.id };
+  }
+  const scope = await withOfficeScope(officeId);
+  if ("error" in scope) return scope;
+  return {
+    session: result.session,
+    officeId,
+    officeIds: scope.officeIds,
+    isCentralOffice: scope.isCentral,
+    role,
+    userId: result.user.id,
+  };
 }
 
 /** سوبر أدمن أو مدير مكتب */

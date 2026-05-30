@@ -183,3 +183,18 @@ enum ComplaintType {
   SECRET
   PUBLIC
 }
+
+// خيارات قوائم نماذج المعاملات (قابلة للإدارة من لوحة السوبر أدمن)
+model FormFieldOption {
+  id        String   @id @default(cuid())
+  fieldKey  String
+  value     String
+  label     String
+  sortOrder Int      @default(0)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fieldKey, value])
+  @@index([fieldKey, enabled, sortOrder])
+}

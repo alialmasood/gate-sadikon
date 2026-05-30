@@ -1,23 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrReception, requireAdminOrReceptionOrSorting } from "@/lib/api-auth";
+import { prismaOfficeIdFilter, transactionAccessWhere } from "@/lib/office-scope";
+import { isAllowedEmployeeSector } from "@/lib/employee-sector-options";
+import { isAllowedTransactionType } from "@/lib/transaction-type-options";
+
+function delegateAllowedForTransaction(
+  delegateOfficeId: string | null,
+  targetOfficeId: string | null,
+  scopeOfficeIds: string[],
+  isCentralOffice: boolean
+): boolean {
+  if (!delegateOfficeId) return true;
+  if (!targetOfficeId) return false;
+  if (delegateOfficeId === targetOfficeId) return true;
+  if (isCentralOffice && scopeOfficeIds.includes(delegateOfficeId)) return true;
+  return false;
+}
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireAdminOrReceptionOrSorting();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId, role, userId } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeId, officeIds, role, userId } = auth;
   const { id } = await params;
 
   if ((role === "ADMIN" || role === "RECEPTION") && !officeId) {
     return NextResponse.json({ error: "الحساب غير مرتبط بمكتب" }, { status: 403 });
   }
 
-  const accessWhere: Record<string, string> = { id };
-  if ((role === "ADMIN" || role === "RECEPTION") && officeId) accessWhere.officeId = officeId;
-  if (role === "RECEPTION" && userId) accessWhere.createdByUserId = userId;
+  const accessWhere =
+    role === "ADMIN" || role === "RECEPTION"
+      ? transactionAccessWhere(id, officeIds, role, userId)
+      : { id };
 
   const transaction = await prisma.transaction.findFirst({
     where: accessWhere,
@@ -93,19 +110,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireAdminOrReception();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId, role, userId } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeId, officeIds, role, userId } = auth;
   const { id } = await params;
 
   if (!officeId) {
     return NextResponse.json({ error: "الحساب غير مرتبط بمكتب" }, { status: 403 });
   }
 
-  const accessWhere: Record<string, string> = { id, officeId };
-  if (role === "RECEPTION" && userId) accessWhere.createdByUserId = userId;
-
   const existing = await prisma.transaction.findFirst({
-    where: accessWhere,
+    where: transactionAccessWhere(id, officeIds, role, userId),
   });
   if (!existing) return NextResponse.json({ error: "المعاملة غير موجودة" }, { status: 404 });
 
@@ -118,8 +132,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireAdminOrReceptionOrSorting();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId, role, userId } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeId, officeIds, isCentralOffice, role, userId } = auth;
   const { id } = await params;
 
   if ((role === "ADMIN" || role === "RECEPTION") && !officeId) {
@@ -155,9 +169,10 @@ export async function PATCH(
     return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
   }
 
-  const accessWhere: Record<string, string> = { id };
-  if ((role === "ADMIN" || role === "RECEPTION") && officeId) accessWhere.officeId = officeId;
-  if (role === "RECEPTION" && userId) accessWhere.createdByUserId = userId;
+  const accessWhere =
+    role === "ADMIN" || role === "RECEPTION"
+      ? transactionAccessWhere(id, officeIds, role, userId)
+      : { id };
 
   const existing = await prisma.transaction.findFirst({
     where: accessWhere,
@@ -178,7 +193,14 @@ export async function PATCH(
         if (!delegate) {
           return NextResponse.json({ error: "المخول غير موجود أو غير مفعّل" }, { status: 400 });
         }
-        if (delegate.officeId && delegate.officeId !== targetOfficeId) {
+        if (
+          !delegateAllowedForTransaction(
+            delegate.officeId,
+            targetOfficeId,
+            officeIds,
+            isCentralOffice
+          )
+        ) {
           return NextResponse.json({ error: "المخول غير مرتبط بنفس المكتب" }, { status: 400 });
         }
         adminData.delegateId = delegateId;
@@ -269,13 +291,22 @@ export async function PATCH(
   if (body.citizenAddress !== undefined) data.citizenAddress = typeof body.citizenAddress === "string" ? body.citizenAddress.trim() || null : null;
   if (body.citizenIsEmployee !== undefined) data.citizenIsEmployee = body.citizenIsEmployee === true ? true : body.citizenIsEmployee === false ? false : null;
   if (body.citizenEmployeeSector !== undefined) {
-    const sector = ["GOVERNMENT", "PRIVATE", "MIXED", "NOT_LINKED", "OTHER"].includes(body.citizenEmployeeSector || "") ? body.citizenEmployeeSector : null;
-    data.citizenEmployeeSector = sector;
+    const raw = typeof body.citizenEmployeeSector === "string" ? body.citizenEmployeeSector.trim() : "";
+    if (raw && !(await isAllowedEmployeeSector(raw))) {
+      return NextResponse.json({ error: "نوع التوظيف غير صالح" }, { status: 400 });
+    }
+    data.citizenEmployeeSector = raw || null;
   }
   if (body.citizenMinistry !== undefined) data.citizenMinistry = typeof body.citizenMinistry === "string" ? body.citizenMinistry.trim() || null : null;
   if (body.citizenDepartment !== undefined) data.citizenDepartment = typeof body.citizenDepartment === "string" ? body.citizenDepartment.trim() || null : null;
   if (body.citizenOrganization !== undefined) data.citizenOrganization = typeof body.citizenOrganization === "string" ? body.citizenOrganization.trim() || null : null;
-  if (body.transactionType !== undefined) data.transactionType = typeof body.transactionType === "string" ? body.transactionType.trim() || null : null;
+  if (body.transactionType !== undefined) {
+    const raw = typeof body.transactionType === "string" ? body.transactionType.trim() : "";
+    if (raw && !(await isAllowedTransactionType(raw))) {
+      return NextResponse.json({ error: "نوع المعاملة غير صالح" }, { status: 400 });
+    }
+    data.transactionType = raw || null;
+  }
   if (body.transactionTitle !== undefined) data.transactionTitle = typeof body.transactionTitle === "string" ? body.transactionTitle.trim() || null : null;
   if (body.formationId !== undefined) data.formationId = typeof body.formationId === "string" ? body.formationId.trim() || null : null;
   if (body.subDeptId !== undefined) data.subDeptId = typeof body.subDeptId === "string" ? body.subDeptId.trim() || null : null;

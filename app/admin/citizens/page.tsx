@@ -27,6 +27,7 @@ type FullTransaction = Transaction & {
   citizenMinistry?: string | null;
   citizenDepartment?: string | null;
   citizenOrganization?: string | null;
+  transactionTitle?: string | null;
   formationName?: string | null;
   subDeptName?: string | null;
   officeName?: string | null;
@@ -430,6 +431,7 @@ export default function AdminCitizensPage() {
                   citizenDepartment: viewTransaction.citizenDepartment,
                   citizenOrganization: viewTransaction.citizenOrganization,
                   transactionType: viewTransaction.transactionType || viewTransaction.type,
+                  transactionTitle: viewTransaction.transactionTitle ?? null,
                   formationName: viewTransaction.formationName ?? null,
                   subDeptName: viewTransaction.subDeptName ?? null,
                   officeName: viewTransaction.officeName,

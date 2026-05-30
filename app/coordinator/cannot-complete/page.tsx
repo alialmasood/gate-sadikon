@@ -368,7 +368,6 @@ export default function CoordinatorCannotCompletePage() {
           <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
             <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
               <h2 className="text-base font-semibold text-[#1B1B1B]">طباعة تقرير رسمي</h2>
-              <p className="mt-0.5 text-sm text-[#5a5a5a]">تقرير حالة المعاملة ومسيرتها — ورق A4</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -640,6 +639,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:8px 12px;border:1px soli
                   citizenDepartment: viewTransaction.citizenDepartment,
                   citizenOrganization: viewTransaction.citizenOrganization,
                   transactionType: viewTransaction.transactionType || viewTransaction.type,
+                  transactionTitle: viewTransaction.transactionTitle ?? null,
                   formationName: viewTransaction.formationName ?? null,
                   subDeptName: viewTransaction.subDeptName ?? null,
                   officeName: viewTransaction.officeName,

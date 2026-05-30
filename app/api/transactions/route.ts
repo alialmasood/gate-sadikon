@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { prismaOfficeIdFilter, resolveOfficeScope } from "@/lib/office-scope";
 
 const secret = process.env.NEXTAUTH_SECRET;
 
@@ -36,8 +37,14 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 3000);
   const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
 
+  let officeScopeFilter: ReturnType<typeof prismaOfficeIdFilter> | undefined;
+  if ((role === "ADMIN" || role === "RECEPTION") && officeId) {
+    const scope = await resolveOfficeScope(officeId);
+    officeScopeFilter = prismaOfficeIdFilter(scope?.officeIds ?? [officeId]);
+  }
+
   const where: Record<string, unknown> = {};
-  if (role === "ADMIN" || role === "RECEPTION") where.officeId = officeId;
+  if (officeScopeFilter) where.officeId = officeScopeFilter;
   if (role === "RECEPTION" && userId) where.createdByUserId = userId;
   if (status) where.status = status;
   if (urgentOnly) where.urgent = true;
@@ -67,11 +74,17 @@ export async function GET(request: NextRequest) {
         delegate: { select: { name: true } },
         formation: { select: { name: true } },
         office: { select: { name: true } },
+        createdByUser: {
+          select: {
+            name: true,
+            office: { select: { name: true } },
+          },
+        },
       },
     }),
     prisma.transaction.count({
       where: {
-        ...(role === "ADMIN" || role === "RECEPTION" ? { officeId } : {}),
+        ...(officeScopeFilter ? { officeId: officeScopeFilter } : {}),
         ...(role === "RECEPTION" && userId ? { createdByUserId: userId } : {}),
         status: "OVERDUE",
       },
@@ -104,8 +117,11 @@ export async function GET(request: NextRequest) {
       cannotComplete: t.cannotComplete,
       cannotCompleteReason: t.cannotCompleteReason,
       reachedSorting: t.reachedSorting,
+      assignedFromSection: t.assignedFromSection ?? null,
       formationName: t.formation?.name ?? null,
       officeName: t.office?.name ?? null,
+      createdByName: t.createdByUser?.name ?? null,
+      createdByOfficeName: t.createdByUser?.office?.name ?? null,
       sourceSection: t.sourceSection ?? null,
       updatedAt: t.updatedAt,
       completedByAdmin: t.completedByAdmin ?? false,

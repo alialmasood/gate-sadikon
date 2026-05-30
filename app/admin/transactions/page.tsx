@@ -662,6 +662,7 @@ export default function AdminTransactionsPage() {
                   citizenDepartment: viewTransaction.citizenDepartment,
                   citizenOrganization: viewTransaction.citizenOrganization,
                   transactionType: viewTransaction.transactionType || viewTransaction.type,
+                  transactionTitle: viewTransaction.transactionTitle ?? null,
                   formationName: viewTransaction.formationName ?? null,
                   subDeptName: viewTransaction.subDeptName ?? null,
                   officeName: viewTransaction.officeName,

@@ -55,6 +55,15 @@ function formatDate(s: string | null): string {
   }
 }
 
+type OutgoingCategory = "urgent" | "delegated" | "cannotComplete" | "completed";
+
+function getOutgoingCategory(t: Transaction): OutgoingCategory {
+  if (t.completedByAdmin) return "completed";
+  if (t.cannotComplete) return "cannotComplete";
+  if (t.delegateName) return "delegated";
+  return "urgent";
+}
+
 function SortingOutgoingPageContent() {
   const router = useRouter();
   const pathname = usePathname();
@@ -62,6 +71,7 @@ function SortingOutgoingPageContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [officeFilter, setOfficeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
@@ -112,6 +122,7 @@ function SortingOutgoingPageContent() {
 
   useEffect(() => {
     setOfficeFilter(searchParams.get("office")?.trim() || "");
+    setStatusFilter(searchParams.get("status")?.trim() || "");
   }, [searchParams]);
 
   const updateOfficeFilter = useCallback((nextOffice: string) => {
@@ -122,6 +133,36 @@ function SortingOutgoingPageContent() {
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
+
+  const updateStatusFilter = useCallback((nextStatus: string) => {
+    setStatusFilter(nextStatus);
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextStatus) params.set("status", nextStatus);
+    else params.delete("status");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const stats = useMemo(() => {
+    let urgent = 0;
+    let delegated = 0;
+    let cannotComplete = 0;
+    let completed = 0;
+    for (const t of transactions) {
+      const cat = getOutgoingCategory(t);
+      if (cat === "urgent") urgent += 1;
+      else if (cat === "delegated") delegated += 1;
+      else if (cat === "cannotComplete") cannotComplete += 1;
+      else completed += 1;
+    }
+    return {
+      total: transactions.length,
+      urgent,
+      delegated,
+      cannotComplete,
+      completed,
+    };
+  }, [transactions]);
 
   const handleView = useCallback(async (t: Transaction) => {
     try {
@@ -182,9 +223,10 @@ function SortingOutgoingPageContent() {
     return transactions.filter((t) => {
       const officeName = t.officeName?.trim() || "غير محدد";
       if (officeFilter && officeName !== officeFilter) return false;
+      if (statusFilter && getOutgoingCategory(t) !== statusFilter) return false;
       return true;
     });
-  }, [transactions, officeFilter]);
+  }, [transactions, officeFilter, statusFilter]);
 
   const groupedTransactions = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -309,7 +351,69 @@ function SortingOutgoingPageContent() {
       </div>
 
       {!loading && (
-        <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+        <>
+          <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+            <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+              <h2 className="text-base font-semibold text-[#1B1B1B]">ملخص إحصائي</h2>
+              <p className="mt-0.5 text-sm text-[#5a5a5a]">
+                توزيع المعاملات الصادرة حسب الحالة — انقر على بطاقة لتصفية القائمة
+              </p>
+            </div>
+            <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-5">
+              <button
+                type="button"
+                onClick={() => updateStatusFilter("")}
+                className={`flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#7C3AED] bg-white p-4 text-right shadow-sm transition-colors ${
+                  !statusFilter ? "ring-2 ring-[#7C3AED]/40" : "hover:bg-[#f6f3ed]/50"
+                }`}
+              >
+                <p className="text-sm font-medium text-[#5a5a5a]">إجمالي الصادرة</p>
+                <p className="mt-2 text-2xl font-bold text-[#7C3AED]">{stats.total}</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateStatusFilter(statusFilter === "urgent" ? "" : "urgent")}
+                className={`flex flex-col rounded-xl border border-red-200 border-r-4 border-r-red-500 bg-red-50/40 p-4 text-right shadow-sm transition-colors ${
+                  statusFilter === "urgent" ? "ring-2 ring-red-400/50" : "hover:bg-red-50"
+                }`}
+              >
+                <p className="text-sm font-medium text-red-700">عاجلة</p>
+                <p className="mt-2 text-2xl font-bold text-red-700">{stats.urgent}</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateStatusFilter(statusFilter === "delegated" ? "" : "delegated")}
+                className={`flex flex-col rounded-xl border border-[#1E6B3A]/30 border-r-4 border-r-[#1E6B3A] bg-[#ccfbf1]/30 p-4 text-right shadow-sm transition-colors ${
+                  statusFilter === "delegated" ? "ring-2 ring-[#1E6B3A]/40" : "hover:bg-[#ccfbf1]/50"
+                }`}
+              >
+                <p className="text-sm font-medium text-[#0f766e]">إلى المخول</p>
+                <p className="mt-2 text-2xl font-bold text-[#1E6B3A]">{stats.delegated}</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateStatusFilter(statusFilter === "cannotComplete" ? "" : "cannotComplete")}
+                className={`flex flex-col rounded-xl border border-slate-200 border-r-4 border-r-slate-500 bg-slate-50/50 p-4 text-right shadow-sm transition-colors ${
+                  statusFilter === "cannotComplete" ? "ring-2 ring-slate-400/50" : "hover:bg-slate-100"
+                }`}
+              >
+                <p className="text-sm font-medium text-slate-700">لا يمكن إنجازها</p>
+                <p className="mt-2 text-2xl font-bold text-slate-700">{stats.cannotComplete}</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateStatusFilter(statusFilter === "completed" ? "" : "completed")}
+                className={`flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#0f766e] bg-[#ecfdf5]/60 p-4 text-right shadow-sm transition-colors ${
+                  statusFilter === "completed" ? "ring-2 ring-[#0f766e]/40" : "hover:bg-[#ecfdf5]"
+                }`}
+              >
+                <p className="text-sm font-medium text-[#0f766e]">منجزة</p>
+                <p className="mt-2 text-2xl font-bold text-[#0f766e]">{stats.completed}</p>
+              </button>
+            </div>
+          </article>
+
+          <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
           <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
             <h2 className="text-base font-semibold text-[#1B1B1B]">فرز حسب مكتب الارتباط</h2>
             <p className="mt-0.5 text-sm text-[#5a5a5a]">اختر مكتبًا محددًا أو اترك العرض على الكل مع التجميع التلقائي</p>
@@ -331,10 +435,33 @@ function SortingOutgoingPageContent() {
                   ))}
                 </select>
               </div>
+              <div className="min-w-[200px]">
+                <label className="mb-1 block text-xs font-medium text-[#5a5a5a]">حالة المعاملة</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => updateStatusFilter(e.target.value)}
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2 text-sm text-[#1B1B1B] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/30"
+                >
+                  <option value="">كل الحالات</option>
+                  <option value="urgent">عاجلة</option>
+                  <option value="delegated">إلى المخول</option>
+                  <option value="cannotComplete">لا يمكن إنجازها</option>
+                  <option value="completed">منجزة</option>
+                </select>
+              </div>
               <div className="rounded-lg border border-[#d4cfc8] bg-white px-3 py-2 text-sm text-[#5a5a5a]">
                 المعروض الآن: <span className="font-bold text-[#1B1B1B]">{filteredTransactions.length}</span> معاملة
               </div>
             </div>
+            {statusFilter && (
+              <button
+                type="button"
+                onClick={() => updateStatusFilter("")}
+                className="inline-flex items-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-3 py-1.5 text-sm text-[#1B1B1B] hover:bg-[#f6f3ed]"
+              >
+                إلغاء فلتر الحالة
+              </button>
+            )}
             {officeBreakdown.length > 0 && (
               <div className="flex flex-wrap gap-3">
                 {officeBreakdown.map((item) => (
@@ -356,6 +483,7 @@ function SortingOutgoingPageContent() {
             )}
           </div>
         </article>
+        </>
       )}
 
       {loading ? (
@@ -368,14 +496,23 @@ function SortingOutgoingPageContent() {
         </div>
       ) : filteredTransactions.length === 0 ? (
         <div className="rounded-2xl border border-[#d4cfc8] bg-white p-12 text-center shadow-sm">
-          <p className="text-[#5a5a5a]">لا توجد معاملات صادرة مطابقة لمكتب الارتباط المحدد.</p>
-          <button
-            type="button"
-            onClick={() => updateOfficeFilter("")}
-            className="mt-4 rounded-xl border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-4 py-2 text-sm font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
-          >
-            عرض جميع النتائج
-          </button>
+          <p className="text-[#5a5a5a]">
+            {officeFilter || statusFilter
+              ? "لا توجد معاملات صادرة مطابقة للفلاتر المحددة."
+              : "لا توجد معاملات صادرة حالياً."}
+          </p>
+          {(officeFilter || statusFilter) && (
+            <button
+              type="button"
+              onClick={() => {
+                updateOfficeFilter("");
+                updateStatusFilter("");
+              }}
+              className="mt-4 rounded-xl border border-[#7C3AED]/50 bg-[#7C3AED]/10 px-4 py-2 text-sm font-medium text-[#7C3AED] hover:bg-[#7C3AED]/20"
+            >
+              عرض جميع النتائج
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -425,6 +562,7 @@ function SortingOutgoingPageContent() {
                   citizenDepartment: viewTransaction.citizenDepartment,
                   citizenOrganization: viewTransaction.citizenOrganization,
                   transactionType: viewTransaction.transactionType || viewTransaction.type,
+                  transactionTitle: viewTransaction.transactionTitle ?? null,
                   formationName: viewTransaction.formationName ?? null,
                   subDeptName: viewTransaction.subDeptName ?? null,
                   officeName: viewTransaction.officeName,

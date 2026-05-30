@@ -130,6 +130,7 @@ export default function DocumentationAdminDonePage() {
                   citizenDepartment: viewTx.citizenDepartment,
                   citizenOrganization: viewTx.citizenOrganization,
                   transactionType: viewTx.transactionType,
+                  transactionTitle: viewTx.transactionTitle ?? null,
                   formationName: viewTx.formationName,
                   subDeptName: viewTx.subDeptName,
                   officeName: viewTx.officeName,

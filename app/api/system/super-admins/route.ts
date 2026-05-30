@@ -1,24 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-
-const SECRET = process.env.SYSTEM_SETUP_SECRET;
-
-function checkKey(request: NextRequest, body?: { systemKey?: string }): boolean {
-  if (!SECRET || SECRET.length < 8) return false;
-  const fromHeader = request.headers.get("x-system-key");
-  const fromBody = body?.systemKey;
-  return fromHeader === SECRET || fromBody === SECRET;
-}
+import { checkSystemKey } from "@/lib/system-setup-auth";
 
 export async function GET(request: NextRequest) {
-  if (!checkKey(request)) {
+  if (!checkSystemKey(request)) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
   const users = await prisma.user.findMany({
     where: { role: "SUPER_ADMIN" },
     orderBy: { createdAt: "desc" },
-    select: { id: true, email: true, name: true, enabled: true, createdAt: true },
+    select: { id: true, email: true, name: true, enabled: true, createdAt: true, updatedAt: true },
   });
   return NextResponse.json(users);
 }
@@ -30,7 +22,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
   }
-  if (!checkKey(request, body)) {
+  if (!checkSystemKey(request, body)) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
@@ -49,7 +41,7 @@ export async function POST(request: NextRequest) {
   const hashed = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
     data: { email, password: hashed, name, role: "SUPER_ADMIN", enabled: true },
-    select: { id: true, email: true, name: true, enabled: true, createdAt: true },
+    select: { id: true, email: true, name: true, enabled: true, createdAt: true, updatedAt: true },
   });
   return NextResponse.json(user);
 }

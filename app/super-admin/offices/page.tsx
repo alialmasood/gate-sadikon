@@ -4,6 +4,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { createPortal } from "react-dom";
+import {
+  OFFICE_TYPE_BRANCH,
+  OFFICE_TYPE_CENTRAL,
+  getOfficeTypeLabel,
+} from "@/lib/office-scope";
 
 type LinkedUser = {
   id: string;
@@ -59,6 +64,7 @@ function OfficeModal({
   initialData?: Office | null;
   onSubmit: (data: {
     name: string;
+    type: string;
     managerName: string;
     managerPhone: string;
     managerAvatarUrl: string | null;
@@ -72,6 +78,7 @@ function OfficeModal({
   onErrorClear: () => void;
 }) {
   const [name, setName] = useState("");
+  const [officeType, setOfficeType] = useState<string>(OFFICE_TYPE_BRANCH);
   const [managerName, setManagerName] = useState("");
   const [managerPhone, setManagerPhone] = useState("");
   const [managerAvatarUrl, setManagerAvatarUrl] = useState<string | null>(null);
@@ -92,6 +99,9 @@ function OfficeModal({
         prevOpenRef.current = true;
         if (initialData) {
           setName(initialData.name || "");
+          setOfficeType(
+            initialData.type === OFFICE_TYPE_CENTRAL ? OFFICE_TYPE_CENTRAL : OFFICE_TYPE_BRANCH
+          );
           setManagerName(initialData.managerName || "");
           setManagerPhone(initialData.managerPhone || "");
           setManagerAvatarUrl(initialData.managerAvatarUrl || null);
@@ -104,6 +114,7 @@ function OfficeModal({
           setConfirmPassword("");
         } else {
           setName("");
+          setOfficeType(OFFICE_TYPE_BRANCH);
           setManagerName("");
           setManagerPhone("");
           setManagerAvatarUrl(null);
@@ -155,6 +166,7 @@ function OfficeModal({
     }
     await onSubmit({
       name: name.trim(),
+      type: officeType,
       managerName: managerName.trim(),
       managerPhone: managerPhone.trim(),
       managerAvatarUrl,
@@ -193,6 +205,23 @@ function OfficeModal({
               placeholder="اسم المكتب"
               className={INPUT_CLASS}
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#1B1B1B]">
+              نوع المكتب *
+            </label>
+            <select
+              required
+              value={officeType}
+              onChange={(e) => setOfficeType(e.target.value)}
+              className={INPUT_CLASS}
+            >
+              <option value={OFFICE_TYPE_BRANCH}>فرعي — يشاهد بيانات مكتبه فقط</option>
+              <option value={OFFICE_TYPE_CENTRAL}>مركزي — يجمع بيانات كل المكاتب الفرعية</option>
+            </select>
+            <p className="mt-1 text-xs text-[#5a5a5a]">
+              يُسمح بمكتب مركزي واحد فقط في المنصة. المكاتب الفرعية تابعة له ولا ترى بيانات غيرها.
+            </p>
           </div>
           {!isEdit && (
             <>
@@ -526,7 +555,7 @@ function OfficeViewModal({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <DetailItem label="اسم المكتب" value={office.name} />
-            <DetailItem label="نوع المكتب" value={office.type} />
+            <DetailItem label="نوع المكتب" value={getOfficeTypeLabel(office.type)} />
             <DetailItem label="العنوان" value={office.location} />
             <DetailItem label="عدد المستخدمين المرتبطين" value={String(office.userCount ?? 0)} />
             <DetailItem label="عدد المعاملات" value={String(office.transactionCount ?? 0)} />
@@ -872,6 +901,7 @@ export default function OfficesPage() {
 
   const handleSubmit = async (data: {
     name: string;
+    type: string;
     managerName: string;
     managerPhone: string;
     managerAvatarUrl: string | null;
@@ -885,6 +915,7 @@ export default function OfficesPage() {
     try {
       const payload: Record<string, unknown> = {
         name: data.name,
+        type: data.type,
         managerName: data.managerName || null,
         managerPhone: data.managerPhone || null,
         managerAvatarUrl: data.managerAvatarUrl,
@@ -1047,7 +1078,7 @@ export default function OfficesPage() {
       [
         i + 1,
         o.name || "",
-        o.type || "",
+        getOfficeTypeLabel(o.type),
         o.manager?.name || o.managerName || "",
         o.managerPhone || "",
         o.assignmentDate ? formatDateShort(o.assignmentDate) : "",
@@ -1235,7 +1266,17 @@ export default function OfficesPage() {
                     <td className="py-3 pr-2 font-medium text-[#1B1B1B]">
                       {o.name || "—"}
                     </td>
-                    <td className="py-3 pr-2 text-[#5a5a5a]">{o.type || "—"}</td>
+                    <td className="py-3 pr-2 text-[#5a5a5a]">
+                      <span
+                        className={
+                          o.type === OFFICE_TYPE_CENTRAL
+                            ? "font-medium text-[#1E6B3A]"
+                            : ""
+                        }
+                      >
+                        {getOfficeTypeLabel(o.type)}
+                      </span>
+                    </td>
                     <td className="py-3 pr-2 text-[#1B1B1B]">
                       {o.manager?.name || o.managerName || "—"}
                     </td>

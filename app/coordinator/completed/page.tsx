@@ -14,6 +14,7 @@ type TxItem = {
   citizenDepartment?: string | null;
   citizenOrganization?: string | null;
   transactionType: string | null;
+  transactionTitle?: string | null;
   type: string | null;
   serialNumber: string | null;
   formationName?: string | null;
@@ -293,7 +294,6 @@ export default function CoordinatorCompletedPage() {
           <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
             <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
               <h2 className="text-base font-semibold text-[#1B1B1B]">طباعة تقرير رسمي</h2>
-              <p className="mt-0.5 text-sm text-[#5a5a5a]">تقرير حالة المعاملة ومسيرتها — ورق A4</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -404,6 +404,7 @@ export default function CoordinatorCompletedPage() {
                   citizenDepartment: viewTx.citizenDepartment ?? null,
                   citizenOrganization: viewTx.citizenOrganization ?? null,
                   transactionType: viewTx.transactionType || viewTx.type,
+                  transactionTitle: viewTx.transactionTitle ?? null,
                   formationName: viewTx.formationName ?? null,
                   subDeptName: viewTx.subDeptName ?? null,
                   officeName: viewTx.officeName ?? null,

@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { prismaOfficeIdFilter } from "@/lib/office-scope";
 
 export async function GET() {
   const auth = await requireAdmin();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeIds } = auth;
 
   const transactions = await prisma.transaction.findMany({
-    where: { officeId, citizenName: { not: null } },
+    where: { officeId: prismaOfficeIdFilter(officeIds), citizenName: { not: null } },
     select: {
       id: true,
       citizenName: true,

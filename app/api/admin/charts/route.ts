@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { prismaOfficeIdFilter } from "@/lib/office-scope";
 
 function getDateRange(period: string): { gte: Date; lte: Date } {
   const now = new Date();
@@ -23,14 +24,14 @@ function getDateRange(period: string): { gte: Date; lte: Date } {
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeIds } = auth;
 
   const { searchParams } = request.nextUrl;
   const chart = searchParams.get("chart");
   const period = searchParams.get("period") || "months:30";
 
-  const baseWhere = { officeId };
+  const baseWhere = { officeId: prismaOfficeIdFilter(officeIds) };
 
   if (chart === "timeline") {
     const { gte, lte } = getDateRange(period);

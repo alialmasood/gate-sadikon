@@ -26,6 +26,7 @@ function getBreadcrumb(pathname: string): string[] {
     "/super-admin/meetings": "اجتماعات",
     "/super-admin/supervision-calculators": "حاسبات الإشراف والمراقبة",
     "/super-admin/supervision-calculators/add": "إضافة حساب الإشراف والمراقبة",
+    "/super-admin/transaction-form": "إدارة صفحة المعاملة",
   };
   if (pathname in map) return ["الإدارة العليا", map[pathname]];
   if (pathname.startsWith("/super-admin/")) return ["الإدارة العليا", "لوحة التحكم"];
@@ -42,6 +43,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/super-admin/offices", label: "إدارة المكاتب" },
       { href: "/super-admin/users", label: "إدارة المستخدمين" },
+      { href: "/super-admin/transaction-form", label: "إدارة صفحة المعاملة" },
       { href: "/super-admin/citizens", label: "تحليلات المكاتب" },
       { href: "/super-admin/meetings", label: "اجتماعات" },
       { href: "/super-admin/supervision-calculators", label: "حاسبات الإشراف والمراقبة" },
@@ -114,6 +116,11 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   "/super-admin/supervision-calculators": (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    </svg>
+  ),
+  "/super-admin/transaction-form": (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
   ),
 };

@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrDocumentationOrCoordinator } from "@/lib/api-auth";
+import { prismaOfficeIdFilter } from "@/lib/office-scope";
 
 /** إرجاع المعاملات المنجزة من قبل مدير المكتب */
 export async function GET() {
   const auth = await requireAdminOrDocumentationOrCoordinator();
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId, role } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeIds, role } = auth;
 
   const transactions = await prisma.transaction.findMany({
     where: {
-      ...(role === "COORDINATOR" ? {} : { officeId }),
+      ...(role === "COORDINATOR" ? {} : { officeId: prismaOfficeIdFilter(officeIds) }),
       status: "DONE",
       completedByAdmin: true,
     },

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/api-auth";
 import bcrypt from "bcryptjs";
+import {
+  assertCanSetOfficeType,
+  normalizeOfficeType,
+  OFFICE_TYPE_BRANCH,
+} from "@/lib/office-scope";
 
 export async function GET() {
   const auth = await requireSuperAdmin();
@@ -70,7 +75,10 @@ export async function POST(request: NextRequest) {
   }
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return NextResponse.json({ error: "اسم المكتب مطلوب" }, { status: 400 });
-  const type = typeof body.type === "string" ? body.type.trim() || null : null;
+  const typeRaw = typeof body.type === "string" ? body.type.trim() : "";
+  const type = normalizeOfficeType(typeRaw) ?? OFFICE_TYPE_BRANCH;
+  const typeCheck = await assertCanSetOfficeType(type);
+  if (!typeCheck.ok) return NextResponse.json({ error: typeCheck.error }, { status: 400 });
   const location = typeof body.location === "string" ? body.location.trim() || null : null;
   const managerName = typeof body.managerName === "string" ? body.managerName.trim() || null : null;
   const managerPhone = typeof body.managerPhone === "string" ? body.managerPhone.trim() || null : null;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/api-auth";
+import { assertCanSetOfficeType, normalizeOfficeType } from "@/lib/office-scope";
 
 export async function PATCH(
   request: NextRequest,
@@ -27,7 +28,15 @@ export async function PATCH(
   }
   const data: Record<string, unknown> = {};
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
-  if (body.type !== undefined) data.type = typeof body.type === "string" ? body.type.trim() || null : null;
+  if (body.type !== undefined) {
+    const normalized = normalizeOfficeType(typeof body.type === "string" ? body.type : null);
+    if (!normalized) {
+      return NextResponse.json({ error: "نوع المكتب يجب أن يكون مركزي أو فرعي" }, { status: 400 });
+    }
+    const typeCheck = await assertCanSetOfficeType(normalized, id);
+    if (!typeCheck.ok) return NextResponse.json({ error: typeCheck.error }, { status: 400 });
+    data.type = normalized;
+  }
   if (body.location !== undefined) data.location = typeof body.location === "string" ? body.location.trim() || null : null;
   if (body.managerId !== undefined) data.managerId = body.managerId === null || body.managerId === "" ? null : (typeof body.managerId === "string" ? body.managerId : null);
   if (body.managerName !== undefined) data.managerName = typeof body.managerName === "string" ? body.managerName.trim() || null : null;

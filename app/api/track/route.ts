@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
     citizenDepartment: t.citizenDepartment,
     citizenOrganization: t.citizenOrganization,
     transactionType: t.transactionType || t.type,
+    transactionTitle: t.transactionTitle ?? null,
     formationName: t.formation?.name ?? null,
     subDeptName,
     officeName: t.office?.name ?? null,

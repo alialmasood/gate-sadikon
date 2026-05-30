@@ -33,9 +33,12 @@ type Transaction = {
   reachedSorting?: boolean;
   completedByAdmin?: boolean;
   formationName?: string | null;
+  officeName?: string | null;
   updatedAt?: string | null;
   delegateActions?: DelegateActionItem[];
 };
+
+type StatusFilter = "" | "urgent" | "delegated" | "cannotComplete" | "done";
 
 type FullTransaction = Transaction & {
   citizenMinistry?: string | null;
@@ -109,8 +112,11 @@ export default function CoordinatorIncomingPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>("week");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+  const [officeFilter, setOfficeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   const loadData = useCallback(async () => {
     try {
@@ -141,7 +147,6 @@ export default function CoordinatorIncomingPage() {
       }
       merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setTransactions(merged);
-      setLastUpdate(new Date());
     } finally {
       setLoading(false);
     }
@@ -202,12 +207,69 @@ export default function CoordinatorIncomingPage() {
     }
   }, []);
 
-  const stats = {
-    total: transactions.length,
-    urgent: transactions.filter((t) => t.urgent).length,
-    delegated: transactions.filter((t) => t.delegateName).length,
-    cannotComplete: transactions.filter((t) => t.cannotComplete).length,
-  };
+  const officeOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const t of transactions) {
+      const n = t.officeName?.trim();
+      if (n) names.add(n);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [transactions]);
+
+  const typeOptions = useMemo(() => {
+    const types = new Set<string>();
+    for (const t of transactions) {
+      const ty = (t.transactionType || t.type || "").trim();
+      if (ty) types.add(ty);
+    }
+    return Array.from(types).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const qPhone = q.replace(/\s/g, "");
+    return transactions.filter((t) => {
+      if (statusFilter === "urgent" && !t.urgent) return false;
+      if (statusFilter === "delegated" && !t.delegateName) return false;
+      if (statusFilter === "cannotComplete" && !t.cannotComplete) return false;
+      if (statusFilter === "done" && !(t.completedByAdmin || t.status === "DONE")) return false;
+
+      const office = t.officeName?.trim() || "";
+      if (officeFilter && office !== officeFilter) return false;
+
+      const ty = (t.transactionType || t.type || "").trim();
+      if (typeFilter && ty !== typeFilter) return false;
+
+      if (!q) return true;
+      const serial = (t.serialNumber || "").toLowerCase();
+      const name = (t.citizenName || "").toLowerCase();
+      const phone = (t.citizenPhone || "").replace(/\s/g, "");
+      const type = ty.toLowerCase();
+      const officeLower = office.toLowerCase();
+      const formation = (t.formationName || "").toLowerCase();
+      return (
+        serial.includes(q) ||
+        name.includes(q) ||
+        phone.includes(qPhone) ||
+        type.includes(q) ||
+        officeLower.includes(q) ||
+        formation.includes(q) ||
+        `2026-${serial}`.includes(q)
+      );
+    });
+  }, [transactions, searchQuery, statusFilter, officeFilter, typeFilter]);
+
+  const hasActiveFilters = !!(searchQuery.trim() || statusFilter || officeFilter || typeFilter);
+
+  const stats = useMemo(
+    () => ({
+      total: filteredTransactions.length,
+      urgent: filteredTransactions.filter((t) => t.urgent).length,
+      delegated: filteredTransactions.filter((t) => t.delegateName).length,
+      cannotComplete: filteredTransactions.filter((t) => t.cannotComplete).length,
+    }),
+    [filteredTransactions]
+  );
 
   const reportData = useMemo(() => {
     const now = new Date();
@@ -223,7 +285,7 @@ export default function CoordinatorIncomingPage() {
     const getCompletionTime = (t: Transaction) =>
       (t.completedAt ? new Date(t.completedAt) : t.updatedAt ? new Date(t.updatedAt) : null);
 
-    const completed = transactions
+    const completed = filteredTransactions
       .filter((t) => {
         if (!isCompleted(t)) return false;
         const ct = getCompletionTime(t);
@@ -237,7 +299,7 @@ export default function CoordinatorIncomingPage() {
       })
       .sort((a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0));
 
-    const atDelegate = transactions
+    const atDelegate = filteredTransactions
       .filter((t) => t.delegateName && !isCompleted(t))
       .map((t) => {
         const ref = t.updatedAt || t.createdAt;
@@ -249,19 +311,20 @@ export default function CoordinatorIncomingPage() {
     const periodLabel =
       reportPeriod === "day" ? "اليوم" : reportPeriod === "week" ? "آخر 7 أيام" : "آخر 30 يوم";
     return { completed, atDelegate, periodLabel, startDate };
-  }, [transactions, reportPeriod]);
+  }, [filteredTransactions, reportPeriod]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("");
+    setOfficeFilter("");
+    setTypeFilter("");
+  };
 
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] pb-4">
         <div>
           <h2 className="text-xl font-bold text-[#1B1B1B]">المعاملات الواردة</h2>
-          <p className="mt-1 text-sm text-[#5a5a5a]">
-            المعاملات المُرسلة من قسم الفرز — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
-            {lastUpdate && (
-              <span className="mr-2 text-xs text-[#5B7C99]">(آخر تحديث: {formatDate(lastUpdate.toISOString())})</span>
-            )}
-          </p>
         </div>
         <Link
           href="/coordinator"
@@ -288,8 +351,13 @@ export default function CoordinatorIncomingPage() {
         <>
           <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
             <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
-              <h2 className="text-base font-semibold text-[#1B1B1B]">ملخص إحصائي</h2>
-              <p className="mt-0.5 text-sm text-[#5a5a5a]">توزيع المعاملات الواردة حسب النوع</p>
+              <h2 className="text-base font-semibold text-[#1B1B1B]">
+                ملخص إحصائي
+                <span className="mx-2 font-normal text-[#c4bfb8]">|</span>
+                <span className="font-normal text-sm text-[#5a5a5a]">
+                  توزيع المعاملات الواردة حسب النوع
+                </span>
+              </h2>
             </div>
             <div className="grid gap-4 p-6 sm:grid-cols-4">
               <div className="flex flex-col rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#5B7C99] bg-white p-4 shadow-sm">
@@ -307,6 +375,92 @@ export default function CoordinatorIncomingPage() {
               <div className="flex flex-col rounded-xl border border-slate-200 border-r-4 border-r-slate-500 bg-slate-50/50 p-4 shadow-sm">
                 <p className="text-sm font-medium text-slate-700">تعذر إنجازها</p>
                 <p className="mt-2 text-2xl font-bold text-slate-700">{stats.cannotComplete}</p>
+              </div>
+            </div>
+          </article>
+
+          <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+            <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+              <h2 className="text-base font-semibold text-[#1B1B1B]">
+                البحث والتصفية
+                <span className="mx-2 font-normal text-[#c4bfb8]">|</span>
+                <span className="font-normal text-sm text-[#5a5a5a]">فرز وعرض المعاملات الواردة</span>
+              </h2>
+            </div>
+            <div className="flex w-full flex-wrap items-end gap-3 p-6">
+              <div className="min-w-[8rem] flex-1">
+                <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">بحث</label>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="رقم، اسم، هاتف…"
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2.5 text-sm text-[#1B1B1B] placeholder:text-[#9a9a9a] focus:border-[#5B7C99] focus:outline-none focus:ring-1 focus:ring-[#5B7C99]/30"
+                />
+              </div>
+              <div className="min-w-[7rem] flex-1">
+                <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">حالة المعاملة</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#5B7C99] focus:outline-none focus:ring-1 focus:ring-[#5B7C99]/30"
+                >
+                  <option value="">كل الحالات</option>
+                  <option value="urgent">عاجل</option>
+                  <option value="delegated">محوّلة لمخول</option>
+                  <option value="cannotComplete">تعذر إنجازها</option>
+                  <option value="done">منجزة</option>
+                </select>
+              </div>
+              <div className="min-w-[7rem] flex-1">
+                <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">مكتب الارتباط</label>
+                <select
+                  value={officeFilter}
+                  onChange={(e) => setOfficeFilter(e.target.value)}
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#5B7C99] focus:outline-none focus:ring-1 focus:ring-[#5B7C99]/30"
+                >
+                  <option value="">كل المكاتب</option>
+                  {officeOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-[7rem] flex-1">
+                <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">نوع المعاملة</label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#5B7C99] focus:outline-none focus:ring-1 focus:ring-[#5B7C99]/30"
+                >
+                  <option value="">كل الأنواع</option>
+                  {typeOptions.map((ty) => (
+                    <option key={ty} value={ty}>
+                      {ty}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex min-w-[9rem] flex-1 items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">المعروض</label>
+                  <div className="flex h-[42px] w-full items-center rounded-lg border border-[#d4cfc8] bg-white px-3 text-sm text-[#5a5a5a]">
+                    <span className="font-bold text-[#1B1B1B]">{filteredTransactions.length}</span>
+                    {hasActiveFilters && (
+                      <span className="mr-1 text-xs"> من {transactions.length}</span>
+                    )}
+                  </div>
+                </div>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mb-0.5 shrink-0 rounded-lg border border-[#d4cfc8] bg-white px-3 py-2.5 text-sm font-medium text-[#5B7C99] hover:bg-[#5B7C99]/10"
+                  >
+                    إلغاء
+                  </button>
+                )}
               </div>
             </div>
           </article>
@@ -345,7 +499,7 @@ export default function CoordinatorIncomingPage() {
                   ) : (
                     <ul className="space-y-2">
                       {reportData.completed.map((t) => {
-                        const orig = transactions.find((x) => x.id === t.id);
+                        const orig = filteredTransactions.find((x) => x.id === t.id);
                         return (
                         <li
                           key={t.id}
@@ -404,8 +558,22 @@ export default function CoordinatorIncomingPage() {
             </div>
           </article>
 
+          {filteredTransactions.length === 0 ? (
+            <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white p-12 text-center shadow-sm">
+              <p className="text-[#5a5a5a]">لا توجد معاملات مطابقة لبحثك أو التصفية.</p>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-4 rounded-xl border border-[#5B7C99]/50 bg-[#5B7C99]/10 px-4 py-2 text-sm font-medium text-[#5B7C99] hover:bg-[#5B7C99]/20"
+                >
+                  إلغاء التصفية وعرض الكل
+                </button>
+              )}
+            </article>
+          ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {transactions.map((t) => {
+            {filteredTransactions.map((t) => {
               const badge = getStatusBadge(t);
               return (
                 <article
@@ -453,6 +621,7 @@ export default function CoordinatorIncomingPage() {
               );
             })}
           </div>
+          )}
         </>
       )}
 
@@ -496,6 +665,7 @@ export default function CoordinatorIncomingPage() {
                   citizenDepartment: viewTransaction.citizenDepartment,
                   citizenOrganization: viewTransaction.citizenOrganization,
                   transactionType: viewTransaction.transactionType || viewTransaction.type,
+                  transactionTitle: viewTransaction.transactionTitle ?? null,
                   formationName: viewTransaction.formationName ?? null,
                   subDeptName: viewTransaction.subDeptName ?? null,
                   officeName: viewTransaction.officeName,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { TransactionReceipt, type ReceiptData } from "@/components/TransactionReceipt";
@@ -26,6 +26,8 @@ type Transaction = {
   reachedSorting?: boolean;
   completedByAdmin?: boolean;
   updatedAt?: string | null;
+  formationName?: string | null;
+  officeName?: string | null;
 };
 
 type FullTransaction = Transaction & {
@@ -33,11 +35,11 @@ type FullTransaction = Transaction & {
   citizenDepartment?: string | null;
   citizenOrganization?: string | null;
   transactionTitle?: string | null;
-  officeName?: string | null;
-  formationName?: string | null;
   subDeptName?: string | null;
   followUpUrl?: string | null;
 };
+
+type WorkflowFilter = "" | "pending" | "delegated" | "cannotComplete" | "done";
 
 const SOURCE_SECTION_LABELS: Record<string, string> = {
   RECEPTION: "الاستقبال",
@@ -247,7 +249,6 @@ export default function CoordinatorUrgentPage() {
   const [viewTransaction, setViewTransaction] = useState<FullTransaction | null>(null);
   const [reportTransaction, setReportTransaction] = useState<FullTransaction | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [statusReportPeriod, setStatusReportPeriod] = useState<"day" | "week" | "custom">("week");
   const [customDateFrom, setCustomDateFrom] = useState(() => {
     const d = new Date();
@@ -258,6 +259,10 @@ export default function CoordinatorUrgentPage() {
   const [statusReportList, setStatusReportList] = useState<Transaction[]>([]);
   const [statusReportLoading, setStatusReportLoading] = useState(false);
   const [statusReportFetched, setStatusReportFetched] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [officeFilter, setOfficeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [workflowFilter, setWorkflowFilter] = useState<WorkflowFilter>("");
 
   const loadStatusReport = useCallback(async () => {
     setStatusReportLoading(true);
@@ -296,7 +301,6 @@ export default function CoordinatorUrgentPage() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setTransactions(data.transactions || []);
-        setLastUpdate(new Date());
       }
     } finally {
       setLoading(false);
@@ -398,25 +402,87 @@ export default function CoordinatorUrgentPage() {
     });
   }, []);
 
-  const selectAll = useCallback(() => {
-    setSelectedIds(new Set(transactions.map((t) => t.id)));
+  const officeOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const t of transactions) {
+      const n = t.officeName?.trim();
+      if (n) names.add(n);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, "ar"));
   }, [transactions]);
+
+  const typeOptions = useMemo(() => {
+    const types = new Set<string>();
+    for (const t of transactions) {
+      const ty = (t.transactionType || t.type || "").trim();
+      if (ty) types.add(ty);
+    }
+    return Array.from(types).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const qPhone = q.replace(/\s/g, "");
+    return transactions.filter((t) => {
+      const isDone = t.completedByAdmin || t.status === "DONE";
+      if (workflowFilter === "pending" && (t.delegateName || t.cannotComplete || isDone)) return false;
+      if (workflowFilter === "delegated" && !t.delegateName) return false;
+      if (workflowFilter === "cannotComplete" && !t.cannotComplete) return false;
+      if (workflowFilter === "done" && !isDone) return false;
+
+      const office = t.officeName?.trim() || "";
+      if (officeFilter && office !== officeFilter) return false;
+
+      const ty = (t.transactionType || t.type || "").trim();
+      if (typeFilter && ty !== typeFilter) return false;
+
+      if (!q) return true;
+      const serial = (t.serialNumber || "").toLowerCase();
+      const name = (t.citizenName || "").toLowerCase();
+      const phone = (t.citizenPhone || "").replace(/\s/g, "");
+      const formation = (t.formationName || "").toLowerCase();
+      return (
+        serial.includes(q) ||
+        name.includes(q) ||
+        phone.includes(qPhone) ||
+        ty.toLowerCase().includes(q) ||
+        office.toLowerCase().includes(q) ||
+        formation.includes(q) ||
+        `2026-${serial}`.includes(q)
+      );
+    });
+  }, [transactions, searchQuery, officeFilter, typeFilter, workflowFilter]);
+
+  const hasActiveFilters = !!(searchQuery.trim() || officeFilter || typeFilter || workflowFilter);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setOfficeFilter("");
+    setTypeFilter("");
+    setWorkflowFilter("");
+  };
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filteredTransactions.map((t) => t.id)));
+  }, [filteredTransactions]);
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
   }, []);
 
+  const urgentCount = filteredTransactions.length;
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#d4cfc8] pb-4">
         <div>
-          <h2 className="text-lg font-semibold text-[#1B1B1B]">المعاملات العاجلة</h2>
-          <p className="mt-1 text-sm text-[#5a5a5a]">
-            المعاملات ذات الأولوية العالية — تُحدَّث تلقائياً كل {POLL_INTERVAL_MS / 1000} ثوانٍ
-            {lastUpdate && (
-              <span className="mr-2 text-xs text-[#5B7C99]">(آخر تحديث: {formatDate(lastUpdate.toISOString())})</span>
-            )}
-          </p>
+          <h2 className="text-lg font-semibold text-[#1B1B1B]">
+            المعاملات العاجلة
+            <span className="mx-2 font-normal text-[#c4bfb8]">|</span>
+            <span className="font-normal text-sm text-[#5a5a5a]">
+              المعاملات ذات الأولوية العالية
+            </span>
+          </h2>
         </div>
         <Link href="/coordinator" className="flex items-center gap-2 rounded-xl border border-[#d4cfc8] bg-white px-4 py-2.5 text-sm font-medium text-[#1B1B1B] transition-colors hover:bg-[#f6f3ed]">
           لوحة التحكم
@@ -435,16 +501,29 @@ export default function CoordinatorUrgentPage() {
         <>
           <article className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
             <div className="border-b border-red-200 bg-red-50/50 px-6 py-3">
-              <h2 className="text-base font-semibold text-[#1B1B1B]">ملخص</h2>
-              <p className="mt-0.5 text-sm text-[#5a5a5a]">عدد المعاملات العاجلة الحالية</p>
+              <h2 className="text-base font-semibold text-[#1B1B1B]">
+                ملخص
+                <span className="mx-2 font-normal text-[#c4bfb8]">|</span>
+                <span className="font-normal text-sm text-[#5a5a5a]">
+                  عدد المعاملات العاجلة الحالية
+                </span>
+              </h2>
             </div>
             <div className="p-6">
               <div className="flex items-center gap-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-red-100">
-                  <span className="text-2xl font-bold text-red-700">{transactions.length}</span>
+                  <span className="text-2xl font-bold text-red-700">{urgentCount}</span>
                 </div>
                 <div>
-                  <p className="font-semibold text-[#1B1B1B]">{transactions.length} معاملة عاجلة</p>
+                  <p className="font-semibold text-[#1B1B1B]">
+                    {urgentCount} معاملة عاجلة
+                    {hasActiveFilters && (
+                      <span className="mr-1 text-sm font-normal text-[#5a5a5a]">
+                        {" "}
+                        (من {transactions.length})
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-[#5a5a5a]">تتطلب متابعة فورية</p>
                 </div>
               </div>
@@ -453,19 +532,106 @@ export default function CoordinatorUrgentPage() {
 
           <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
             <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
+              <h2 className="text-base font-semibold text-[#1B1B1B]">
+                البحث والتصفية
+                <span className="mx-2 font-normal text-[#c4bfb8]">|</span>
+                <span className="font-normal text-sm text-[#5a5a5a]">فرز وعرض المعاملات العاجلة</span>
+              </h2>
+            </div>
+            <div className="flex w-full flex-wrap items-end gap-3 p-6">
+              <div className="min-w-[8rem] flex-1">
+                <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">بحث</label>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="رقم، اسم، هاتف…"
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2.5 text-sm text-[#1B1B1B] placeholder:text-[#9a9a9a] focus:border-[#5B7C99] focus:outline-none focus:ring-1 focus:ring-[#5B7C99]/30"
+                />
+              </div>
+              <div className="min-w-[7rem] flex-1">
+                <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">مسار المعاملة</label>
+                <select
+                  value={workflowFilter}
+                  onChange={(e) => setWorkflowFilter(e.target.value as WorkflowFilter)}
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#5B7C99] focus:outline-none focus:ring-1 focus:ring-[#5B7C99]/30"
+                >
+                  <option value="">الكل</option>
+                  <option value="pending">بانتظار التنسيق</option>
+                  <option value="delegated">عند المخول</option>
+                  <option value="cannotComplete">تعذر إنجازها</option>
+                  <option value="done">منجزة</option>
+                </select>
+              </div>
+              <div className="min-w-[7rem] flex-1">
+                <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">مكتب الارتباط</label>
+                <select
+                  value={officeFilter}
+                  onChange={(e) => setOfficeFilter(e.target.value)}
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#5B7C99] focus:outline-none focus:ring-1 focus:ring-[#5B7C99]/30"
+                >
+                  <option value="">كل المكاتب</option>
+                  {officeOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-[7rem] flex-1">
+                <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">نوع المعاملة</label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="w-full rounded-lg border border-[#d4cfc8] bg-[#f6f3ed] px-3 py-2.5 text-sm text-[#1B1B1B] focus:border-[#5B7C99] focus:outline-none focus:ring-1 focus:ring-[#5B7C99]/30"
+                >
+                  <option value="">كل الأنواع</option>
+                  {typeOptions.map((ty) => (
+                    <option key={ty} value={ty}>
+                      {ty}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex min-w-[9rem] flex-1 items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <label className="mb-1.5 block text-xs font-medium text-[#5a5a5a]">المعروض</label>
+                  <div className="flex h-[42px] w-full items-center rounded-lg border border-[#d4cfc8] bg-white px-3 text-sm text-[#5a5a5a]">
+                    <span className="font-bold text-[#1B1B1B]">{urgentCount}</span>
+                    {hasActiveFilters && (
+                      <span className="mr-1 text-xs"> من {transactions.length}</span>
+                    )}
+                  </div>
+                </div>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mb-0.5 shrink-0 rounded-lg border border-[#d4cfc8] bg-white px-3 py-2.5 text-sm font-medium text-[#5B7C99] hover:bg-[#5B7C99]/10"
+                  >
+                    إلغاء
+                  </button>
+                )}
+              </div>
+            </div>
+          </article>
+
+          <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white shadow-sm">
+            <div className="border-b border-[#d4cfc8] bg-[#f6f3ed]/50 px-6 py-3">
               <h2 className="text-base font-semibold text-[#1B1B1B]">طباعة تقرير رسمي</h2>
-              <p className="mt-0.5 text-sm text-[#5a5a5a]">تقرير حالة المعاملة ومسيرتها — ورق A4</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => handlePrintReport(transactions)}
+                  onClick={() => handlePrintReport(filteredTransactions)}
                   className="rounded-lg border border-[#5B7C99]/50 bg-[#5B7C99]/10 px-4 py-2 text-sm font-medium text-[#5B7C99] hover:bg-[#5B7C99]/20"
                 >
                   طباعة الكل
                 </button>
                 <button
                   type="button"
-                  onClick={() => handlePrintReport(transactions.filter((t) => selectedIds.has(t.id)))}
+                  onClick={() =>
+                    handlePrintReport(filteredTransactions.filter((t) => selectedIds.has(t.id)))
+                  }
                   className="rounded-lg border border-[#1E6B3A]/50 bg-[#1E6B3A]/10 px-4 py-2 text-sm font-medium text-[#1E6B3A] hover:bg-[#1E6B3A]/20"
                 >
                   طباعة المحدد ({selectedIds.size})
@@ -480,8 +646,22 @@ export default function CoordinatorUrgentPage() {
             </div>
           </article>
 
+          {filteredTransactions.length === 0 ? (
+            <article className="overflow-hidden rounded-2xl border border-[#d4cfc8] bg-white p-12 text-center shadow-sm">
+              <p className="text-[#5a5a5a]">لا توجد معاملات مطابقة لبحثك أو التصفية.</p>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-4 rounded-xl border border-[#5B7C99]/50 bg-[#5B7C99]/10 px-4 py-2 text-sm font-medium text-[#5B7C99] hover:bg-[#5B7C99]/20"
+                >
+                  إلغاء التصفية وعرض الكل
+                </button>
+              )}
+            </article>
+          ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {transactions.map((t) => (
+          {filteredTransactions.map((t) => (
             <article
               key={t.id}
               className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md ${selectedIds.has(t.id) ? "border-[#5B7C99] ring-2 ring-[#5B7C99]/30" : "border-red-200"}`}
@@ -568,6 +748,7 @@ export default function CoordinatorUrgentPage() {
             </article>
           ))}
           </div>
+          )}
         </>
       )}
 
@@ -815,6 +996,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:8px 12px;border:1px soli
                   citizenDepartment: viewTransaction.citizenDepartment,
                   citizenOrganization: viewTransaction.citizenOrganization,
                   transactionType: viewTransaction.transactionType || viewTransaction.type,
+                  transactionTitle: viewTransaction.transactionTitle ?? null,
                   formationName: viewTransaction.formationName ?? null,
                   subDeptName: viewTransaction.subDeptName ?? null,
                   officeName: viewTransaction.officeName,

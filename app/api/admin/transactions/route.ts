@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrReception } from "@/lib/api-auth";
+import { prismaOfficeIdFilter } from "@/lib/office-scope";
+import { isAllowedEmployeeSector } from "@/lib/employee-sector-options";
+import { isAllowedTransactionType } from "@/lib/transaction-type-options";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminOrReception(request);
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { officeId, role, userId } = auth;
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { officeId, officeIds, role, userId } = auth;
 
   if (!officeId) {
     return NextResponse.json({ transactions: [], overdueCount: 0 });
@@ -15,18 +18,26 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status") ?? undefined;
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 200);
 
-  const where: { officeId: string; createdByUserId?: string; status?: string } = { officeId };
+  const where: { officeId: ReturnType<typeof prismaOfficeIdFilter>; createdByUserId?: string; status?: string } = {
+    officeId: prismaOfficeIdFilter(officeIds),
+  };
   if (role === "RECEPTION" && userId) where.createdByUserId = userId;
   if (status) where.status = status;
+
+  const overdueWhere = {
+    officeId: prismaOfficeIdFilter(officeIds),
+    ...(role === "RECEPTION" && userId ? { createdByUserId: userId } : {}),
+    status: "OVERDUE" as const,
+  };
 
   const [transactions, overdueCount] = await Promise.all([
     prisma.transaction.findMany({
       where,
       orderBy: { createdAt: "desc" },
       take: limit,
-      include: { delegate: { select: { name: true } } },
+      include: { delegate: { select: { name: true } }, office: { select: { name: true } } },
     }),
-    prisma.transaction.count({ where: { officeId, ...(role === "RECEPTION" ? { createdByUserId: userId } : {}), status: "OVERDUE" } }),
+    prisma.transaction.count({ where: overdueWhere }),
   ]);
 
   return NextResponse.json({
@@ -51,6 +62,7 @@ export async function GET(request: NextRequest) {
       createdAt: t.createdAt,
       completedAt: t.completedAt,
       delegateName: t.delegate?.name ?? null,
+      officeName: t.office?.name ?? null,
       urgent: t.urgent,
       cannotComplete: t.cannotComplete,
       reachedSorting: t.reachedSorting,
@@ -77,7 +89,7 @@ async function generateUniqueSerial(): Promise<string> {
 
 export async function POST(request: NextRequest) {
   const auth = await requireAdminOrReception(request);
-  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { officeId, role, userId } = auth;
 
   if (!officeId) {
@@ -112,15 +124,25 @@ export async function POST(request: NextRequest) {
   const citizenPhone = typeof body.citizenPhone === "string" ? body.citizenPhone.trim() || null : null;
   const citizenAddress = typeof body.citizenAddress === "string" ? body.citizenAddress.trim() || null : null;
   const citizenIsEmployee = typeof body.citizenIsEmployee === "boolean" ? body.citizenIsEmployee : undefined;
-  const citizenEmployeeSector =
-    typeof body.citizenEmployeeSector === "string" &&
-    ["GOVERNMENT", "PRIVATE", "MIXED", "NOT_LINKED", "OTHER"].includes(body.citizenEmployeeSector)
-      ? body.citizenEmployeeSector
-      : null;
+  let citizenEmployeeSector: string | null = null;
+  if (typeof body.citizenEmployeeSector === "string" && body.citizenEmployeeSector.trim()) {
+    const sector = body.citizenEmployeeSector.trim();
+    if (!(await isAllowedEmployeeSector(sector))) {
+      return NextResponse.json({ error: "نوع التوظيف غير صالح" }, { status: 400 });
+    }
+    citizenEmployeeSector = sector;
+  }
   const citizenMinistry = typeof body.citizenMinistry === "string" ? body.citizenMinistry.trim() || null : null;
   const citizenDepartment = typeof body.citizenDepartment === "string" ? body.citizenDepartment.trim() || null : null;
   const citizenOrganization = typeof body.citizenOrganization === "string" ? body.citizenOrganization.trim() || null : null;
-  const transactionType = typeof body.transactionType === "string" ? body.transactionType.trim() || null : null;
+  let transactionType: string | null = null;
+  if (typeof body.transactionType === "string" && body.transactionType.trim()) {
+    const txType = body.transactionType.trim();
+    if (!(await isAllowedTransactionType(txType))) {
+      return NextResponse.json({ error: "نوع المعاملة غير صالح" }, { status: 400 });
+    }
+    transactionType = txType;
+  }
   const transactionTitle = typeof body.transactionTitle === "string" ? body.transactionTitle.trim() || null : null;
   const formationId = typeof body.formationId === "string" ? body.formationId.trim() || null : null;
   const subDeptId = typeof body.subDeptId === "string" ? body.subDeptId.trim() || null : null;
