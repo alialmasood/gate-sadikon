@@ -53,7 +53,9 @@ export default function AddTransactionModal({
   const [submissionDate, setSubmissionDate] = useState(new Date().toISOString().slice(0, 10));
   const [formationId, setFormationId] = useState("");
   const [subDeptId, setSubDeptId] = useState("");
-  const [attachments, setAttachments] = useState<{ url: string; name?: string }[]>([]);
+  const [attachments, setAttachments] = useState<
+    { url: string; name?: string; size?: number; originalSize?: number; compressed?: boolean }[]
+  >([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [formations, setFormations] = useState<Formation[]>([]);
@@ -145,7 +147,13 @@ export default function AddTransactionModal({
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
       const text = await res.text();
-      let data: { url?: string; error?: string } = {};
+      let data: {
+        url?: string;
+        error?: string;
+        size?: number;
+        originalSize?: number;
+        compressed?: boolean;
+      } = {};
       try {
         if (text.trim()) data = JSON.parse(text);
       } catch {
@@ -155,7 +163,13 @@ export default function AddTransactionModal({
         const url = data.url;
         setAttachments((prev) => {
           const next = [...prev];
-          next[index] = { url, name: file.name };
+          next[index] = {
+            url,
+            name: file.name,
+            size: data.size,
+            originalSize: data.originalSize,
+            compressed: data.compressed,
+          };
           return next;
         });
       } else {

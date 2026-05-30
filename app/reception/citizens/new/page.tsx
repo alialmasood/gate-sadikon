@@ -94,7 +94,7 @@ function ReceptionNewTransactionContent() {
   const [txSubDeptId, setTxSubDeptId] = useState("");
   const [txSubDepts, setTxSubDepts] = useState<SubDept[]>([]);
   const [attachments, setAttachments] = useState<
-    { url: string; name?: string; size?: number }[]
+    { url: string; name?: string; size?: number; originalSize?: number; compressed?: boolean }[]
   >([]);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -442,7 +442,13 @@ function ReceptionNewTransactionContent() {
         credentials: "include",
       });
       const text = await res.text();
-      let data: { url?: string; error?: string } = {};
+      let data: {
+        url?: string;
+        error?: string;
+        size?: number;
+        originalSize?: number;
+        compressed?: boolean;
+      } = {};
       try {
         if (text.trim()) data = JSON.parse(text);
       } catch {
@@ -454,7 +460,9 @@ function ReceptionNewTransactionContent() {
           next[index] = {
             url: data.url!,
             name: file.name,
-            size: file.size,
+            size: data.size ?? file.size,
+            originalSize: data.originalSize ?? file.size,
+            compressed: data.compressed,
           };
           return next;
         });
@@ -1232,7 +1240,24 @@ function ReceptionNewTransactionContent() {
                           {att.name || "ملف مرفق"}
                         </p>
                         <p className="text-xs text-[#5a5a5a]" dir="ltr">
-                          {att.size ? formatFileSize(att.size) : "—"}
+                          {att.compressed &&
+                          att.originalSize &&
+                          att.size &&
+                          att.originalSize > att.size ? (
+                            <>
+                              <span className="line-through opacity-70">
+                                {formatFileSize(att.originalSize)}
+                              </span>{" "}
+                              <span className="font-medium text-[#0D9488]">
+                                {formatFileSize(att.size)}
+                              </span>{" "}
+                              <span className="text-[#0D9488]">(مضغوط)</span>
+                            </>
+                          ) : att.size ? (
+                            formatFileSize(att.size)
+                          ) : (
+                            "—"
+                          )}
                         </p>
                       </div>
                       <div className="flex shrink-0 gap-1">
@@ -1299,7 +1324,9 @@ function ReceptionNewTransactionContent() {
                   style={{ width: "60%" }}
                 />
               </div>
-              <p className="mt-1 text-xs text-[#5a5a5a]">جاري رفع الملف…</p>
+              <p className="mt-1 text-xs text-[#5a5a5a]">
+                جاري رفع الملف وضغطه على السيرفر…
+              </p>
             </div>
           )}
 
@@ -1355,7 +1382,7 @@ function ReceptionNewTransactionContent() {
                 : "اسحب الملفات هنا أو انقر للاختيار"}
             </p>
             <p className="mt-1 text-xs text-[#5a5a5a]">
-              صورة أو PDF (حتى 5 ميجابايت)
+              صورة (حتى 10 ميجابايت — تُضغط تلقائياً إلى WebP) أو PDF (حتى 5 ميجابايت)
             </p>
           </div>
         </div>
