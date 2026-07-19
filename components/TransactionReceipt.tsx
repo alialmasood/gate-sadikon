@@ -85,6 +85,14 @@ export function TransactionReceipt({
   const defaultBackLabel = "العودة إلى شؤون المواطنين";
   const href = backHref ?? defaultBackHref;
   const label = backLabel ?? defaultBackLabel;
+
+  // رابط المتابعة المُشفَّر في الباركود: نستخدم أصل العنوان الذي فُتح به الموقع فعلياً
+  // (مثل عنوان الشبكة المحلية أو النطاق) بدل الرابط القادم من الخادم والذي قد يكون
+  // http://localhost:3000 — فالـ localhost لا يعمل عند المسح من هاتف المواطن.
+  const effectiveFollowUpUrl =
+    typeof window !== "undefined" && receipt.serialNumber
+      ? `${window.location.origin}/track?sn=${receipt.serialNumber}`
+      : receipt.followUpUrl || "";
   const handlePrint = () => {
     const content = document.getElementById("receipt-content");
     if (!content) return;
@@ -273,7 +281,7 @@ ${trackBase}
               </p>
               <div className="flex justify-center">
                 <QRCodeSVG
-                  value={receipt.followUpUrl || ""}
+                  value={effectiveFollowUpUrl}
                   size={140}
                   level="M"
                   includeMargin
@@ -281,7 +289,7 @@ ${trackBase}
                 />
               </div>
               <p className="mt-2 break-all text-center font-mono text-xs text-[#5a5a5a]" dir="ltr">
-                {receipt.followUpUrl || "—"}
+                {effectiveFollowUpUrl || "—"}
               </p>
             </div>
           </div>
