@@ -40,11 +40,10 @@ export async function GET(
     ? `${baseUrl}/track?sn=${transaction.serialNumber}`
     : null;
 
+  // لا يُعاد رقم الهاتف ولا عنوان السكن للمخول
   return NextResponse.json({
     id: transaction.id,
     citizenName: transaction.citizenName,
-    citizenPhone: transaction.citizenPhone,
-    citizenAddress: transaction.citizenAddress,
     citizenIsEmployee: transaction.citizenIsEmployee,
     citizenEmployeeSector: transaction.citizenEmployeeSector,
     citizenMinistry: transaction.citizenMinistry,

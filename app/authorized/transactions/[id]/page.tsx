@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { broadcastDataUpdate } from "@/lib/broadcast-data-update";
 import { createPortal } from "react-dom";
@@ -15,6 +15,15 @@ type DelegateAction = {
   createdAt: string;
 };
 
+type AttachmentItem = { url: string; name?: string };
+
+function getAttachmentsList(attachments: unknown): AttachmentItem[] {
+  if (!attachments || !Array.isArray(attachments)) return [];
+  return attachments.filter(
+    (a): a is AttachmentItem => a && typeof (a as AttachmentItem).url === "string"
+  );
+}
+
 function formatActionDateTime(s: string | undefined): string {
   if (!s) return "—";
   try {
@@ -28,14 +37,111 @@ function formatActionDateTime(s: string | undefined): string {
   }
 }
 
+function formatDate(s: string | null | undefined): string {
+  if (!s) return "—";
+  try {
+    return new Intl.DateTimeFormat("ar-IQ", {
+      dateStyle: "medium",
+      numberingSystem: "arab",
+    }).format(new Date(s));
+  } catch {
+    return s;
+  }
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "قيد التنفيذ",
+  DONE: "منجزة",
+  OVERDUE: "متأخرة",
+  REJECTED: "مرفوضة",
+};
+
+const SECTION_LABELS: Record<string, string> = {
+  SORTING: "قسم الفرز",
+  ADMIN: "مكتب المدير",
+  COORDINATOR: "قسم المتابعة",
+  RECEPTION: "قسم الاستعلامات",
+};
+
+const SECTOR_LABELS: Record<string, string> = {
+  GOVERNMENT: "حكومي",
+  PRIVATE: "قطاع خاص",
+  MIXED: "قطاع مشترك",
+  NOT_LINKED: "جهة غير مرتبطة بوزارة",
+  OTHER: "جهة أخرى",
+};
+
 type Transaction = {
   id: string;
   citizenName: string | null;
+  citizenIsEmployee?: boolean | null;
+  citizenEmployeeSector?: string | null;
+  citizenMinistry?: string | null;
+  citizenDepartment?: string | null;
+  citizenOrganization?: string | null;
   officeName: string | null;
   serialNumber: string | null;
   status: string;
+  type?: string | null;
+  transactionType?: string | null;
+  transactionTitle?: string | null;
+  submissionDate?: string | null;
+  formationName?: string | null;
+  subDeptName?: string | null;
+  attachments?: unknown;
+  createdAt?: string | null;
+  completedAt?: string | null;
+  assignedFromSection?: string | null;
+  urgent?: boolean;
+  cannotComplete?: boolean;
   delegateActions?: DelegateAction[];
 };
+
+function getEmployeeInfo(t: Transaction): string {
+  if (t.citizenIsEmployee !== true) return "غير موظف";
+  const sector = SECTOR_LABELS[t.citizenEmployeeSector || ""] || t.citizenEmployeeSector || "";
+  if (!sector) return "موظف";
+  if (t.citizenEmployeeSector === "GOVERNMENT") {
+    const parts = [t.citizenMinistry, t.citizenDepartment].filter(Boolean);
+    return parts.length ? `${sector} (${parts.join(" / ")})` : sector;
+  }
+  if (t.citizenOrganization) return `${sector} (${t.citizenOrganization})`;
+  return sector;
+}
+
+function getStatusLabel(t: Transaction): string {
+  if (t.status === "DONE") return "منجزة";
+  if (t.cannotComplete) return "لا يمكن الإنجاز";
+  if (t.urgent) return "عاجلة";
+  return STATUS_LABELS[t.status] || t.status || "قيد التنفيذ";
+}
+
+function DetailRow({
+  label,
+  value,
+  ltr,
+  last,
+}: {
+  label: string;
+  value: ReactNode;
+  ltr?: boolean;
+  last?: boolean;
+}) {
+  return (
+    <>
+      <div>
+        <p className="text-xs font-medium text-[#5a5a5a]">{label}</p>
+        <p
+          className={`mt-0.5 font-semibold text-[#1a1a2e] ${ltr ? "font-mono" : ""}`}
+          dir={ltr ? "ltr" : undefined}
+        >
+          {value || "—"}
+        </p>
+      </div>
+      {!last && <div className="border-t border-[rgba(44,62,80,0.1)]" />}
+    </>
+  );
+}
 
 export default function AuthorizedTransactionDetailPage() {
   const params = useParams();
@@ -58,26 +164,39 @@ export default function AuthorizedTransactionDetailPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const loadTransaction = useCallback(() => {
+  const loadTransaction = useCallback(async (opts?: { silent?: boolean }) => {
     if (!id) return;
-    fetch(`/api/authorized/transactions/${id}`, { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) setError(data.error);
-        else setTransaction(data);
-      })
-      .catch(() => setError("حدث خطأ غير متوقع"))
-      .finally(() => setLoading(false));
+    const silent = opts?.silent === true;
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
+    try {
+      const res = await fetch(`/api/authorized/transactions/${id}`, { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (data.error || !res.ok) {
+        // عند التحديث الصامت نُبقي البيانات الحالية دون إظهار شاشة خطأ
+        if (!silent) setError(data.error || "لم يتم العثور على المعاملة");
+        return;
+      }
+      setTransaction((prev) => {
+        if (prev && JSON.stringify(prev) === JSON.stringify(data)) return prev;
+        return data;
+      });
+      if (!silent) setError(null);
+    } catch {
+      if (!silent) setError("حدث خطأ غير متوقع");
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [id]);
 
   useEffect(() => {
     if (!id) return;
-    setLoading(true);
-    setError(null);
-    loadTransaction();
+    void loadTransaction();
   }, [id, loadTransaction]);
 
-  useAutoRefresh(loadTransaction);
+  useAutoRefresh(() => loadTransaction({ silent: true }));
 
   useEffect(() => {
     if (id) markTransactionAsSeen(id);
@@ -247,7 +366,7 @@ export default function AuthorizedTransactionDetailPage() {
         broadcastDataUpdate();
         setActionText("");
         setActionFile(null);
-        loadTransaction();
+        loadTransaction({ silent: true });
       } else {
         alert(data.error || "فشل حفظ الإجراء");
       }
@@ -314,6 +433,49 @@ export default function AuthorizedTransactionDetailPage() {
 
   const isDone = transaction.status === "DONE";
   const actions = transaction.delegateActions ?? [];
+  const attachments = getAttachmentsList(transaction.attachments);
+  const transactionTypeLabel = transaction.transactionType || transaction.type || "—";
+  const sectionLabel =
+    (transaction.assignedFromSection && SECTION_LABELS[transaction.assignedFromSection]) ||
+    transaction.assignedFromSection ||
+    null;
+  const workPlace =
+    [transaction.citizenMinistry, transaction.citizenDepartment, transaction.citizenOrganization]
+      .filter(Boolean)
+      .join(" / ") || null;
+
+  const detailRows: { label: string; value: ReactNode; ltr?: boolean }[] = [
+    {
+      label: "رقم المعاملة",
+      value: transaction.serialNumber ? `2026-${transaction.serialNumber}` : "—",
+      ltr: true,
+    },
+    { label: "اسم صاحب المعاملة", value: transaction.citizenName || "—" },
+    { label: "الحالة", value: getStatusLabel(transaction) },
+    { label: "اسم المكتب", value: transaction.officeName || "—" },
+  ];
+  if (sectionLabel) detailRows.push({ label: "وصلت من القسم", value: sectionLabel });
+  detailRows.push({ label: "نوع المعاملة", value: transactionTypeLabel });
+  if (
+    transaction.transactionTitle?.trim() &&
+    transaction.transactionTitle.trim() !== (transaction.transactionType?.trim() || "")
+  ) {
+    detailRows.push({ label: "وصف المعاملة", value: transaction.transactionTitle.trim() });
+  }
+  detailRows.push(
+    { label: "الوزارة أو الجهة المراد مخاطبتها", value: transaction.formationName || "—" },
+    { label: "الدائرة الفرعية", value: transaction.subDeptName || "—" },
+    { label: "صفة المواطن", value: getEmployeeInfo(transaction) }
+  );
+  if (workPlace) detailRows.push({ label: "جهة العمل", value: workPlace });
+  detailRows.push(
+    { label: "تاريخ التقديم", value: formatDate(transaction.submissionDate) },
+    { label: "تاريخ التسجيل", value: formatDate(transaction.createdAt) }
+  );
+  if (transaction.completedAt) {
+    detailRows.push({ label: "تاريخ الإنجاز", value: formatDate(transaction.completedAt) });
+  }
+  if (transaction.urgent) detailRows.push({ label: "عاجلة", value: "نعم" });
 
   return (
     <div className="min-h-0 space-y-6 pb-[env(safe-area-inset-bottom)]" dir="rtl">
@@ -337,23 +499,42 @@ export default function AuthorizedTransactionDetailPage() {
 
       <div className="space-y-4">
         <div className="rounded-xl border border-[rgba(44,62,80,0.1)] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <h2 className="mb-3 text-base font-bold text-[#1a1a2e]">تفاصيل المعاملة</h2>
           <div className="space-y-3">
-            <div>
-              <p className="text-xs font-medium text-[#5a5a5a]">رقم المعاملة</p>
-              <p className="font-mono font-semibold text-[#1a1a2e]" dir="ltr">
-                {transaction.serialNumber ? `2026-${transaction.serialNumber}` : "—"}
-              </p>
-            </div>
-            <div className="border-t border-[rgba(44,62,80,0.1)]" />
-            <div>
-              <p className="text-xs font-medium text-[#5a5a5a]">اسم صاحب المعاملة</p>
-              <p className="font-semibold text-[#1a1a2e]">{transaction.citizenName || "—"}</p>
-            </div>
-            <div className="border-t border-[rgba(44,62,80,0.1)]" />
-            <div>
-              <p className="text-xs font-medium text-[#5a5a5a]">اسم المكتب</p>
-              <p className="font-semibold text-[#1a1a2e]">{transaction.officeName || "—"}</p>
-            </div>
+            {detailRows.map((row, idx) => (
+              <DetailRow
+                key={row.label}
+                label={row.label}
+                value={row.value}
+                ltr={row.ltr}
+                last={idx === detailRows.length - 1 && attachments.length === 0}
+              />
+            ))}
+            {attachments.length > 0 && (
+              <>
+                <div className="border-t border-[rgba(44,62,80,0.1)]" />
+                <div>
+                  <p className="text-xs font-medium text-[#5a5a5a]">المرفقات</p>
+                  <ul className="mt-1.5 space-y-1.5">
+                    {attachments.map((a, i) => (
+                      <li key={`${a.url}-${i}`}>
+                        <a
+                          href={a.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D9488] hover:underline"
+                        >
+                          <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          {a.name || `مرفق ${i + 1}`}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
