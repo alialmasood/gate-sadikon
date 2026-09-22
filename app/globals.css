@@ -14,14 +14,41 @@
   --color-primary: var(--primary);
   --color-primary-dark: var(--primary-dark);
   --color-gold: var(--gold);
-  --font-sans: var(--font-tajawal);
+  --font-sans: var(--font-body-arabic);
+  --font-display: var(--font-display-arabic);
+  --font-heading: var(--font-heading-arabic);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-tajawal), "Segoe UI", Tahoma, sans-serif;
+  font-family: var(--font-body-arabic), "Segoe UI", Tahoma, sans-serif;
+}
+
+h1,
+.font-display {
+  font-family: var(--font-display-arabic), var(--font-heading-arabic), sans-serif;
+}
+
+h2,
+h3,
+h4,
+h5,
+.font-heading {
+  font-family: var(--font-heading-arabic), var(--font-body-arabic), sans-serif;
+}
+
+@media (max-height: 720px) {
+  .intro-portal .intro-portal-card {
+    padding-block: 1.25rem;
+  }
+}
+
+@media (max-height: 620px) {
+  .intro-portal .intro-portal-card {
+    padding-block: 0.9rem;
+  }
 }
 
 @media print {

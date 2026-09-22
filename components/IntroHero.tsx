@@ -2,27 +2,99 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   motion,
   useReducedMotion,
-  type Variants,
   type Transition,
+  type Variants,
 } from "framer-motion";
 
 const TITLE_WORDS = ["بوابة", "الصادقون"];
 
+const FEATURES = [
+  { title: "الطلبات", hint: "تسجيل ومتابعة" },
+  { title: "الخدمات", hint: "مسارات معتمدة" },
+  { title: "المتابعة", hint: "إشراف مركزي" },
+] as const;
+
 const reducedTransition: Transition = {
-  duration: 0.35,
+  duration: 0.32,
   ease: "easeOut",
 };
 
 function formatArabicDateTime(date: Date) {
-  const d = new Intl.DateTimeFormat("ar-IQ", { day: "numeric", numberingSystem: "arab" }).format(date);
+  const d = new Intl.DateTimeFormat("ar-IQ", {
+    day: "numeric",
+    numberingSystem: "arab",
+  }).format(date);
   const m = new Intl.DateTimeFormat("ar-IQ", { month: "long" }).format(date);
-  const y = new Intl.DateTimeFormat("ar-IQ", { year: "numeric", numberingSystem: "arab" }).format(date);
-  const t = new Intl.DateTimeFormat("ar-IQ", { hour: "numeric", minute: "2-digit", numberingSystem: "arab" }).format(date);
-  return `${d} ${m} ${y} — ${t}`;
+  const y = new Intl.DateTimeFormat("ar-IQ", {
+    year: "numeric",
+    numberingSystem: "arab",
+  }).format(date);
+  const t = new Intl.DateTimeFormat("ar-IQ", {
+    hour: "numeric",
+    minute: "2-digit",
+    numberingSystem: "arab",
+  }).format(date);
+  return { date: `${d} ${m} ${y}`, time: t };
+}
+
+function OrnamentDivider() {
+  return (
+    <div className="flex w-full max-w-[220px] items-center gap-3 sm:max-w-[260px]" aria-hidden>
+      <span className="h-px flex-1 bg-gradient-to-l from-[#C4A574]/80 to-transparent" />
+      <svg width="14" height="14" viewBox="0 0 14 14" className="shrink-0 text-[#A4844A]">
+        <path
+          d="M7 1.2 L12.8 7 L7 12.8 L1.2 7 Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.1"
+        />
+        <circle cx="7" cy="7" r="1.15" fill="currentColor" />
+      </svg>
+      <span className="h-px flex-1 bg-gradient-to-r from-[#C4A574]/80 to-transparent" />
+    </div>
+  );
+}
+
+function LoginIcon() {
+  return (
+    <svg className="h-[1.05em] w-[1.05em] -scale-x-100" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M10 17H7.2C6.08 17 5.52 17 5.09 16.78C4.72 16.59 4.41 16.28 4.22 15.91C4 15.48 4 14.92 4 13.8V10.2C4 9.08 4 8.52 4.22 8.09C4.41 7.72 4.72 7.41 5.09 7.22C5.52 7 6.08 7 7.2 7H10"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M10 12H20M20 12L16.5 8.5M20 12L16.5 15.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ComplaintIcon() {
+  return (
+    <svg className="h-[1.05em] w-[1.05em]" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M8 7H16M8 11H14M8 15H12"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M7.2 4H16.8C17.92 4 18.48 4 18.91 4.22C19.28 4.41 19.59 4.72 19.78 5.09C20 5.52 20 6.08 20 7.2V16.8C20 17.92 20 18.48 19.78 18.91C19.59 19.28 19.28 19.59 18.91 19.78C18.48 20 17.92 20 16.8 20H7.2C6.08 20 5.52 20 5.09 19.78C4.72 19.59 4.41 19.28 4.22 18.91C4 18.48 4 17.92 4 16.8V7.2C4 6.08 4 5.52 4.22 5.09C4.41 4.72 4.72 4.41 5.09 4.22C5.52 4 6.08 4 7.2 4Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+    </svg>
+  );
 }
 
 export default function IntroHero() {
@@ -30,7 +102,14 @@ export default function IntroHero() {
   const prefersReducedMotion = useReducedMotion();
   const reducedMotion = prefersReducedMotion ?? false;
   const [isLeaving, setLeaving] = useState(false);
-  const dateTimeStr = formatArabicDateTime(new Date());
+  const [clock, setClock] = useState<{ date: string; time: string } | null>(null);
+
+  useEffect(() => {
+    const tick = () => setClock(formatArabicDateTime(new Date()));
+    tick();
+    const id = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const handleEnter = () => {
     setLeaving(true);
@@ -41,35 +120,35 @@ export default function IntroHero() {
 
   const cardExit = reducedMotion
     ? { opacity: 0 }
-    : { opacity: 0, y: -28, filter: "blur(10px)" };
+    : { opacity: 0, y: -18, filter: "blur(8px)" };
 
   const containerVariants: Variants = reducedMotion
     ? {
         initial: { opacity: 0 },
-        animate: { opacity: 1, transition: { duration: 0.4 } },
-        exit: { opacity: 0, transition: { duration: 0.3 } },
+        animate: { opacity: 1, transition: { duration: 0.35 } },
+        exit: { opacity: 0, transition: { duration: 0.25 } },
       }
     : {
-        initial: { opacity: 0, scale: 1.02 },
+        initial: { opacity: 0, y: 16 },
         animate: {
           opacity: 1,
-          scale: 1,
-          transition: { duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] },
+          y: 0,
+          transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
         },
         exit: {
           ...cardExit,
-          transition: { duration: 0.45, ease: "easeIn" },
+          transition: { duration: 0.4, ease: "easeIn" },
         },
       };
 
   const logoVariants: Variants = reducedMotion
-    ? { initial: { opacity: 0 }, animate: { opacity: 1, transition: { delay: 0.15 } } }
+    ? { initial: { opacity: 0 }, animate: { opacity: 1, transition: { delay: 0.12 } } }
     : {
-        initial: { opacity: 0, scale: 0.95 },
+        initial: { opacity: 0, scale: 0.94 },
         animate: {
           opacity: 1,
           scale: 1,
-          transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] },
+          transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.08 },
         },
       };
 
@@ -78,322 +157,257 @@ export default function IntroHero() {
         initial: { opacity: 0 },
         animate: (i: number) => ({
           opacity: 1,
-          transition: { delay: 0.9 + i * 0.1 },
+          transition: { delay: 0.35 + i * 0.08 },
         }),
       }
     : {
-        initial: { opacity: 0, y: 12 },
+        initial: { opacity: 0, y: 10 },
         animate: (i: number) => ({
           opacity: 1,
           y: 0,
-          transition: { delay: 1.1 + i * 0.14, duration: 0.42 },
+          transition: { delay: 0.28 + i * 0.1, duration: 0.42 },
         }),
       };
 
-  const descVariants: Variants = {
-    initial: { opacity: 0 },
-    animate: {
+  const fadeUp: Variants = {
+    initial: { opacity: 0, y: reducedMotion ? 0 : 8 },
+    animate: (delay: number) => ({
       opacity: 1,
-      transition: { delay: reducedMotion ? 1.15 : 1.5, duration: 0.4 },
-    },
+      y: 0,
+      transition: { delay, duration: reducedMotion ? 0.28 : 0.4 },
+    }),
   };
-
-  const buttonVariants: Variants = reducedMotion
-    ? { initial: { opacity: 0 }, animate: { opacity: 1, transition: { delay: 1.35 } } }
-    : {
-        initial: { opacity: 0, scale: 0.97 },
-        animate: {
-          opacity: 1,
-          scale: 1,
-          transition: { delay: 1.7, duration: 0.38 },
-        },
-      };
 
   return (
     <div
-      className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[#F4F6F8]"
+      className="intro-portal relative flex min-h-dvh w-full flex-col overflow-x-hidden text-[#17202A]"
       style={{
+        backgroundColor: "#F1EDE4",
         backgroundImage: [
-          "radial-gradient(ellipse 90% 80% at 50% 20%, rgba(201, 162, 39, 0.06) 0%, transparent 55%)",
-          "radial-gradient(ellipse 70% 60% at 80% 90%, rgba(184, 138, 26, 0.04) 0%, transparent 50%)",
-          "radial-gradient(ellipse 60% 70% at 20% 80%, rgba(140, 106, 18, 0.035) 0%, transparent 45%)",
+          "radial-gradient(ellipse 80% 55% at 100% 0%, rgba(20, 48, 68, 0.16) 0%, transparent 58%)",
+          "radial-gradient(ellipse 70% 50% at 0% 100%, rgba(164, 132, 74, 0.14) 0%, transparent 52%)",
+          "linear-gradient(180deg, #E8EEF2 0%, #F1EDE4 42%, #EDE6D8 100%)",
         ].join(", "),
       }}
     >
-      {/* نمط هندسي إسلامي خلفية — دوائر، سداسيات، مربعات، خطوط (بدون نجوم) */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.09] max-md:opacity-[0.05]" aria-hidden>
+      <div className="pointer-events-none absolute inset-0 opacity-[0.055] max-md:opacity-[0.035]" aria-hidden>
         <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <pattern id="islamic-circles" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-              <circle cx="30" cy="30" r="12" fill="none" stroke="#8C6A12" strokeWidth="0.5" />
-              <circle cx="30" cy="30" r="6" fill="none" stroke="#B88A1A" strokeWidth="0.4" opacity="0.8" />
-            </pattern>
-            <pattern id="islamic-hex" x="0" y="0" width="80" height="69.28" patternUnits="userSpaceOnUse">
-              <polygon points="40,0 80,17.32 80,51.96 40,69.28 0,51.96 0,17.32" fill="none" stroke="#B88A1A" strokeWidth="0.4" opacity="0.7" />
-            </pattern>
-            <pattern id="islamic-squares" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse">
-              <rect x="5" y="5" width="40" height="40" fill="none" stroke="#8C6A12" strokeWidth="0.4" />
-              <rect x="15" y="15" width="20" height="20" fill="none" stroke="#B88A1A" strokeWidth="0.3" opacity="0.6" />
+            <pattern id="portal-geo" x="0" y="0" width="72" height="72" patternUnits="userSpaceOnUse">
+              <circle cx="36" cy="36" r="14" fill="none" stroke="#143044" strokeWidth="0.6" />
+              <rect x="26" y="26" width="20" height="20" fill="none" stroke="#A4844A" strokeWidth="0.45" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#islamic-circles)" />
-          <rect width="100%" height="100%" fill="url(#islamic-hex)" opacity="0.5" />
-          <rect width="100%" height="100%" fill="url(#islamic-squares)" opacity="0.4" />
+          <rect width="100%" height="100%" fill="url(#portal-geo)" />
         </svg>
       </div>
 
-      {/* زخارف إسلامية في الزوايا — زخرفة أرابيسك بسيطة */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.08] max-md:opacity-[0.04]" aria-hidden>
-        <svg className="absolute -top-20 -right-20 h-80 w-80" viewBox="0 0 160 160" fill="none">
-          <path d="M0 80 Q40 40 80 80 Q120 120 160 80" stroke="#8C6A12" strokeWidth="0.8" fill="none" />
-          <path d="M20 80 Q60 50 100 80 Q140 110 160 80" stroke="#B88A1A" strokeWidth="0.5" fill="none" opacity="0.8" />
-          <path d="M0 60 Q50 80 80 40 Q110 0 160 40" stroke="#8C6A12" strokeWidth="0.5" fill="none" opacity="0.6" />
-        </svg>
-        <svg className="absolute -bottom-20 -left-20 h-80 w-80 rotate-180" viewBox="0 0 160 160" fill="none">
-          <path d="M0 80 Q40 40 80 80 Q120 120 160 80" stroke="#8C6A12" strokeWidth="0.8" fill="none" />
-          <path d="M20 80 Q60 50 100 80 Q140 110 160 80" stroke="#B88A1A" strokeWidth="0.5" fill="none" opacity="0.8" />
-        </svg>
-        <svg className="absolute top-1/2 -left-32 h-64 w-64 -translate-y-1/2 -rotate-90 opacity-70" viewBox="0 0 100 100" fill="none">
-          <path d="M0 50 Q25 25 50 50 Q75 75 100 50" stroke="#8C6A12" strokeWidth="0.6" fill="none" />
-        </svg>
-        <svg className="absolute top-1/2 -right-32 h-64 w-64 -translate-y-1/2 rotate-90 opacity-70" viewBox="0 0 100 100" fill="none">
-          <path d="M0 50 Q25 25 50 50 Q75 75 100 50" stroke="#8C6A12" strokeWidth="0.6" fill="none" />
-        </svg>
-      </div>
-
-      {/* شبكة خفيفة — إحساس بالتناظر الهندسي */}
-      <div
-        className="pointer-events-none absolute inset-6 max-md:inset-3 rounded-2xl opacity-[0.03]"
+      <header
+        className="relative z-20 flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2.5 text-white sm:px-6 sm:py-3 lg:px-10"
         style={{
-          backgroundImage: `
-            linear-gradient(rgba(140, 106, 18, 0.5) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(140, 106, 18, 0.5) 1px, transparent 1px)
-          `,
-          backgroundSize: "40px 40px",
+          background: "linear-gradient(180deg, #143044 0%, #0E2433 100%)",
+          paddingTop: "max(0.65rem, env(safe-area-inset-top))",
         }}
-        aria-hidden
-      />
-
-      {/* إطار مزدوج: ذهبي خارجي + ماروني (أحمر رسمي) داخلي */}
-      <div
-        className="pointer-events-none absolute inset-6 max-md:inset-3 rounded-2xl max-md:rounded-xl"
-        style={{
-          border: "2px solid rgba(184, 138, 26, 0.85)",
-          boxShadow: [
-            "0 0 0 1px rgba(184, 138, 26, 0.08)",
-            "inset 0 0 0 2px rgba(114, 47, 55, 0.85)",
-            "inset 0 0 0 1px rgba(255, 215, 0, 0.04)",
-          ].join(", "),
-        }}
-        aria-hidden
       >
-        {/* زوايا مزخرفة — هندسة إسلامية بسيطة */}
-        {[
-          { top: 0, right: 0, transform: "none" },
-          { top: 0, left: 0, transform: "scaleX(-1)" },
-          { bottom: 0, right: 0, transform: "scaleY(-1)" },
-          { bottom: 0, left: 0, transform: "scale(-1)" },
-        ].map((pos, i) => (
-          <svg
-            key={i}
-            className="absolute h-16 w-16 max-md:h-10 max-md:w-10 max-md:m-1 md:h-20 md:w-20 md:m-2"
-            style={pos}
-            viewBox="0 0 64 64"
-            fill="none"
-            aria-hidden
-          >
-            <path d="M0 32 L32 0 L64 32 L32 64 Z" stroke="rgba(140, 106, 18, 0.55)" strokeWidth="1.2" fill="none" />
-            <path d="M8 32 L32 8 L56 32 L32 56 Z" stroke="rgba(184, 138, 26, 0.4)" strokeWidth="0.8" fill="none" />
-            <circle cx="32" cy="32" r="3" fill="none" stroke="rgba(140, 106, 18, 0.6)" strokeWidth="0.8" />
-          </svg>
-        ))}
-        {/* خطوط الزوايا التقليدية */}
-        {[
-          { top: 0, right: 0, width: "28px", height: "2px" },
-          { top: 0, right: 0, width: "2px", height: "28px" },
-          { top: 0, left: 0, width: "28px", height: "2px" },
-          { top: 0, left: 0, width: "2px", height: "28px" },
-          { bottom: 0, right: 0, width: "28px", height: "2px" },
-          { bottom: 0, right: 0, width: "2px", height: "28px" },
-          { bottom: 0, left: 0, width: "28px", height: "2px" },
-          { bottom: 0, left: 0, width: "2px", height: "28px" },
-        ].map((acc, i) => (
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="hidden h-1.5 w-1.5 rounded-full bg-[#C4A574] sm:inline-block" aria-hidden />
+          <p className="truncate text-[11px] font-medium text-white/80 sm:text-xs">
+            جمهورية العراق · المنصة الإلكترونية الرسمية
+          </p>
+        </div>
+        <p
+          className="shrink-0 text-[11px] tabular-nums text-[#E8D7B0] sm:text-xs"
+          aria-label="التاريخ والوقت"
+          suppressHydrationWarning
+        >
+          {clock ? `${clock.date} — ${clock.time}` : "\u00a0"}
+        </p>
+      </header>
+
+      <div className="relative z-10 flex flex-1 items-center justify-center overflow-y-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <motion.div
+          key="intro-content"
+          variants={containerVariants}
+          initial="initial"
+          animate={isLeaving ? "exit" : "animate"}
+          onAnimationComplete={(definition) => {
+            if (isLeaving && definition === "exit") {
+              router.push("/login");
+            }
+          }}
+          className="intro-portal-card relative w-full max-w-[40rem] overflow-hidden rounded-[1.75rem] border border-white/70 px-5 py-8 shadow-[0_24px_80px_rgba(14,36,51,0.12)] sm:px-10 sm:py-11 md:max-w-[44rem] md:px-12"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(255,253,249,0.94) 0%, rgba(252,248,241,0.9) 100%)",
+            backdropFilter: "blur(18px)",
+          }}
+        >
           <div
-            key={`line-${i}`}
-            className="absolute rounded-full"
+            className="absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-[#C4A574] to-transparent sm:inset-x-12"
+            aria-hidden
+          />
+          <div
+            className="absolute inset-x-0 top-0 h-[3px]"
             style={{
-              ...acc,
-              backgroundColor: "rgba(140, 106, 18, 0.9)",
+              background: "linear-gradient(90deg, #0E2433 0%, #A4844A 50%, #0E2433 100%)",
             }}
             aria-hidden
           />
-        ))}
+
+          <div className="flex flex-col items-center text-center">
+            <motion.div
+              variants={logoVariants}
+              initial="initial"
+              animate="animate"
+              className="flex items-end justify-center gap-5 sm:gap-8"
+            >
+              <div className="flex h-[4.25rem] items-end sm:h-[5.25rem] md:h-24">
+                <Image
+                  src="/iraq.png"
+                  alt="شعار جمهورية العراق"
+                  width={112}
+                  height={112}
+                  className="h-full w-auto object-contain object-bottom drop-shadow-[0_6px_16px_rgba(14,36,51,0.12)]"
+                  sizes="(max-width: 640px) 68px, (max-width: 768px) 84px, 112px"
+                  priority
+                />
+              </div>
+              <div className="flex h-[4.25rem] items-end sm:h-[5.25rem] md:h-24">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/sadiqoon.png"
+                  alt="شعار كتلة الصادقون"
+                  width={112}
+                  height={112}
+                  className="h-full w-auto object-contain object-bottom drop-shadow-[0_6px_16px_rgba(14,36,51,0.12)]"
+                />
+              </div>
+            </motion.div>
+
+            <motion.p
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              custom={0.22}
+              className="mt-5 font-heading text-[11px] font-medium text-[#8A7044] sm:mt-6 sm:text-xs"
+            >
+              المنصة الإلكترونية الرسمية
+            </motion.p>
+
+            <h1 className="mt-2 flex max-w-xl flex-wrap justify-center gap-x-2.5 text-[2.15rem] font-bold leading-[1.35] text-[#0E2433] sm:mt-3 sm:text-5xl sm:leading-[1.3] md:text-[3.35rem]">
+              {TITLE_WORDS.map((word, i) => (
+                <motion.span
+                  key={word}
+                  variants={wordVariants}
+                  initial="initial"
+                  animate="animate"
+                  custom={i}
+                >
+                  {word}
+                </motion.span>
+              ))}
+            </h1>
+
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              custom={0.42}
+              className="mt-4 sm:mt-5"
+            >
+              <OrnamentDivider />
+            </motion.div>
+
+            <motion.p
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              custom={0.5}
+              className="mt-4 max-w-md text-[0.95rem] leading-8 text-[#5C6770] sm:mt-5 sm:text-base sm:leading-8"
+            >
+              منصة إلكترونية لإدارة الطلبات والخدمات والمتابعة المركزية
+            </motion.p>
+
+            <motion.ul
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              custom={0.58}
+              className="mt-6 grid w-full grid-cols-3 gap-2 sm:mt-7 sm:gap-3"
+            >
+              {FEATURES.map((item) => (
+                <li
+                  key={item.title}
+                  className="rounded-2xl border border-[#143044]/10 bg-[#143044]/[0.03] px-1.5 py-2.5 sm:px-3 sm:py-3"
+                >
+                  <p className="font-heading text-xs font-semibold text-[#143044] sm:text-sm">{item.title}</p>
+                  <p className="mt-0.5 hidden text-[11px] text-[#6B7380] sm:block">{item.hint}</p>
+                </li>
+              ))}
+            </motion.ul>
+
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              custom={0.68}
+              className="mt-7 flex w-full flex-col gap-3 sm:mt-8 sm:flex-row sm:justify-center"
+            >
+              <motion.button
+                type="button"
+                onClick={handleEnter}
+                disabled={isLeaving}
+                className="inline-flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-xl px-6 text-[0.95rem] font-semibold text-white outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#C4A574] focus-visible:ring-offset-2 sm:min-h-[3.25rem] sm:w-auto sm:min-w-[13.5rem] sm:px-8"
+                style={{
+                  background: "linear-gradient(180deg, #1A3F52 0%, #0E2433 100%)",
+                  boxShadow: "0 14px 32px rgba(14, 36, 51, 0.22)",
+                }}
+                whileHover={
+                  isLeaving
+                    ? undefined
+                    : { y: -2, boxShadow: "0 18px 40px rgba(14, 36, 51, 0.28)" }
+                }
+                whileTap={isLeaving ? undefined : { scale: 0.985 }}
+                transition={reducedTransition}
+              >
+                {isLeaving ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+                      aria-hidden
+                    />
+                    جاري التحويل...
+                  </span>
+                ) : (
+                  <>
+                    <LoginIcon />
+                    دخول إلى النظام
+                  </>
+                )}
+              </motion.button>
+
+              <motion.button
+                type="button"
+                onClick={handleComplaint}
+                className="inline-flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-xl border border-[#A4844A]/55 bg-white/70 px-6 text-[0.95rem] font-semibold text-[#5A4A28] outline-none focus-visible:ring-2 focus-visible:ring-[#A4844A] focus-visible:ring-offset-2 sm:min-h-[3.25rem] sm:w-auto sm:min-w-[13.5rem] sm:px-8"
+                whileHover={{ y: -2, backgroundColor: "rgba(255,255,255,0.95)" }}
+                whileTap={{ scale: 0.985 }}
+                transition={reducedTransition}
+              >
+                <ComplaintIcon />
+                تقديم شكوى
+              </motion.button>
+            </motion.div>
+          </div>
+        </motion.div>
       </div>
 
-      <motion.div
-        key="intro-content"
-        variants={containerVariants}
-        initial="initial"
-        animate={isLeaving ? "exit" : "animate"}
-        exit="exit"
-        onAnimationComplete={(definition) => {
-          if (isLeaving && definition === "exit") {
-            router.push("/login");
-          }
-        }}
-        className="relative z-10 flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-6 py-4 max-md:px-4 max-md:py-3 max-md:min-h-0"
+      <footer
+        className="relative z-10 px-4 pb-4 text-center text-[11px] text-[#6B7380] sm:px-6 sm:pb-5 sm:text-xs"
+        style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
       >
-        {/* Header: شعاران على نفس الـ baseline — أحجام متوازنة، gap أقل */}
-        <header className="flex shrink-0 flex-col items-center pt-8 max-md:pt-5 md:pt-10">
-          <div className="flex items-end gap-6 max-md:gap-4 md:gap-8">
-            <motion.div
-              variants={logoVariants}
-              initial="initial"
-              animate="animate"
-              className="flex h-20 max-md:h-14 shrink-0 items-end md:h-24 lg:h-28"
-            >
-              <Image
-                src="/iraq.png"
-                alt="شعار جمهورية العراق"
-                width={112}
-                height={112}
-                className="h-full w-auto object-contain object-bottom drop-shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
-                sizes="(max-width: 768px) 80px, 96px, 112px"
-                priority
-              />
-            </motion.div>
-            <motion.div
-              variants={logoVariants}
-              initial="initial"
-              animate="animate"
-              className="flex h-20 max-md:h-14 shrink-0 items-end md:h-24 lg:h-28"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/sadiqoon.png"
-                alt="شعار كتلة الصادقون"
-                width={112}
-                height={112}
-                className="h-full w-auto object-contain object-bottom drop-shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
-                loading="lazy"
-              />
-            </motion.div>
-          </div>
-          {/* شريط ذهبي معدني — تدرج + خط سفلي داكن + glow خفيف */}
-          <div className="relative mt-4 w-56 max-md:mt-3 max-md:w-40 shrink-0 md:mt-5 md:w-72 lg:w-80">
-            {/* الشريط الرئيسي: 4px تدرج + ظل + توهج خفيف في المنتصف */}
-            <div
-              className="relative h-[4px] w-full rounded-full"
-              style={{
-                background: "linear-gradient(to right, #8C6A12, #E2C46C, #8C6A12)",
-                boxShadow: [
-                  "0 2px 4px rgba(0,0,0,0.15)",
-                  "0 0 16px rgba(226, 196, 108, 0.18)",
-                ].join(", "),
-              }}
-            />
-            {/* خط سفلي 1px داكن — عمق معدني */}
-            <div
-              className="absolute bottom-[-2px] left-0 h-[1px] w-full rounded-full bg-[#5A430F] opacity-40"
-              aria-hidden
-            />
-          </div>
-        </header>
-
-        {/* عنوان + وصف + زر — فراغ معقول بدون إفراغ */}
-        <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-4 text-center max-md:mt-5 max-md:gap-3 sm:mt-10 sm:gap-5">
-          <h1
-            className="flex max-w-3xl shrink-0 flex-wrap justify-center gap-x-2 gap-y-0 text-center text-5xl font-bold leading-tight tracking-tight text-[#1B1B1B] max-md:text-3xl max-md:leading-snug lg:text-6xl"
-          >
-            {TITLE_WORDS.map((word, i) => (
-              <motion.span
-                key={word}
-                variants={wordVariants}
-                initial="initial"
-                animate="animate"
-                custom={i}
-              >
-                {word}
-              </motion.span>
-            ))}
-          </h1>
-
-          <motion.p
-            variants={descVariants}
-            initial="initial"
-            animate="animate"
-            className="max-w-xl shrink-0 leading-relaxed text-neutral-600 max-md:leading-snug max-md:px-2"
-            style={{ fontSize: "clamp(0.8125rem, 1.5vw + 0.5rem, 1.125rem)" }}
-          >
-            منصة إلكترونية لإدارة الطلبات والخدمات والمتابعة المركزية
-          </motion.p>
-
-          <motion.div
-            variants={buttonVariants}
-            initial="initial"
-            animate="animate"
-            className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row"
-          >
-            <motion.button
-              type="button"
-              onClick={handleEnter}
-              disabled={isLeaving}
-              className="relative inline-flex w-full min-w-[220px] items-center justify-center overflow-hidden rounded-2xl border border-[#B88A1A]/70 px-16 py-[18px] font-semibold tracking-wide text-white max-md:min-w-0 max-md:py-4 max-md:text-base md:px-20 md:py-5 sm:w-auto"
-              style={{
-                background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 38%), linear-gradient(180deg, #2F7A3F 0%, #236434 100%)",
-                boxShadow: "0 18px 42px rgba(0,0,0,0.14)",
-              }}
-              whileHover={
-                isLeaving
-                  ? undefined
-                  : {
-                      y: -2,
-                      boxShadow: "0 24px 56px rgba(0,0,0,0.2)",
-                      filter: "brightness(1.05)",
-                    }
-              }
-              whileTap={isLeaving ? undefined : { scale: 0.98 }}
-              transition={reducedTransition}
-            >
-              {isLeaving ? (
-                <span className="inline-flex items-center gap-2">
-                  <span
-                    className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
-                    aria-hidden
-                  />
-                  <span>جاري التحويل...</span>
-                </span>
-              ) : (
-                "دخول إلى النظام"
-              )}
-            </motion.button>
-
-            <motion.button
-              type="button"
-              onClick={handleComplaint}
-              className="relative inline-flex w-full min-w-[220px] items-center justify-center overflow-hidden rounded-2xl border border-[#8C6A12]/70 px-10 py-[18px] font-semibold tracking-wide text-[#5A430F] max-md:min-w-0 max-md:py-4 max-md:text-base sm:w-auto"
-              style={{
-                background: "linear-gradient(180deg, rgba(255,255,255,0.9) 0%, #FFF8E9 100%)",
-                boxShadow: "0 14px 34px rgba(0,0,0,0.1)",
-              }}
-              whileHover={{ y: -2, filter: "brightness(1.02)" }}
-              whileTap={{ scale: 0.98 }}
-              transition={reducedTransition}
-            >
-              تقديم شكوى
-            </motion.button>
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* التاريخ والوقت — أسفل الصفحة، أقصى اليسار، مع مسافة عن الإطار */}
-      <p
-        className="absolute bottom-8 left-6 z-10 tabular-nums text-sm font-medium text-[#6E5310] max-md:bottom-4 max-md:left-4 max-md:text-xs"
-        aria-label="التاريخ والوقت"
-        suppressHydrationWarning
-      >
-        {dateTimeStr}
-      </p>
+        منصة معتمدة لإدارة الطلبات والخدمات والمتابعة الرسمية
+      </footer>
     </div>
   );
 }

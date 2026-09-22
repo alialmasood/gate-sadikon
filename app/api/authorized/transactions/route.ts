@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireDelegate } from "@/lib/api-auth";
+import { getTransactionStageLabel, latestTransferAction, workActions } from "@/lib/transaction-stage";
 
 /** إرجاع المعاملات المعينة للمخول الحالي */
 export async function GET(request: NextRequest) {
@@ -49,7 +50,16 @@ export async function GET(request: NextRequest) {
       reachedSorting: t.reachedSorting,
       officeName: t.office?.name ?? null,
       assignedFromSection: t.assignedFromSection ?? null,
-      delegateActions: t.delegateActions ?? [],
+      delegateActions: workActions(t.delegateActions),
+      transferNotice: (() => {
+        const transfer = latestTransferAction(t.delegateActions);
+        if (!transfer) return null;
+        return {
+          officeName: t.office?.name ?? transfer.officeName ?? "—",
+          stageLabel: getTransactionStageLabel(t),
+          fromDelegateName: transfer.fromDelegateName ?? null,
+        };
+      })(),
     })),
   });
 }

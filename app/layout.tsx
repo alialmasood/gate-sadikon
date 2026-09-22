@@ -1,12 +1,27 @@
 import type { Metadata } from "next";
-import { Tajawal } from "next/font/google";
+import { Alexandria, IBM_Plex_Sans_Arabic, Noto_Sans_Arabic } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
-const tajawal = Tajawal({
-  weight: ["400", "500", "700", "800"],
+const displayFont = Alexandria({
+  weight: ["600", "700", "800"],
   subsets: ["arabic"],
-  variable: "--font-tajawal",
+  variable: "--font-display-arabic",
+  display: "swap",
+});
+
+const headingFont = IBM_Plex_Sans_Arabic({
+  weight: ["500", "600", "700"],
+  subsets: ["arabic"],
+  variable: "--font-heading-arabic",
+  display: "swap",
+});
+
+const bodyFont = Noto_Sans_Arabic({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["arabic"],
+  variable: "--font-body-arabic",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -31,7 +46,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl">
-      <body className={`${tajawal.variable} font-sans antialiased`}>
+      <body
+        className={`${displayFont.variable} ${headingFont.variable} ${bodyFont.variable} font-sans antialiased`}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

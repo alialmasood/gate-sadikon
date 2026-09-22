@@ -117,7 +117,7 @@ export default function SupervisorLayout({ children }: { children: React.ReactNo
               <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
                 <img src="/gatmark.png" alt="الإشراف والمراقبة" className="h-full w-full object-contain" />
               </span>
-              <span className="truncate text-[15px] font-bold text-[#1B1B1B]">الإشراف والمراقبة</span>
+              <span className="font-heading truncate text-[15px] font-bold text-[#1B1B1B]">الإشراف والمراقبة</span>
             </Link>
           ) : (
             <Link href="/supervisor" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">

@@ -34,6 +34,7 @@ type Transaction = {
   assignedFromSection?: string | null;
   attachments?: unknown;
   delegateActions?: DelegateActionItem[];
+  transferNotice?: { officeName: string; stageLabel: string; fromDelegateName: string | null } | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -167,6 +168,11 @@ export default function AuthorizedTransactionsPage() {
                   </span>
                 </div>
                 <div className="flex flex-1 flex-col p-4">
+                  {t.transferNotice ? (
+                    <p className="mb-2 rounded-lg bg-[#5B7C99]/10 px-2.5 py-2 text-xs font-medium leading-5 text-[#3d5a73]">
+                      معاملة محوّلة إليك من مكتب {t.transferNotice.officeName}. المرحلة الحالية: {t.transferNotice.stageLabel}.
+                    </p>
+                  ) : null}
                   <h3 className="truncate font-semibold text-[#1a1a2e]">{t.citizenName || "—"}</h3>
                   <p className="mt-1 text-sm text-[#5a5a5a]" dir="ltr">
                     {t.citizenPhone || "—"}

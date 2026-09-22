@@ -112,7 +112,7 @@ export default function DocumentationLayout({ children }: { children: React.Reac
               <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
                 <img src="/gatmark.png" alt="قسم التوثيق" className="h-full w-full object-contain" />
               </span>
-              <span className="truncate text-[15px] font-bold text-[#1B1B1B]">قسم التوثيق</span>
+              <span className="font-heading truncate text-[15px] font-bold text-[#1B1B1B]">قسم التوثيق</span>
             </Link>
           ) : (
             <Link href="/documentation" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
@@ -197,7 +197,7 @@ export default function DocumentationLayout({ children }: { children: React.Reac
                 className="flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-[#f6f3ed]"
                 title="العودة للصفحة الرئيسية"
               >
-                <span className="text-base font-bold text-[#7C3AED] sm:text-lg">بوابة الصادقون</span>
+                <span className="font-display text-base font-bold text-[#7C3AED] sm:text-lg">بوابة الصادقون</span>
               </Link>
               <span className="hidden h-5 w-px bg-[#d4cfc8] sm:block" aria-hidden />
               <div className="hidden items-center gap-2 text-sm text-[#5a5a5a] sm:flex">

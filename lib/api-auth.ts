@@ -160,6 +160,16 @@ export async function requireAdminOrDocumentationOrCoordinator(req?: NextRequest
   };
 }
 
+/** قسم التنسيق والمتابعة أو السوبر أدمن — لمتابعة المخولين على مستوى المنصة */
+export async function requireCoordinatorOrSuperAdmin() {
+  const result = await getSessionWithDbValidation();
+  if (!result) return { error: "غير مصرح", status: 403 as const };
+  if (result.user.role !== "COORDINATOR" && result.user.role !== "SUPER_ADMIN") {
+    return { error: "غير مصرح", status: 403 as const };
+  }
+  return { session: result.session, role: result.user.role, userId: result.user.id };
+}
+
 /** سوبر أدمن أو مدير مكتب */
 export async function requireSuperAdminOrAdmin() {
   const result = await getSessionWithDbValidation();

@@ -1,0 +1,199 @@
+// Gate Sadikon (بوابة صادقون) — Database Structure Only
+// Source: prisma/schema.prisma + applied FKs/indexes from migrations
+// Structure only — no data
+// Import: https://dbdiagram.io
+
+Enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+  AUDITOR
+  COORDINATOR
+  RECEPTION
+  SORTING
+  DOCUMENTATION
+  PARLIAMENT_MEMBER
+  SUPERVISION
+}
+
+Enum ComplaintType {
+  SECRET
+  PUBLIC
+}
+
+Table User {
+  id String [pk]
+  email String [unique, not null]
+  password String [not null]
+  name String
+  phone String
+  address String
+  avatarUrl String
+  ministry String
+  department String
+  assignmentDate DateTime
+  serialNumber String [unique]
+  role Role [not null, default: 'USER']
+  enabled Boolean [not null, default: true]
+  officeId String
+  createdAt DateTime [not null, default: `now()`]
+  updatedAt DateTime [not null]
+}
+
+Table Office {
+  id String [pk]
+  name String [not null]
+  type String
+  location String
+  status String [not null, default: 'ACTIVE']
+  managerId String
+  managerName String
+  managerPhone String
+  managerAvatarUrl String
+  assignmentDate DateTime
+  createdAt DateTime [not null, default: `now()`]
+  updatedAt DateTime [not null]
+}
+
+Table Delegate {
+  id String [pk]
+  name String
+  userId String
+  officeId String
+  formationIds Json
+  status String [not null, default: 'ACTIVE']
+  createdAt DateTime [not null, default: `now()`]
+  updatedAt DateTime [not null]
+
+  Note: 'userId and officeId are logical references only — no FK in schema'
+}
+
+Table Formation {
+  id String [pk]
+  type String [not null]
+  name String [not null]
+  status String [not null, default: 'ACTIVE']
+  createdAt DateTime [not null, default: `now()`]
+  updatedAt DateTime [not null]
+}
+
+Table FormationSubDept {
+  id String [pk]
+  formationId String [not null]
+  name String [not null]
+  status String [not null, default: 'ACTIVE']
+  createdAt DateTime [not null, default: `now()`]
+  updatedAt DateTime [not null]
+}
+
+Table DelegateFormationAssignment {
+  id String [pk]
+  delegateId String [not null]
+  formationId String [not null]
+  subDeptId String
+  createdAt DateTime [not null, default: `now()`]
+
+  indexes {
+    (delegateId, formationId, subDeptId) [unique]
+  }
+}
+
+Table Transaction {
+  id String [pk]
+  citizenId String
+  citizenName String
+  citizenPhone String
+  citizenAddress String
+  citizenIsEmployee Boolean
+  citizenEmployeeSector String
+  citizenMinistry String
+  citizenDepartment String
+  citizenOrganization String
+  officeId String [not null]
+  createdByUserId String
+  delegateId String
+  status String [not null, default: 'PENDING']
+  type String
+  transactionType String
+  transactionTitle String
+  submissionDate DateTime
+  formationId String
+  subDeptId String
+  serialNumber String [unique]
+  attachments Json
+  delegateActions Json
+  completedAt DateTime
+  urgent Boolean [not null, default: false]
+  cannotComplete Boolean [not null, default: false]
+  cannotCompleteReason String
+  reachedSorting Boolean [not null, default: false]
+  completedByAdmin Boolean [not null, default: false]
+  assignedFromSection String
+  sourceSection String
+  createdAt DateTime [not null, default: `now()`]
+  updatedAt DateTime [not null]
+
+  indexes {
+    createdByUserId
+  }
+
+  Note: 'subDeptId has no FK; createdByUserId index from migration 20260526031500'
+}
+
+Table Evaluation {
+  id String [pk]
+  entityType String [not null]
+  entityId String [not null]
+  period String [not null]
+  rating Int
+  notes String
+  evaluatedById String [not null]
+  evaluatedAt DateTime [not null, default: `now()`]
+  createdAt DateTime [not null, default: `now()`]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (entityType, entityId, period) [unique]
+  }
+}
+
+Table Complaint {
+  id String [pk]
+  type ComplaintType [not null]
+  name String [not null]
+  address String
+  phone String [not null]
+  details String [not null]
+  attachments Json
+  createdAt DateTime [not null, default: `now()`]
+  updatedAt DateTime [not null]
+}
+
+Table FormFieldOption {
+  id String [pk]
+  fieldKey String [not null]
+  value String [not null]
+  label String [not null]
+  sortOrder Int [not null, default: 0]
+  enabled Boolean [not null, default: true]
+  createdAt DateTime [not null, default: `now()`]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (fieldKey, value) [unique]
+    (fieldKey, enabled, sortOrder)
+  }
+}
+
+// Foreign keys (matching Prisma onDelete)
+Ref: User.officeId > Office.id [delete: Set Null]
+Ref: Office.managerId > User.id [delete: Set Null]
+Ref: Evaluation.evaluatedById > User.id [delete: Cascade]
+Ref: FormationSubDept.formationId > Formation.id [delete: Cascade]
+Ref: DelegateFormationAssignment.delegateId > Delegate.id [delete: Cascade]
+Ref: DelegateFormationAssignment.formationId > Formation.id [delete: Cascade]
+Ref: DelegateFormationAssignment.subDeptId > FormationSubDept.id [delete: Cascade]
+Ref: Transaction.officeId > Office.id [delete: Cascade]
+Ref: Transaction.createdByUserId > User.id [delete: Set Null]
+Ref: Transaction.delegateId > Delegate.id [delete: Set Null]
+Ref: Transaction.formationId > Formation.id [delete: Set Null]

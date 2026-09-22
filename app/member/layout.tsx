@@ -114,7 +114,7 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
                 href="/member"
                 className="flex shrink-0 items-center rounded-lg px-2 py-2.5 transition-colors hover:bg-[#f6f3ed] active:bg-[#ebe7e0]"
               >
-                <span className="truncate text-sm font-bold text-[#1e3a5f] sm:text-base">بوابة الصادقون — عضو مجلس النواب</span>
+                <span className="font-display truncate text-sm font-bold text-[#1e3a5f] sm:text-base">بوابة الصادقون — عضو مجلس النواب</span>
               </Link>
               <span className="hidden h-5 w-px shrink-0 bg-[#d4cfc8] sm:block" aria-hidden />
               <h1 className="hidden truncate text-lg font-bold text-[#1B1B1B] sm:block sm:text-xl">لوحة التحكم</h1>

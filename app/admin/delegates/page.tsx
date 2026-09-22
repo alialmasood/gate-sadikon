@@ -3,6 +3,12 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
+type Assignment = {
+  id: string;
+  formationName: string;
+  subDeptName: string | null;
+};
+
 type Delegate = {
   id: string;
   name: string | null;
@@ -15,7 +21,27 @@ type Delegate = {
   avatarUrl: string | null;
   enabled: boolean;
   createdAt: string;
+  delegateId?: string | null;
+  transactionCount?: number;
+  assignments?: Assignment[];
 };
+
+type DelegateTransaction = {
+  id: string;
+  serialNumber: string | null;
+  citizenName: string | null;
+  transactionType: string | null;
+  type: string | null;
+  officeName: string | null;
+  formationName: string | null;
+  stageLabel: string;
+  transferred: boolean;
+  transferredFromDelegateName: string | null;
+};
+
+function assignmentLabel(a: Assignment): string {
+  return a.subDeptName ? `${a.formationName} — ${a.subDeptName}` : a.formationName;
+}
 
 function formatDateShort(s: string | null): string {
   if (!s) return "—";
@@ -33,12 +59,14 @@ function escapeCsvCell(val: string): string {
 }
 
 function downloadDelegatesExcel(list: Delegate[]) {
-  const headers = ["م", "الرقم التسلسلي", "الوزارة/الهيئة", "الاسم", "الهاتف", "البريد الإلكتروني", "تاريخ التكليف", "الحالة"];
+  const headers = ["م", "الرقم التسلسلي", "الاسم الكامل", "عدد المعاملات", "التكليفات", "الوزارة/الهيئة", "الهاتف", "البريد الإلكتروني", "تاريخ التكليف", "الحالة"];
   const rows = list.map((d, i) => [
     String(i + 1),
     escapeCsvCell(d.serialNumber ?? ""),
-    escapeCsvCell(d.ministry ?? ""),
     escapeCsvCell(d.name ?? d.email),
+    String(d.transactionCount ?? 0),
+    escapeCsvCell((d.assignments ?? []).map(assignmentLabel).join(" | ")),
+    escapeCsvCell(d.ministry ?? ""),
     escapeCsvCell(d.phone ?? ""),
     escapeCsvCell(d.email),
     escapeCsvCell(formatDateShort(d.assignmentDate)),
@@ -60,6 +88,13 @@ export default function AdminDelegatesPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<Delegate | null>(null);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txError, setTxError] = useState("");
+  const [transactions, setTransactions] = useState<DelegateTransaction[]>([]);
+  const [transferTarget, setTransferTarget] = useState<Record<string, string>>({});
+  const [transferringId, setTransferringId] = useState<string | null>(null);
+  const [transferMessage, setTransferMessage] = useState("");
 
   const loadData = useCallback(async (opts?: { silent?: boolean; bypassCache?: boolean }) => {
     if (!opts?.silent) setLoading(true);
@@ -77,6 +112,59 @@ export default function AdminDelegatesPage() {
       if (!opts?.silent) setLoading(false);
     }
   }, []);
+
+  const openTransactions = useCallback(async (d: Delegate, opts?: { keepMessage?: boolean }) => {
+    setViewing(d);
+    setTxLoading(true);
+    setTxError("");
+    if (!opts?.keepMessage) setTransferMessage("");
+    try {
+      const res = await fetch(`/api/admin/delegates/${d.id}/transactions?t=${Date.now()}`, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "فشل تحميل المعاملات");
+      setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
+    } catch (e) {
+      setTransactions([]);
+      setTxError(e instanceof Error ? e.message : "تعذر تحميل معاملات المخول");
+    } finally {
+      setTxLoading(false);
+    }
+  }, []);
+
+  const transferTransaction = useCallback(
+    async (tx: DelegateTransaction) => {
+      if (!viewing) return;
+      const toUserId = transferTarget[tx.id];
+      const target = delegates.find((d) => d.id === toUserId);
+      if (!toUserId || !target) {
+        setTransferMessage("اختر المخول الذي ستُنقل إليه المعاملة");
+        return;
+      }
+      const confirmed = window.confirm(
+        `نقل المعاملة ${tx.serialNumber ? `رقم ${tx.serialNumber}` : ""} من «${viewing.name || viewing.email}» إلى «${target.name || target.email}»؟\nستُحذف من حساب المخول الأصلي وتظهر في حساب المخول الجديد كمعاملة محوّلة من مكتب ${tx.officeName || "—"}، وقد وصلت إلى: ${tx.stageLabel}.`
+      );
+      if (!confirmed) return;
+      setTransferringId(tx.id);
+      setTransferMessage("");
+      try {
+        const res = await fetch("/api/admin/delegates/transfer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactionId: tx.id, toUserId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "تعذر نقل المعاملة");
+        setTransferMessage(`نُقلت المعاملة إلى «${data.toDelegateName || target.name || target.email}» ولم تعد لدى المخول الأصلي.`);
+        await openTransactions(viewing, { keepMessage: true });
+        await loadData({ silent: true, bypassCache: true });
+      } catch (e) {
+        setTransferMessage(e instanceof Error ? e.message : "تعذر نقل المعاملة");
+      } finally {
+        setTransferringId(null);
+      }
+    },
+    [delegates, loadData, openTransactions, transferTarget, viewing]
+  );
 
   useEffect(() => {
     loadData();
@@ -109,12 +197,12 @@ export default function AdminDelegatesPage() {
         <div className="w-full space-y-3 md:hidden">
           <div className="rounded-xl border border-[#d4cfc8] border-r-4 border-r-[#1E6B3A] bg-[#f6f3ed]/60 px-4 py-3 shadow-sm">
             <h1 className="text-lg font-bold text-[#1B1B1B]">المخولون</h1>
-            <p className="mt-0.5 text-xs text-[#5a5a5a]">جميع المخولين المضافين في النظام — مرتبطون بالنظام وليس بمكتب محدد</p>
+            <p className="mt-0.5 text-xs text-[#5a5a5a]">حسابات المخولين المضافة من لوحة السوبر أدمن، مع معاملاتهم وإمكانية نقل المعاملة بين المخولين</p>
           </div>
         </div>
         <div className="hidden md:block">
           <h1 className="text-xl font-bold text-[#1B1B1B]">المخولون</h1>
-          <p className="mt-0.5 text-sm text-[#5a5a5a]">جميع المخولين المضافين في النظام — مرتبطون بالنظام وليس بمكتب محدد</p>
+          <p className="mt-0.5 text-sm text-[#5a5a5a]">حسابات المخولين المضافة من لوحة السوبر أدمن، مع معاملاتهم وإمكانية نقل المعاملة بين المخولين</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -243,6 +331,27 @@ export default function AdminDelegatesPage() {
                               )}
                             </dd>
                           </div>
+                          <div className="flex flex-row-reverse justify-between gap-4 border-b border-[#d4cfc8]/40 pb-2">
+                            <dt className="shrink-0 text-[#5a5a5a]">عدد المعاملات</dt>
+                            <dd className="font-medium text-[#1B1B1B]">{d.transactionCount ?? 0}</dd>
+                          </div>
+                          <div className="flex flex-row-reverse justify-between gap-4 border-b border-[#d4cfc8]/40 pb-2">
+                            <dt className="shrink-0 text-[#5a5a5a]">التكليفات</dt>
+                            <dd className="min-w-0 flex-1 text-[#1B1B1B]">
+                              {(d.assignments ?? []).length === 0
+                                ? "—"
+                                : (d.assignments ?? []).map(assignmentLabel).join("، ")}
+                            </dd>
+                          </div>
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => void openTransactions(d)}
+                              className="w-full rounded-lg bg-[#1E6B3A] px-3 py-2 text-sm font-medium text-white"
+                            >
+                              عرض المعاملات ونقلها
+                            </button>
+                          </div>
                           <div className="flex flex-row-reverse justify-between gap-4 border-t border-[#d4cfc8]/40 pt-2">
                             <dt className="shrink-0 text-[#5a5a5a]">الحالة</dt>
                             <dd>
@@ -261,39 +370,46 @@ export default function AdminDelegatesPage() {
 
             {/* عرض اللابتوب: الجدول الأصلي */}
             <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[800px] text-right">
+            <table className="w-full min-w-[980px] text-right">
               <thead>
                 <tr className="border-b border-[#d4cfc8] text-sm font-medium text-[#5a5a5a]">
                   <th className="py-3 pr-2">م</th>
+                  <th className="py-3 pr-2">الاسم الكامل</th>
+                  <th className="py-3 pr-2">عدد المعاملات</th>
+                  <th className="py-3 pr-2">التكليفات</th>
                   <th className="py-3 pr-2">الرقم التسلسلي</th>
-                  <th className="py-3 pr-2">الوزارة/الهيئة</th>
-                  <th className="py-3 pr-2">الاسم</th>
-                  <th className="py-3 pr-2">الهاتف</th>
-                  <th className="py-3 pr-2">البريد الإلكتروني</th>
-                  <th className="py-3 pr-2">تاريخ التكليف</th>
-                  <th className="py-3 pr-2">الصورة</th>
                   <th className="py-3 pr-2">الحالة</th>
+                  <th className="py-3 pr-2">إجراء</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((d, idx) => (
-                  <tr key={d.id} className="border-b border-[#d4cfc8]/80 hover:bg-[#fafafa]">
+                  <tr key={d.id} className="border-b border-[#d4cfc8]/80 align-top hover:bg-[#fafafa]">
                     <td className="py-3 pr-2 text-[#5a5a5a]">{idx + 1}</td>
-                    <td className="py-3 pr-2 font-medium text-[#1B1B1B]" dir="ltr">{d.serialNumber || "—"}</td>
-                    <td className="py-3 pr-2 text-[#5a5a5a]">{d.ministry || "—"}</td>
-                    <td className="py-3 pr-2 text-[#1B1B1B]">{d.name || d.email}</td>
-                    <td className="py-3 pr-2 text-[#5a5a5a]" dir="ltr">{d.phone || "—"}</td>
-                    <td className="py-3 pr-2 text-[#1B1B1B]" dir="ltr">{d.email}</td>
-                    <td className="py-3 pr-2 text-[#5a5a5a]">{formatDateShort(d.assignmentDate)}</td>
                     <td className="py-3 pr-2">
-                      {d.avatarUrl ? (
-                        <img src={d.avatarUrl} alt="" className="h-10 w-10 rounded-full border border-[#d4cfc8] object-cover" />
-                      ) : (
-                        <span className="text-[#5a5a5a]">—</span>
-                      )}
+                      <div className="font-medium text-[#1B1B1B]">{d.name || d.email}</div>
+                      <div className="mt-0.5 text-xs text-[#5a5a5a]" dir="ltr">{d.phone || d.email}</div>
                     </td>
+                    <td className="py-3 pr-2 font-medium text-[#1B1B1B]">{d.transactionCount ?? 0}</td>
+                    <td className="max-w-[280px] py-3 pr-2 text-sm text-[#5a5a5a]">
+                      {(d.assignments ?? []).length === 0
+                        ? "—"
+                        : (d.assignments ?? []).map((a) => (
+                            <div key={a.id}>{assignmentLabel(a)}</div>
+                          ))}
+                    </td>
+                    <td className="py-3 pr-2 font-medium text-[#1B1B1B]" dir="ltr">{d.serialNumber || "—"}</td>
                     <td className="py-3 pr-2">
                       <span className={d.enabled ? "font-medium text-[#1E6B3A]" : "font-medium text-amber-600"}>{d.enabled ? "مفعّل" : "معطّل"}</span>
+                    </td>
+                    <td className="py-3 pr-2">
+                      <button
+                        type="button"
+                        onClick={() => void openTransactions(d)}
+                        className="rounded-lg bg-[#1E6B3A] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#185a31]"
+                      >
+                        المعاملات
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -309,6 +425,83 @@ export default function AdminDelegatesPage() {
           </p>
         )}
       </div>
+
+      {viewing && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" dir="rtl">
+          <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-lg sm:rounded-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-[#d4cfc8] px-4 py-4 sm:px-6">
+              <div>
+                <h2 className="text-lg font-bold text-[#1B1B1B]">معاملات {viewing.name || viewing.email}</h2>
+                <p className="mt-1 text-sm text-[#5a5a5a]">عرض المرحلة الحالية، ثم نقل المعاملة إلى مخول آخر. بعد النقل تختفي من هذا الحساب.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewing(null)}
+                className="rounded-lg border border-[#d4cfc8] px-3 py-1.5 text-sm text-[#1B1B1B] hover:bg-[#f6f3ed]"
+              >
+                إغلاق
+              </button>
+            </div>
+            <div className="overflow-auto px-4 py-4 sm:px-6">
+              {transferMessage && (
+                <div className="mb-3 rounded-lg border border-[#1E6B3A]/20 bg-[#1E6B3A]/10 px-3 py-2 text-sm text-[#1E6B3A]">{transferMessage}</div>
+              )}
+              {txError && (
+                <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{txError}</div>
+              )}
+              {txLoading ? (
+                <div className="flex justify-center py-10">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1E6B3A] border-t-transparent" />
+                </div>
+              ) : transactions.length === 0 ? (
+                <p className="py-10 text-center text-[#5a5a5a]">لا توجد معاملات محالة إلى هذا المخول ضمن نطاق مكتبك.</p>
+              ) : (
+                <div className="space-y-3">
+                  {transactions.map((tx) => {
+                    const others = delegates.filter((d) => d.id !== viewing.id && d.enabled);
+                    return (
+                      <article key={tx.id} className="rounded-xl border border-[#d4cfc8] p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="font-mono text-sm font-bold text-[#1E6B3A]" dir="ltr">{tx.serialNumber || "—"}</p>
+                            <p className="mt-1 font-medium text-[#1B1B1B]">{tx.citizenName || "—"}</p>
+                            <p className="text-sm text-[#5a5a5a]">{tx.transactionType || tx.type || "—"}</p>
+                          </div>
+                          <span className="rounded-lg bg-[#5B7C99]/15 px-2.5 py-1 text-xs font-medium text-[#3d5a73]">{tx.stageLabel}</span>
+                        </div>
+                        <p className="mt-2 text-sm text-[#5a5a5a]">المكتب: {tx.officeName || "—"}{tx.formationName ? ` — ${tx.formationName}` : ""}</p>
+                        {tx.transferred && (
+                          <p className="mt-1 text-xs text-[#5B7C99]">محوّلة سابقاً من المخول {tx.transferredFromDelegateName || "—"}</p>
+                        )}
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                          <select
+                            value={transferTarget[tx.id] ?? ""}
+                            onChange={(e) => setTransferTarget((prev) => ({ ...prev, [tx.id]: e.target.value }))}
+                            className="min-w-0 flex-1 rounded-lg border border-[#d4cfc8] bg-white px-3 py-2 text-sm text-[#1B1B1B]"
+                          >
+                            <option value="">اختر المخول الجديد</option>
+                            {others.map((d) => (
+                              <option key={d.id} value={d.id}>{d.name || d.email}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            disabled={transferringId === tx.id || others.length === 0}
+                            onClick={() => void transferTransaction(tx)}
+                            className="rounded-lg border border-[#5B7C99] bg-[#5B7C99] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                          >
+                            {transferringId === tx.id ? "جارٍ النقل…" : "نقل المعاملة"}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

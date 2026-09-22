@@ -1,0 +1,177 @@
+%%{init: {"theme": "neutral"}}%%
+erDiagram
+    %% Gate Sadikon — ERD (structure only)
+    %% Source: prisma/schema.prisma + applied FKs from migrations
+
+    Role {
+        string SUPER_ADMIN
+        string ADMIN
+        string USER
+        string AUDITOR
+        string COORDINATOR
+        string RECEPTION
+        string SORTING
+        string DOCUMENTATION
+        string PARLIAMENT_MEMBER
+        string SUPERVISION
+    }
+
+    ComplaintType {
+        string SECRET
+        string PUBLIC
+    }
+
+    User {
+        string id PK
+        string email UK
+        string password
+        string name
+        string phone
+        string address
+        string avatarUrl
+        string ministry
+        string department
+        datetime assignmentDate
+        string serialNumber UK
+        Role role
+        boolean enabled
+        string officeId FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Office {
+        string id PK
+        string name
+        string type
+        string location
+        string status
+        string managerId FK
+        string managerName
+        string managerPhone
+        string managerAvatarUrl
+        datetime assignmentDate
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Delegate {
+        string id PK
+        string name
+        string userId
+        string officeId
+        json formationIds
+        string status
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Formation {
+        string id PK
+        string type
+        string name
+        string status
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    FormationSubDept {
+        string id PK
+        string formationId FK
+        string name
+        string status
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    DelegateFormationAssignment {
+        string id PK
+        string delegateId FK
+        string formationId FK
+        string subDeptId FK
+        datetime createdAt
+    }
+
+    Transaction {
+        string id PK
+        string citizenId
+        string citizenName
+        string citizenPhone
+        string citizenAddress
+        boolean citizenIsEmployee
+        string citizenEmployeeSector
+        string citizenMinistry
+        string citizenDepartment
+        string citizenOrganization
+        string officeId FK
+        string createdByUserId FK
+        string delegateId FK
+        string status
+        string type
+        string transactionType
+        string transactionTitle
+        datetime submissionDate
+        string formationId FK
+        string subDeptId
+        string serialNumber UK
+        json attachments
+        json delegateActions
+        datetime completedAt
+        boolean urgent
+        boolean cannotComplete
+        string cannotCompleteReason
+        boolean reachedSorting
+        boolean completedByAdmin
+        string assignedFromSection
+        string sourceSection
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Evaluation {
+        string id PK
+        string entityType
+        string entityId
+        string period
+        int rating
+        string notes
+        string evaluatedById FK
+        datetime evaluatedAt
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Complaint {
+        string id PK
+        ComplaintType type
+        string name
+        string address
+        string phone
+        string details
+        json attachments
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    FormFieldOption {
+        string id PK
+        string fieldKey
+        string value
+        string label
+        int sortOrder
+        boolean enabled
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Office ||--o{ User : "users.officeId"
+    User ||--o| Office : "office.managerId"
+    User ||--o{ Evaluation : "evaluatedById"
+    User ||--o{ Transaction : "createdByUserId"
+    Office ||--o{ Transaction : "officeId"
+    Delegate ||--o{ Transaction : "delegateId"
+    Formation ||--o{ Transaction : "formationId"
+    Formation ||--o{ FormationSubDept : "formationId"
+    Delegate ||--o{ DelegateFormationAssignment : "delegateId"
+    Formation ||--o{ DelegateFormationAssignment : "formationId"
+    FormationSubDept ||--o{ DelegateFormationAssignment : "subDeptId"

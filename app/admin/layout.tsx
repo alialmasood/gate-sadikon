@@ -120,7 +120,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
                 <img src="/gatmark.png" alt="مدير المكتب" className="h-full w-full object-contain" />
               </span>
-              <span className="truncate text-[15px] font-bold text-[#1B1B1B]">مدير المكتب</span>
+              <span className="font-heading truncate text-[15px] font-bold text-[#1B1B1B]">مدير المكتب</span>
             </Link>
           ) : (
             <Link href="/admin" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">

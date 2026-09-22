@@ -166,22 +166,22 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen bg-[#FAFAF9]" dir="rtl">
+    <div className="flex min-h-dvh bg-[#F6F8FB]" dir="rtl">
       <aside
-        className={`fixed inset-y-0 right-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden border-l border-[#d4cfc8] bg-white shadow-lg transition-[width,transform] duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 print:hidden ${
+        className={`fixed inset-y-0 right-0 z-40 flex h-dvh shrink-0 flex-col overflow-hidden border-l border-[#E6EAF0] bg-white transition-[width,transform] duration-300 ease-in-out lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 print:hidden ${
           sidebarOpen ? "translate-x-0" : "translate-x-full"
         } ${sidebarCollapsed ? "w-[72px]" : "w-64"}`}
       >
-        <div className="flex h-16 items-center justify-between gap-2 border-b border-[#d4cfc8] px-3">
+        <div className="flex h-16 items-center justify-between gap-2 px-3">
           {!sidebarCollapsed ? (
-            <Link href="/super-admin" className="flex flex-1 min-w-0 items-center gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+            <Link href="/super-admin" className="flex min-w-0 flex-1 items-center gap-2.5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#F6F8FB]">
                 <img src="/gatmark.png" alt="بوابة الصادقون" className="h-full w-full object-contain" />
               </span>
-              <span className="truncate text-[15px] font-bold text-[#1B1B1B]">بوابة الصادقون</span>
+              <span className="truncate text-[15px] font-semibold text-[#101828]">بوابة الصادقون</span>
             </Link>
           ) : (
-            <Link href="/super-admin" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+            <Link href="/super-admin" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#F6F8FB]">
               <img src="/gatmark.png" alt="بوابة الصادقون" className="h-full w-full object-contain" />
             </Link>
           )}
@@ -189,7 +189,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             <button
               type="button"
               onClick={toggleCollapsed}
-              className="hidden rounded p-2 text-[#5a5a5a] hover:bg-[#f6f3ed] lg:flex"
+              className="hidden rounded-xl p-2 text-[#667085] hover:bg-[#F6F8FB] lg:flex"
               aria-label={sidebarCollapsed ? "توسيع القائمة" : "طي القائمة"}
               title={sidebarCollapsed ? "توسيع" : "طي"}
             >
@@ -200,7 +200,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}
-              className="rounded p-2 text-[#5a5a5a] hover:bg-[#f6f3ed] lg:hidden"
+              className="rounded-xl p-2 text-[#667085] hover:bg-[#F6F8FB] lg:hidden"
               aria-label="إغلاق القائمة"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,15 +209,15 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             </button>
           </div>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3">
           {NAV_GROUPS.map((group) => (
-            <div key={group.title} className="mt-5 border-t border-[#d4cfc8] pt-4 first:mt-0 first:border-t-0 first:pt-0">
+            <div key={group.title} className="mt-5 first:mt-0">
               {!sidebarCollapsed && (
-                <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-[#5a5a5a]">
+                <p className="mb-2 px-3 text-[11px] font-medium text-[#98A2B3]">
                   {group.title}
                 </p>
               )}
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
                 {group.items.map((item) => {
                   const isActive = pathname === item.href || (item.href !== "/super-admin" && pathname.startsWith(item.href));
                   const badge = item.badgeKey === "today" ? badges.today : item.badgeKey === "overdue" ? badges.overdue : null;
@@ -227,27 +227,19 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                       href={item.href}
                       onClick={() => setSidebarOpen(false)}
                       title={sidebarCollapsed ? item.label : undefined}
-                      className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-all duration-200 ${
+                      className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium transition-colors duration-200 ${
                         isActive
-                          ? "bg-[#e8f5ec] text-[#1E6B3A]"
-                          : "text-[#1B1B1B] hover:bg-[#f6f3ed] hover:text-[#1E6B3A]"
+                          ? "bg-[#1e3a5f] text-white"
+                          : "text-[#344054] hover:bg-[#F6F8FB] hover:text-[#1e3a5f]"
                       }`}
                     >
-                      {isActive && (
-                        <>
-                          <span
-                            className="absolute right-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-l-full bg-[#B08D57] shadow-sm"
-                            aria-hidden
-                          />
-                          {sidebarCollapsed && (
-                            <span
-                              className="absolute left-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[#1E6B3A] ring-2 ring-white"
-                              aria-hidden
-                            />
-                          )}
-                        </>
+                      {isActive && sidebarCollapsed && (
+                        <span
+                          className="absolute left-2 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-white"
+                          aria-hidden
+                        />
                       )}
-                      <span className={isActive ? "text-[#1E6B3A]" : "text-[#5a5a5a] group-hover:text-[#1E6B3A]"}>
+                      <span className={isActive ? "text-white" : "text-[#98A2B3] group-hover:text-[#1e3a5f]"}>
                         {NAV_ICONS[item.href]}
                       </span>
                       {!sidebarCollapsed && (
@@ -256,8 +248,12 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                           {badge != null && badge > 0 && (
                             <span
                               title={item.badgeKey === "overdue" ? "معاملات متأخرة" : "عدد المعاملات المُنشأة اليوم"}
-                              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                item.badgeKey === "overdue" ? "bg-red-100 text-red-700" : "bg-[#1E6B3A]/15 text-[#1E6B3A]"
+                              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                item.badgeKey === "overdue"
+                                  ? "bg-red-50 text-red-600"
+                                  : isActive
+                                    ? "bg-white/15 text-white"
+                                    : "bg-[#F6F8FB] text-[#1e3a5f]"
                               }`}
                             >
                               {badge}
@@ -275,14 +271,14 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             </div>
           ))}
         </nav>
-        <div className="mt-auto border-t border-[#d4cfc8] p-3">
+        <div className="mt-auto p-3">
           <Link
             href="/"
             onClick={() => setSidebarOpen(false)}
             title={sidebarCollapsed ? "العودة للمنصة الرئيسية" : undefined}
-            className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-[#5a5a5a] transition-all duration-200 hover:bg-[#f6f3ed] hover:text-[#1E6B3A] ${sidebarCollapsed ? "justify-center" : ""}`}
+            className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium text-[#667085] transition-colors duration-200 hover:bg-[#F6F8FB] hover:text-[#1e3a5f] ${sidebarCollapsed ? "justify-center" : ""}`}
           >
-            <svg className="h-5 w-5 shrink-0 text-[#5a5a5a] group-hover:text-[#1E6B3A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 shrink-0 text-[#98A2B3] group-hover:text-[#1e3a5f]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             {!sidebarCollapsed && <span>العودة للمنصة الرئيسية</span>}
@@ -300,37 +296,37 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-[#d4cfc8] bg-white/95 px-4 backdrop-blur sm:px-6 print:hidden">
+        <header className="sticky top-0 z-20 flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#E6EAF0] bg-white/90 px-3 py-2 backdrop-blur-md sm:gap-4 sm:px-6 print:hidden">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="rounded-lg p-2 text-[#5a5a5a] hover:bg-[#f6f3ed] lg:hidden"
+            className="rounded-xl p-2 text-[#667085] hover:bg-[#F6F8FB] lg:hidden"
             aria-label="فتح القائمة"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <div className="flex flex-1 flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 text-sm text-[#5a5a5a]">
-                <Link href="/super-admin" className="hover:text-[#1E6B3A]">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 sm:gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="hidden items-center gap-2 text-sm text-[#667085] sm:flex">
+                <Link href="/super-admin" className="hover:text-[#1e3a5f]">
                   {breadcrumb[0]}
                 </Link>
-                <span>/</span>
-                <span className="font-medium text-[#1B1B1B]">{breadcrumb[1]}</span>
+                <span className="text-[#D0D5DD]">/</span>
+                <span className="font-medium text-[#101828]">{breadcrumb[1]}</span>
               </div>
-              <h1 className="text-lg font-bold text-[#1B1B1B] sm:text-xl">{breadcrumb[1]}</h1>
+              <h1 className="truncate text-base font-semibold text-[#101828] sm:hidden">{breadcrumb[1]}</h1>
             </div>
-            <div className="flex items-center gap-3">
-              <p className="text-sm text-[#5a5a5a]" suppressHydrationWarning>
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <p className="max-w-[9.5rem] truncate text-[11px] tabular-nums text-[#667085] sm:max-w-none sm:text-sm" suppressHydrationWarning>
                 {formatDateTime(time)}
               </p>
-              <div className="h-4 w-px bg-[#d4cfc8]" />
+              <div className="h-4 w-px bg-[#E6EAF0]" />
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="relative rounded-lg p-2 text-[#5a5a5a] hover:bg-[#f6f3ed]"
+                  className="relative rounded-xl p-2 text-[#667085] hover:bg-[#F6F8FB]"
                   aria-label="الإشعارات"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -346,7 +342,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                   <button
                     type="button"
                     onClick={() => setUserMenuOpen((o) => !o)}
-                    className="flex items-center gap-2 rounded-lg border border-[#d4cfc8] bg-white px-3 py-2 text-sm font-medium text-[#1B1B1B] hover:bg-[#f6f3ed]"
+                    className="flex items-center gap-2 rounded-xl bg-[#F6F8FB] px-2.5 py-2 text-sm font-medium text-[#101828] hover:bg-[#EEF2F6] sm:px-3"
                   >
                     <span className="hidden sm:inline">الحساب</span>
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -356,11 +352,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                   {userMenuOpen && (
                     <>
                       <button type="button" className="fixed inset-0 z-10" aria-hidden onClick={() => setUserMenuOpen(false)} />
-                      <div className="absolute left-0 top-full z-20 mt-1 min-w-[140px] rounded-xl border border-[#d4cfc8] bg-white py-1 shadow-lg">
+                      <div className="absolute left-0 top-full z-20 mt-1.5 min-w-[140px] rounded-2xl border border-[#E6EAF0] bg-white py-1 shadow-[0_12px_32px_rgba(16,24,40,0.08)]">
                         <button
                           type="button"
                           onClick={() => void safeSignOut()}
-                          className="w-full px-4 py-2 text-right text-sm text-[#1B1B1B] hover:bg-[#f6f3ed]"
+                          className="w-full px-4 py-2 text-right text-sm text-[#101828] hover:bg-[#F6F8FB]"
                         >
                           خروج
                         </button>
@@ -373,7 +369,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-3 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

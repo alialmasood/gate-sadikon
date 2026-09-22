@@ -1,29 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSuperAdminOrAdmin } from "@/lib/api-auth";
-import { prismaOfficeIdFilter, resolveOfficeScope } from "@/lib/office-scope";
-import type { Prisma } from "@prisma/client";
+import { requireCoordinatorOrSuperAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
-async function transactionOfficeWhere(
-  role: string,
-  officeId: string | null
-): Promise<Prisma.TransactionWhereInput | { error: string; status: number }> {
-  if (role !== "ADMIN") return {};
-  if (!officeId) return { error: "الحساب غير مرتبط بمكتب", status: 403 };
-  const scope = await resolveOfficeScope(officeId);
-  if (!scope) return { error: "المكتب غير موجود", status: 403 };
-  return { officeId: prismaOfficeIdFilter(scope.officeIds) };
-}
-
-/** قائمة حسابات المخولين (DEL-) كما تُنشأ من لوحة السوبر أدمن، مع عدد المعاملات والتكليفات */
+/** حسابات المخولين (DEL-) كما تُنشأ من لوحة السوبر أدمن، مع عدد المعاملات والمنجز والتكليفات */
 export async function GET() {
-  const auth = await requireSuperAdminOrAdmin();
+  const auth = await requireCoordinatorOrSuperAdmin();
   if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
-
-  const officeWhere = await transactionOfficeWhere(auth.role, auth.officeId);
-  if ("error" in officeWhere) return NextResponse.json({ error: officeWhere.error }, { status: officeWhere.status });
 
   const users = await prisma.user.findMany({
     where: { serialNumber: { startsWith: "DEL-" } },
@@ -33,13 +17,11 @@ export async function GET() {
       email: true,
       name: true,
       phone: true,
-      avatarUrl: true,
       ministry: true,
       department: true,
-      assignmentDate: true,
       serialNumber: true,
       enabled: true,
-      createdAt: true,
+      assignmentDate: true,
     },
   });
 
@@ -52,7 +34,6 @@ export async function GET() {
           select: {
             id: true,
             userId: true,
-            status: true,
             assignments: {
               orderBy: { createdAt: "desc" },
               select: {
@@ -65,26 +46,40 @@ export async function GET() {
         });
 
   const delegateIds = delegateRows.map((d) => d.id);
-  const counts =
+  const [totals, completed] =
     delegateIds.length === 0
-      ? []
-      : await prisma.transaction.groupBy({
-          by: ["delegateId"],
-          where: { delegateId: { in: delegateIds }, ...officeWhere },
-          _count: { id: true },
-        });
+      ? [[], []]
+      : await Promise.all([
+          prisma.transaction.groupBy({
+            by: ["delegateId"],
+            where: { delegateId: { in: delegateIds } },
+            _count: { id: true },
+          }),
+          prisma.transaction.groupBy({
+            by: ["delegateId"],
+            where: {
+              delegateId: { in: delegateIds },
+              OR: [{ status: "DONE" }, { completedByAdmin: true }],
+            },
+            _count: { id: true },
+          }),
+        ]);
 
-  const countByDelegate = new Map(counts.map((c) => [c.delegateId, c._count.id]));
+  const totalByDelegate = new Map(totals.map((c) => [c.delegateId, c._count.id]));
+  const doneByDelegate = new Map(completed.map((c) => [c.delegateId, c._count.id]));
   const delegateByUser = new Map(delegateRows.filter((d) => d.userId).map((d) => [d.userId as string, d]));
 
   return NextResponse.json(
     users.map((u) => {
       const delegate = delegateByUser.get(u.id);
+      const transactionCount = delegate ? totalByDelegate.get(delegate.id) ?? 0 : 0;
+      const completedCount = delegate ? doneByDelegate.get(delegate.id) ?? 0 : 0;
       return {
         ...u,
         delegateId: delegate?.id ?? null,
-        delegateStatus: delegate?.status ?? null,
-        transactionCount: delegate ? countByDelegate.get(delegate.id) ?? 0 : 0,
+        transactionCount,
+        completedCount,
+        openCount: Math.max(0, transactionCount - completedCount),
         assignments: (delegate?.assignments ?? []).map((a) => ({
           id: a.id,
           formationName: a.formation.name,

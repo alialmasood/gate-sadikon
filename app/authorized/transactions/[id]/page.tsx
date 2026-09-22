@@ -95,6 +95,8 @@ type Transaction = {
   urgent?: boolean;
   cannotComplete?: boolean;
   delegateActions?: DelegateAction[];
+  stageLabel?: string;
+  transferNotice?: { officeName: string; stageLabel: string; fromDelegateName: string | null } | null;
 };
 
 function getEmployeeInfo(t: Transaction): string {
@@ -496,6 +498,12 @@ export default function AuthorizedTransactionDetailPage() {
           </p>
         </div>
       </header>
+
+      {transaction.transferNotice ? (
+        <div className="rounded-xl border border-[#5B7C99]/30 bg-[#5B7C99]/10 px-4 py-3 text-sm font-medium leading-6 text-[#3d5a73]">
+          معاملة محوّلة إليك من مكتب {transaction.transferNotice.officeName}. وصلت إلى المرحلة: {transaction.transferNotice.stageLabel}.
+        </div>
+      ) : null}
 
       <div className="space-y-4">
         <div className="rounded-xl border border-[rgba(44,62,80,0.1)] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">

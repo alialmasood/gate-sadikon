@@ -64,7 +64,7 @@ export default function AuthorizedLayout({ children }: { children: React.ReactNo
               <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
                 <img src="/gatmark.png" alt="المخولين" className="h-full w-full object-contain" />
               </span>
-              <span className="truncate text-[15px] font-bold text-[#1B1B1B]">المخولين</span>
+              <span className="font-heading truncate text-[15px] font-bold text-[#1B1B1B]">المخولين</span>
             </Link>
           ) : (
             <Link href="/authorized" title="لوحة التحكم" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
@@ -169,7 +169,7 @@ export default function AuthorizedLayout({ children }: { children: React.ReactNo
                 className="flex shrink-0 items-center rounded-lg px-2 py-2.5 transition-colors hover:bg-[#f6f3ed] active:bg-[#ebe7e0]"
                 title="العودة للصفحة الرئيسية"
               >
-                <span className="truncate text-sm font-bold text-[#1E6B3A] sm:text-base sm:text-lg">بوابة الصادقون</span>
+                <span className="font-display truncate text-sm font-bold text-[#1E6B3A] sm:text-base sm:text-lg">بوابة الصادقون</span>
               </Link>
               <span className="hidden h-5 w-px shrink-0 bg-[#d4cfc8] sm:block" aria-hidden />
               <h1 className="hidden truncate text-lg font-bold text-[#1B1B1B] sm:block sm:text-xl">لوحة التحكم</h1>

@@ -1,0 +1,200 @@
+// بوابة الصادقون — PostgreSQL 16
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String?
+  phone           String?
+  address         String?
+  avatarUrl       String?
+  ministry        String?
+  department      String?
+  assignmentDate  DateTime?
+  serialNumber    String?   @unique
+  role            Role      @default(USER)
+  enabled   Boolean  @default(true)
+  officeId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  office       Office?  @relation(fields: [officeId], references: [id], onDelete: SetNull)
+  managedOffices Office[] @relation("OfficeManager")
+  evaluationsAsEvaluator Evaluation[] @relation("EvaluationEvaluator")
+  createdTransactions Transaction[] @relation("TransactionCreator")
+}
+
+model Evaluation {
+  id            String   @id @default(cuid())
+  entityType    String   // OFFICE | DELEGATE | USER
+  entityId      String
+  period        String   // YYYY-MM تقييم شهري
+  rating        Int?     // 1-5 تقييم يدوي
+  notes         String?  @db.Text
+  evaluatedById String
+  evaluatedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  evaluatedBy   User     @relation("EvaluationEvaluator", fields: [evaluatedById], references: [id], onDelete: Cascade)
+
+  @@unique([entityType, entityId, period])
+}
+
+model Office {
+  id               String    @id @default(cuid())
+  name             String
+  type             String?
+  location         String?
+  status           String    @default("ACTIVE")
+  managerId        String?
+  managerName      String?
+  managerPhone     String?
+  managerAvatarUrl String?
+  assignmentDate   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  manager          User?     @relation("OfficeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  users            User[]
+  transactions     Transaction[]
+}
+
+model Delegate {
+  id            String   @id @default(cuid())
+  name          String?
+  userId        String?
+  officeId      String?
+  formationIds  Json?    // مصفوفة معرّفات التشكيلات المرتبطة بالمخول
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  transactions  Transaction[]
+  assignments   DelegateFormationAssignment[]
+}
+
+model DelegateFormationAssignment {
+  id          String   @id @default(cuid())
+  delegateId  String
+  formationId String
+  subDeptId   String?
+  createdAt   DateTime @default(now())
+  delegate    Delegate @relation(fields: [delegateId], references: [id], onDelete: Cascade)
+  formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  subDept     FormationSubDept? @relation(fields: [subDeptId], references: [id], onDelete: Cascade)
+  @@unique([delegateId, formationId, subDeptId])
+}
+
+model Formation {
+  id              String   @id @default(cuid())
+  type            String
+  name            String
+  status          String   @default("ACTIVE")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  subDepartments  FormationSubDept[]
+  transactions    Transaction[]
+  delegateAssignments DelegateFormationAssignment[]
+}
+
+model FormationSubDept {
+  id          String    @id @default(cuid())
+  formationId String
+  name        String    // الدائرة الفرعية التابعة للتشكيل
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  delegateAssignments DelegateFormationAssignment[]
+}
+
+model Transaction {
+  id               String    @id @default(cuid())
+  citizenId        String?   // معرف المواطن (يدوي)
+  citizenName      String?
+  citizenPhone     String?
+  citizenAddress   String?
+  citizenIsEmployee   Boolean?
+  citizenEmployeeSector String?  // GOVERNMENT | PRIVATE | MIXED
+  citizenMinistry     String?
+  citizenDepartment   String?
+  citizenOrganization String?
+  officeId         String
+  createdByUserId  String?
+  delegateId       String?
+  status           String    @default("PENDING")
+  type             String?
+  transactionType  String?
+  transactionTitle String?
+  submissionDate   DateTime?
+  formationId      String?
+  subDeptId        String?
+  serialNumber     String?   @unique
+  attachments      Json?
+  delegateActions  Json?    // [{ text, attachmentUrl?, attachmentName?, createdAt }] — إجراءات المخول
+  completedAt      DateTime?
+  urgent               Boolean   @default(false)
+  cannotComplete       Boolean   @default(false)
+  cannotCompleteReason String?
+  reachedSorting       Boolean   @default(false)
+  completedByAdmin     Boolean   @default(false)
+  assignedFromSection  String?   // SORTING | ADMIN | COORDINATOR | RECEPTION — القسم الذي سلّم المعاملة للمخول
+  sourceSection       String?   // RECEPTION | COORDINATOR | DOCUMENTATION | ADMIN — الصفحة/القسم الذي أرسل المعاملة (وليس الوزارة أو التشكيل)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  office           Office    @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  createdByUser    User?     @relation("TransactionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  delegate         Delegate? @relation(fields: [delegateId], references: [id], onDelete: SetNull)
+  formation        Formation? @relation(fields: [formationId], references: [id], onDelete: SetNull)
+}
+
+model Complaint {
+  id          String        @id @default(cuid())
+  type        ComplaintType
+  name        String
+  address     String?
+  phone       String
+  details     String        @db.Text
+  attachments Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+  AUDITOR       // مدقق
+  COORDINATOR   // تنسيق ومتابعة
+  RECEPTION     // استقبال واستعلامات
+  SORTING       // قسم الفرز
+  DOCUMENTATION // قسم التوثيق
+  PARLIAMENT_MEMBER
+  SUPERVISION   // حاسبات الإشراف والمراقبة
+}
+
+enum ComplaintType {
+  SECRET
+  PUBLIC
+}
+
+// خيارات قوائم نماذج المعاملات (قابلة للإدارة من لوحة السوبر أدمن)
+model FormFieldOption {
+  id        String   @id @default(cuid())
+  fieldKey  String
+  value     String
+  label     String
+  sortOrder Int      @default(0)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fieldKey, value])
+  @@index([fieldKey, enabled, sortOrder])
+}
