@@ -6,6 +6,10 @@
   --primary: #1E6B3A;
   --primary-dark: #0F3D22;
   --gold: #C9A227;
+  /* خطوط عربية عبر CDN وقت التشغيل — لا يعتمد البناء على الوصول لـ Google Fonts */
+  --font-display-arabic: "Alexandria", "Segoe UI", Tahoma, sans-serif;
+  --font-heading-arabic: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --font-body-arabic: "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif;
 }
 
 @theme inline {

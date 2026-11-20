@@ -1,28 +1,6 @@
 import type { Metadata } from "next";
-import { Alexandria, IBM_Plex_Sans_Arabic, Noto_Sans_Arabic } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
-
-const displayFont = Alexandria({
-  weight: ["600", "700", "800"],
-  subsets: ["arabic"],
-  variable: "--font-display-arabic",
-  display: "swap",
-});
-
-const headingFont = IBM_Plex_Sans_Arabic({
-  weight: ["500", "600", "700"],
-  subsets: ["arabic"],
-  variable: "--font-heading-arabic",
-  display: "swap",
-});
-
-const bodyFont = Noto_Sans_Arabic({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["arabic"],
-  variable: "--font-body-arabic",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "بوابة الصادقون",
@@ -46,9 +24,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl">
-      <body
-        className={`${displayFont.variable} ${headingFont.variable} ${bodyFont.variable} font-sans antialiased`}
-      >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
