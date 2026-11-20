@@ -1,0 +1,15 @@
+/* TEAM */
+Creator: Ali Hussein Mezher Almasood
+Creator (AR): علي حسين مزهر المسعود
+Role: Designer, Developer, Programmer, System Builder
+From: Basra, Iraq
+Affiliation: University of Basrah
+
+/* SITE */
+Project: Gate Sadikon / بوابة الصادقون
+Organization: حركة صادقون — عصائب أهل الحق
+URL: https://sadiqon-gate.com
+Credits: https://sadiqon-gate.com/credits
+
+/* THANKS */
+Built and designed by Ali Hussein Mezher Almasood.
