@@ -1551,6 +1551,7 @@ export default function SuperAdminUsersPage() {
         const res = await fetch("/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             email: data.email,
             password: data.password,
@@ -1565,17 +1566,25 @@ export default function SuperAdminUsersPage() {
             role: "USER",
           }),
         });
-        const createData = await res.json();
+        let createData: { error?: string } = {};
+        try {
+          createData = await res.json();
+        } catch {
+          setDelegateSubmitError(
+            res.ok ? "استجابة غير صالحة من الخادم" : `فشل إنشاء الحساب (رمز ${res.status})`
+          );
+          return;
+        }
         if (!res.ok) {
           setDelegateSubmitError(createData.error || "فشل إنشاء الحساب");
           return;
         }
-        setUsers((prev) => [createData, ...prev]);
+        setUsers((prev) => [createData as typeof prev[number], ...prev]);
         setDelegateModalOpen(false);
         broadcastDataUpdate();
       }
     } catch {
-      setDelegateSubmitError("خطأ في الاتصال");
+      setDelegateSubmitError("تعذر الاتصال بالخادم، تحقق من الشبكة ثم أعد المحاولة");
     } finally {
       setDelegateSubmitting(false);
     }
