@@ -462,6 +462,15 @@ export default function ParliamentMembersPage() {
         )}
       </article>
 
+      {/* معاملات مكتب النائب */}
+      <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-[#1B1B1B]">معاملات مكتب النائب</h2>
+        <p className="mt-1 text-sm text-[#5a5a5a]">معاملات مكتب عضو مجلس النواب ومتابعتها.</p>
+        <div className="mt-4 rounded-xl border border-[#d4cfc8]/60 bg-[#f6f3ed]/50 p-6 text-center">
+          <p className="text-[#5a5a5a]">قسم معاملات مكتب النائب — قيد التطوير</p>
+        </div>
+      </article>
+
       {/* توجيهات */}
       <article className="rounded-2xl border border-[#d4cfc8] bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-[#1B1B1B]">توجيهات</h2>
